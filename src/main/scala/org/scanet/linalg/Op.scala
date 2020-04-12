@@ -26,12 +26,12 @@ case class Op[A: Numeric](
         val (newContext, out) = op.findOrCompile(currentContext)
         (newContext, out._2::outs)
       })
-    val newLabel = Label(label, contextAfterInput.maxLabelIndex(label) + 1)
-    val output: Output[A] = compiler(OpContext(contextAfterInput, this, newLabel, outputs.reverse))
-    val compiled: Compiled[AnyRef] = (newLabel, output.asInstanceOf[Output[AnyRef]])
-    val newCache = contextAfterInput.outputs + (id -> compiled)
+    val uniqueLabel = Label(label, contextAfterInput.maxLabelIndex(label) + 1)
+    val output = compiler(OpContext(contextAfterInput, this, uniqueLabel, outputs.reverse))
+    val compiled = (uniqueLabel, output)
+    val newCache = contextAfterInput.outputs + (id -> compiled.asInstanceOf[Compiled[AnyRef]])
     val contextAfterOutput = contextAfterInput.copy(outputs = newCache)
-    (contextAfterOutput, compiled.asInstanceOf[Compiled[A]])
+    (contextAfterOutput, compiled)
   }
 
   def findOrCompile(context: Context): (Context, Compiled[A]) = {
@@ -47,7 +47,8 @@ case class Op[A: Numeric](
   override def toString: String = {
     // todo: add shapes
     val args = if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
-    if (label == name) s"$name$args" else s"$label:$name$args"
+    val fullName = if (label == name) s"$name" else s"$label:$name"
+    s"$fullName$args:$shape"
   }
 
   def eval: Tensor[A] = Session.run(this)
