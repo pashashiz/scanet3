@@ -4,45 +4,39 @@ import java.util.UUID
 
 import org.scanet.core.Numeric
 import org.scanet.linalg.Op.BuilderState._
+import org.scanet.linalg.Op._
 import org.tensorflow.{OperationBuilder, Output}
 import org.tensorflow.op.{Scope => NativeScope}
 
-case class Context(scope: NativeScope, cache: Map[String, Output[AnyRef]])
-
-case class Label(value: String, index: Int = 0) {
-  require(value.nonEmpty, "name cannot be empty")
-  require(index >= -1, "index should be positive or -1")
-
-  override def toString: String = s"${value}_$index"
-}
-
 case class Op[A: Numeric](
        name: String,
-       label: Label,
+       label: String,
        shape: Shape,
        inputs: List[Op[A]],
-       compiler: (Op[A], Context, List[Output[A]]) => Output[A]) {
+       compiler: OpContext[A] => Output[A]) {
 
   val id: String = UUID.randomUUID().toString
 
   def rank: Int = shape.rank
 
-  def compile(context: Context): (Context, Output[A]) = {
-    val (context1, outputs) = inputs.foldLeft((context, List[Output[A]]()))(
+  def compile(context: Context): (Context, Compiled[A]) = {
+    val (contextAfterInput, outputs) = inputs.foldLeft((context, List[Output[A]]()))(
       (acc, op) => {
         val (currentContext, outs) = acc
         val (newContext, out) = op.findOrCompile(currentContext)
-        (newContext, out::outs)
+        (newContext, out._2::outs)
       })
-    val output = compiler(this, context1, outputs.reverse)
-    val newCache = context1.cache + (id -> output.asInstanceOf[Output[AnyRef]])
-    val context2 = context1.copy(cache = newCache)
-    (context2, output)
+    val newLabel = Label(label, contextAfterInput.maxLabelIndex(label) + 1)
+    val output: Output[A] = compiler(OpContext(contextAfterInput, this, newLabel, outputs.reverse))
+    val compiled: Compiled[AnyRef] = (newLabel, output.asInstanceOf[Output[AnyRef]])
+    val newCache = contextAfterInput.outputs + (id -> compiled)
+    val contextAfterOutput = contextAfterInput.copy(outputs = newCache)
+    (contextAfterOutput, compiled.asInstanceOf[Compiled[A]])
   }
 
-  def findOrCompile(context: Context): (Context, Output[A]) = {
-    context.cache.get(id)
-      .map(operand => (context, operand.asInstanceOf[Output[A]]))
+  def findOrCompile(context: Context): (Context, Compiled[A]) = {
+    context.outputs.get(id)
+      .map(compiled => (context, compiled.asInstanceOf[Compiled[A]]))
       .getOrElse {compile(context)}
   }
 
@@ -50,30 +44,34 @@ case class Op[A: Numeric](
     inputs.flatMap(op => op.upstreamOptions)
   }
 
-  def maxIndexOfName(name: String): Int = {
-    // NOTE: in the future think about prebuilt index
-    val names = upstreamOptions.map(_.label).groupBy(_.value)
-    names.get(name).map(n => n.map(_.index).max).getOrElse(-1)
-  }
-
-  def withUniqueName: Op[A] = {
-    val maxIndex = maxIndexOfName(label.value)
-    if (maxIndex >= label.index) {
-      copy(label = label.copy(index = maxIndex + 1))
-    } else {
-      this
-    }
-  }
-
   override def toString: String = {
+    // todo: add shapes
     val args = if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
-    s"$label:$name$args"
+    if (label == name) s"$name$args" else s"$label:$name$args"
   }
 
   def eval: Tensor[A] = Session.run(this)
 }
 
 object Op {
+
+  case class Label(value: String, index: Int = 0) {
+    require(value.nonEmpty, "name cannot be empty")
+    require(index >= -1, "index should be positive or -1")
+    override def toString: String = s"${value}_$index"
+  }
+
+  type Compiled[A] = (Label, Output[A])
+
+  case class OpContext[A: Numeric](global: Context, op: Op[A], label: Label, inputs: List[Output[A]])
+
+  case class Context(scope: NativeScope, outputs: Map[String, Compiled[AnyRef]]) {
+    def maxLabelIndex(name: String): Int = {
+      // NOTE: in the future think about prebuilt index
+      val names = outputs.values.map(_._1).groupBy(_.value)
+      names.get(name).map(n => n.map(_.index).max).getOrElse(-1)
+    }
+  }
 
   sealed trait BuilderState
   object BuilderState {
@@ -113,9 +111,9 @@ object Op {
         inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
 
     def build(implicit ev: State =:= Complete): Op[A] = {
-      Op[A](name, label, shape, inputs, (op: Op[A], context, inputs: List[Output[A]]) => {
-        val init = context.scope.env.opBuilder(op.name, op.label.toString)
-        val transformed = transformers.foldLeft(init)((acc, next) => next(inputs, acc))
+      Op[A](name, label, shape, inputs, (context: OpContext[A]) => {
+        val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
+        val transformed = transformers.foldLeft(init)((acc, next) => next(context.inputs, acc))
         transformed.build().output(0).asInstanceOf[Output[A]]
       })
     }
@@ -123,16 +121,6 @@ object Op {
 
   def name[A: Numeric](name: String): Builder[A, WithName] = {
     Builder[A, WithName](name, label = null, shape = null, inputs = Nil, transformers = Nil)
-  }
-
-  def apply[A: Numeric](
-       name: String,
-       label: String,
-       shape: Shape,
-       inputs: List[Op[A]],
-       compiler: (Op[A], Context, List[Output[A]]) => Output[A]): Op[A] = {
-    // todo: fix unique names - make unique names before evaluation
-    new Op(name, Label(label), shape, inputs, compiler).withUniqueName
   }
 
   def const[A: Numeric](value: A): Op[A] =
@@ -151,10 +139,9 @@ object Op {
        .build
 
   def plus[A: Numeric](left: Op[A], right: Op[A], label: String = "Add"): Op[A] = {
-    // todo: lower dimensions should be equal and tensor with higher dimension
-    require(left.shape.last == right.shape.last || left.shape.isScalar || right.shape.isScalar,
+    require(left.shape.endsWith(right.shape) || right.shape.endsWith(left.shape) ,
       s"tensors with shapes ${left.shape} and ${right.shape} cannot be added, " +
-        "either last dimensions should equal or one of the tensors should be a scalar")
+        "one of the tensors should have shape which includes the other")
     Op.name("Add")
       .label(label)
       .shape(if (left.rank > right.rank) left.shape else right.shape)

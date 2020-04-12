@@ -14,9 +14,12 @@ class OpSpec extends AnyFlatSpec with Matchers {
   }
 
   "plus" should "work" in {
+    println(plus(
+      const(Tensor.matrix(Array(1, 2), Array(1, 2))),
+      const(Tensor.vector(1, 2))))
     plus(
-      const(Tensor.matrix(Array(1, 2), Array(1, 2)), "a"),
-      const(Tensor.vector(1, 2)), "b")
+      const(Tensor.matrix(Array(1, 2), Array(1, 2))),
+      const(Tensor.vector(1, 2)))
       .eval should be(Tensor.matrix(Array(2, 4), Array(2, 4)))
   }
 

@@ -62,6 +62,8 @@ case class Shape(dims: List[Int]) {
     }
   }
 
+  def endsWith(other: Shape): Boolean = dims.endsWith(other.dims)
+
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
 
   override def toString: String = s"(${dims.mkString(", ")})"
