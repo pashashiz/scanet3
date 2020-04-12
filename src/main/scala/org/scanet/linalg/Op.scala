@@ -3,16 +3,29 @@ package org.scanet.linalg
 import java.util.UUID
 
 import org.scanet.core.Numeric
-import org.tensorflow.Output
+import org.scanet.linalg.Op.BuilderState._
+import org.tensorflow.{OperationBuilder, Output}
 import org.tensorflow.op.{Scope => NativeScope}
 
 case class Context(scope: NativeScope, cache: Map[String, Output[AnyRef]])
 
-case class Op[A: Numeric](name: String, shape: Shape, inputs: List[Op[A]], compiler: (Context, List[Output[A]]) => Output[A]) {
+case class Label(value: String, index: Int = 0) {
+  require(value.nonEmpty, "name cannot be empty")
+  require(index >= -1, "index should be positive or -1")
 
-  require(name.nonEmpty, "name cannot be empty")
+  override def toString: String = s"${value}_$index"
+}
+
+case class Op[A: Numeric](
+       name: String,
+       label: Label,
+       shape: Shape,
+       inputs: List[Op[A]],
+       compiler: (Op[A], Context, List[Output[A]]) => Output[A]) {
 
   val id: String = UUID.randomUUID().toString
+
+  def rank: Int = shape.rank
 
   def compile(context: Context): (Context, Output[A]) = {
     val (context1, outputs) = inputs.foldLeft((context, List[Output[A]]()))(
@@ -21,7 +34,7 @@ case class Op[A: Numeric](name: String, shape: Shape, inputs: List[Op[A]], compi
         val (newContext, out) = op.findOrCompile(currentContext)
         (newContext, out::outs)
       })
-    val output = compiler.apply(context1, outputs.reverse)
+    val output = compiler(this, context1, outputs.reverse)
     val newCache = context1.cache + (id -> output.asInstanceOf[Output[AnyRef]])
     val context2 = context1.copy(cache = newCache)
     (context2, output)
@@ -33,9 +46,28 @@ case class Op[A: Numeric](name: String, shape: Shape, inputs: List[Op[A]], compi
       .getOrElse {compile(context)}
   }
 
+  def upstreamOptions: List[Op[A]] = {
+    inputs.flatMap(op => op.upstreamOptions)
+  }
+
+  def maxIndexOfName(name: String): Int = {
+    // NOTE: in the future think about prebuilt index
+    val names = upstreamOptions.map(_.label).groupBy(_.value)
+    names.get(name).map(n => n.map(_.index).max).getOrElse(-1)
+  }
+
+  def withUniqueName: Op[A] = {
+    val maxIndex = maxIndexOfName(label.value)
+    if (maxIndex >= label.index) {
+      copy(label = label.copy(index = maxIndex + 1))
+    } else {
+      this
+    }
+  }
+
   override def toString: String = {
     val args = if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
-    name + args
+    s"$label:$name$args"
   }
 
   def eval: Tensor[A] = Session.run(this)
@@ -43,29 +75,65 @@ case class Op[A: Numeric](name: String, shape: Shape, inputs: List[Op[A]], compi
 
 object Op {
 
-  class Arg0Builder[A: Numeric](name: String, shape: Shape) {
-    def compileWith(f: Context => Output[A]): Op[A]  = {
-      Op(name, shape, Nil, (context, _) => f(context))
+  sealed trait BuilderState
+  object BuilderState {
+    sealed trait WithName extends BuilderState
+    sealed trait WithLabel extends BuilderState
+    sealed trait WithShape extends BuilderState
+    sealed trait WithCompiler extends BuilderState
+    type Complete = WithName with WithLabel with WithShape with WithCompiler
+    type Transformer[A] = (List[Output[A]], OperationBuilder) => OperationBuilder
+  }
+
+
+  case class Builder[A: Numeric, State <: BuilderState](
+        name: String,
+        label: String,
+        shape: Shape,
+        inputs: List[Op[A]],
+        transformers: List[Transformer[A]]) {
+
+    def label(label: String): Builder[A, State with WithLabel] = copy(label = label)
+
+    def shape(shape: Shape): Builder[A, State with WithShape] = copy(shape = shape)
+
+    def inputs(inputs: Op[A]*): Builder[A, State] = copy(inputs = inputs.toList)
+
+    def compileWithTransformer(f: Transformer[A]): Builder[A, State with WithCompiler] =
+      copy(transformers = f :: transformers)
+
+    def compileWithValue(tensor: Tensor[A]): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder
+        .setAttr("value", tensor)
+        .setAttr("dtype", Numeric[A].tag)
+      )
+
+    def compileWithAllInputs: Builder[A, State with WithCompiler] =
+      compileWithTransformer((inputs, builder) =>
+        inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
+
+    def build(implicit ev: State =:= Complete): Op[A] = {
+      Op[A](name, label, shape, inputs, (op: Op[A], context, inputs: List[Output[A]]) => {
+        val init = context.scope.env.opBuilder(op.name, op.label.toString)
+        val transformed = transformers.foldLeft(init)((acc, next) => next(inputs, acc))
+        transformed.build().output(0).asInstanceOf[Output[A]]
+      })
     }
   }
 
-  class Arg1Builder[A: Numeric](name: String, shape: Shape, arg1: Op[A]) {
-    def compileWith(f: (Context, Output[A]) => Output[A]): Op[A]  = {
-      Op(name, shape, List(arg1), (context, inputs) => f(context, inputs.head))
-    }
+  def name[A: Numeric](name: String): Builder[A, WithName] = {
+    Builder[A, WithName](name, label = null, shape = null, inputs = Nil, transformers = Nil)
   }
 
-  class Arg2Builder[A: Numeric](name: String, shape: Shape, arg1: Op[A], arg2: Op[A]) {
-    def compileWith(f: (Context, Output[A], Output[A]) => Output[A]): Op[A]  = {
-      Op(name, shape, List(arg1, arg2), (context, inputs) => f(context, inputs.head, inputs(1)))
-    }
+  def apply[A: Numeric](
+       name: String,
+       label: String,
+       shape: Shape,
+       inputs: List[Op[A]],
+       compiler: (Op[A], Context, List[Output[A]]) => Output[A]): Op[A] = {
+    // todo: fix unique names - make unique names before evaluation
+    new Op(name, Label(label), shape, inputs, compiler).withUniqueName
   }
-
-  def build[A: Numeric](name: String, shape: Shape): Arg0Builder[A] = new Arg0Builder[A](name, shape)
-  def build[A: Numeric](name: String, shape: Shape, arg1: Op[A]): Arg1Builder[A] = new Arg1Builder[A](name, shape, arg1)
-  def build[A: Numeric](name: String, shape: Shape, arg1: Op[A], arg2: Op[A]): Arg2Builder[A] = new Arg2Builder[A](name, shape, arg1, arg2)
-
-  // def of(name: String, shape: Shape)
 
   def const[A: Numeric](value: A): Op[A] =
     const(Tensor.scalar[A](value))
@@ -73,29 +141,26 @@ object Op {
   def const[A: Numeric](value: A, name: String): Op[A] =
     const(Tensor.scalar[A](value), name)
 
-  def const[A: Numeric](tensor: Tensor[A], name: String = "const"): Op[A] =
-    Op.build(name, tensor.shape)
-      .compileWith(context => {
-        context.scope.env
-          .opBuilder("Const", name)
-          .setAttr("value", tensor)
-          .setAttr("dtype", Numeric[A].tag)
-          .build
-          .output(0)
-      })
+  def const[A: Numeric](tensor: Tensor[A]): Op[A] = const(tensor, "Const")
 
-  def plus[A: Numeric](left: Op[A], right: Op[A], name: String = "plus"): Op[A] = {
+  def const[A: Numeric](tensor: Tensor[A], label: String): Op[A] =
+     Op.name[A]("Const")
+       .label(label)
+       .shape(tensor.shape)
+       .compileWithValue(tensor)
+       .build
+
+  def plus[A: Numeric](left: Op[A], right: Op[A], label: String = "Add"): Op[A] = {
+    // todo: lower dimensions should be equal and tensor with higher dimension
     require(left.shape.last == right.shape.last || left.shape.isScalar || right.shape.isScalar,
       s"tensors with shapes ${left.shape} and ${right.shape} cannot be added, " +
         "either last dimensions should equal or one of the tensors should be a scalar")
-    Op.build(name, left.shape, left, right)
-      .compileWith((context, leftOut, rightOut) => {
-        context.scope.env.opBuilder("Add", name)
-          .addInput(leftOut)
-          .addInput(rightOut)
-          .build()
-          .output(0)
-      })
+    Op.name("Add")
+      .label(label)
+      .shape(if (left.rank > right.rank) left.shape else right.shape)
+      .inputs(left, right)
+      .compileWithAllInputs
+      .build
   }
 }
 
