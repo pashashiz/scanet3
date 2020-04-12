@@ -28,7 +28,6 @@ todo
    - add ability to call operators on `Op`
      (instead of `plus(op1, op2)` should be `op1.plus(op2)` or `op1 + op2`) 
 3. Handle tensor graphs
-   - generate unique names for ops
    - eval multiple outputs at the same time 
      (eval on tuples `val (tensor1, tensor2) = (op1, op2).eval`)
    - support ops with multiple outputs 
