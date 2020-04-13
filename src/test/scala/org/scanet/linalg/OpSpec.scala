@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.linalg.Op.{const, plus}
 import org.scanet.syntax.core._
+import org.scanet.linalg.Eval.syntax._
 
 class OpSpec extends AnyFlatSpec with Matchers {
 
@@ -21,6 +22,10 @@ class OpSpec extends AnyFlatSpec with Matchers {
       const(Tensor.matrix(Array(1, 2), Array(1, 2))),
       const(Tensor.vector(1, 2)))
       .eval should be(Tensor.matrix(Array(2, 4), Array(2, 4)))
+  }
+
+  "product of 2 ops" should "be evaluated" in {
+    (const(1), const(2)).eval should be((Tensor.scalar(1), Tensor.scalar(2)))
   }
 
   "plus same value" should "work" in {

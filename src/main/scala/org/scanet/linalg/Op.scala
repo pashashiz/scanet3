@@ -29,7 +29,7 @@ case class Op[A: Numeric](
     val uniqueLabel = Label(label, contextAfterInput.maxLabelIndex(label) + 1)
     val output = compiler(OpContext(contextAfterInput, this, uniqueLabel, outputs.reverse))
     val compiled = (uniqueLabel, output)
-    val newCache = contextAfterInput.outputs + (id -> compiled.asInstanceOf[Compiled[AnyRef]])
+    val newCache = contextAfterInput.outputs + (id -> compiled.asInstanceOf[Compiled[_]])
     val contextAfterOutput = contextAfterInput.copy(outputs = newCache)
     (contextAfterOutput, compiled)
   }
@@ -45,13 +45,10 @@ case class Op[A: Numeric](
   }
 
   override def toString: String = {
-    // todo: add shapes
     val args = if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
     val fullName = if (label == name) s"$name" else s"$label:$name"
     s"$fullName$args:$shape"
   }
-
-  def eval: Tensor[A] = Session.run(this)
 }
 
 object Op {
@@ -66,7 +63,7 @@ object Op {
 
   case class OpContext[A: Numeric](global: Context, op: Op[A], label: Label, inputs: List[Output[A]])
 
-  case class Context(scope: NativeScope, outputs: Map[String, Compiled[AnyRef]]) {
+  case class Context(scope: NativeScope, outputs: Map[String, Compiled[_]]) {
     def maxLabelIndex(name: String): Int = {
       // NOTE: in the future think about prebuilt index
       val names = outputs.values.map(_._1).groupBy(_.value)
@@ -83,7 +80,6 @@ object Op {
     type Complete = WithName with WithLabel with WithShape with WithCompiler
     type Transformer[A] = (List[Output[A]], OperationBuilder) => OperationBuilder
   }
-
 
   case class Builder[A: Numeric, State <: BuilderState](
         name: String,
