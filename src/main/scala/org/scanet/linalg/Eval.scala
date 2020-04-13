@@ -35,9 +35,9 @@ case class Tuple3Eval[A1: Numeric, A2: Numeric, A3: Numeric](tuple: (Op[A1], Op[
 
 object Eval {
   trait Syntax {
-    implicit def tuple2Eval[A: Numeric, B: Numeric](tuple: (Op[A], Op[B])): Tuple2Eval[A, B] = Tuple2Eval(tuple)
     implicit def opEval[A: Numeric](op: Op[A]): OpEval[A] = OpEval(op)
+    implicit def tuple2Eval[A1: Numeric, A2: Numeric](tuple: (Op[A1], Op[A2])): Tuple2Eval[A1, A2] = Tuple2Eval(tuple)
+    implicit def tuple3Eval[A1: Numeric, A2: Numeric, A3: Numeric](tuple: (Op[A1], Op[A2], Op[A3])): Tuple3Eval[A1, A2, A3] = Tuple3Eval(tuple)
   }
   object syntax extends Syntax
 }
-
