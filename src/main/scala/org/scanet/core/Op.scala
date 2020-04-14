@@ -1,12 +1,13 @@
-package org.scanet.linalg
+package org.scanet.core
 
 import java.util.UUID
 
-import org.scanet.core.Numeric
-import org.scanet.linalg.Op.BuilderState._
-import org.scanet.linalg.Op._
-import org.tensorflow.{OperationBuilder, Output}
+import org.scanet.core
+import org.scanet.core.Op._
+import org.scanet.core.Op.BuilderState._
+import org.scanet.math.Numeric
 import org.tensorflow.op.{Scope => NativeScope}
+import org.tensorflow.{OperationBuilder, Output}
 
 case class Op[A: Numeric](
        name: String,
@@ -108,7 +109,7 @@ object Op {
         inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
 
     def build(implicit ev: State =:= Complete): Op[A] = {
-      Op[A](name, label, shape, inputs, (context: OpContext[A]) => {
+      core.Op[A](name, label, shape, inputs, (context: OpContext[A]) => {
         val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
         val transformed = transformers.foldLeft(init)((acc, next) => next(context.inputs, acc))
         transformed.build().output(0).asInstanceOf[Output[A]]

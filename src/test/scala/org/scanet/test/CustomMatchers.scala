@@ -1,8 +1,8 @@
 package org.scanet.test
 
-import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.matchers.should.Matchers
-import org.scanet.linalg.{Shape, Tensor}
+import org.scalatest.matchers.{MatchResult, Matcher}
+import org.scanet.core.{Shape, Tensor}
 
 trait CustomMatchers extends Matchers {
 

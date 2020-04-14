@@ -1,11 +1,12 @@
-package org.scanet.linalg
+package org.scanet.core
 
-import org.scanet.core.Numeric
-import org.scanet.linalg.Op.Context
+import org.scanet.core.Op.Context
+import org.scanet.math.Numeric
 import org.tensorflow.op.Scope
-import org.tensorflow.{Graph, Output, Session => NativeSession, Tensor => NativeTensor}
-
+import org.tensorflow.{Graph, Output}
+import org.tensorflow.{Tensor => NativeTensor, Session => NativeSession}
 import collection.JavaConverters._
+
 import scala.{specialized => sp}
 
 object Session {

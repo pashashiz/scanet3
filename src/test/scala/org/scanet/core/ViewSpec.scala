@@ -1,8 +1,8 @@
-package org.scanet.linalg
+package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.linalg.Slice.syntax._
+import org.scanet.core.Slice.syntax._
 
 class ViewSpec extends AnyFlatSpec with Matchers {
 

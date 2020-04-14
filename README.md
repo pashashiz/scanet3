@@ -17,6 +17,12 @@ todo
 
 ## Tasks
 
+native
+core
+math
+linalg
+syntax.{core, math, linalg}
+
 ## Tensor
 1. Add native resource cleaning when GC destroys the reference 
    (use phantom reference + cleanup thread)

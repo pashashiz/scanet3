@@ -1,4 +1,4 @@
-package org.scanet.core
+package org.scanet.math
 
 import simulacrum.typeclass
 

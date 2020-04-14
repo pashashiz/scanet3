@@ -1,4 +1,4 @@
-package org.scanet.core
+package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

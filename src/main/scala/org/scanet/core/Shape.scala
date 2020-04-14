@@ -1,4 +1,4 @@
-package org.scanet.linalg
+package org.scanet.core
 
 case class Shape(dims: List[Int]) {
 

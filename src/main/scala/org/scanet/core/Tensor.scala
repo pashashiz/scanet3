@@ -1,16 +1,16 @@
-package org.scanet.linalg
+package org.scanet.core
 
-import org.scanet.core.Generator.uniform
-import org.scanet.core.{Buffer, _}
-import org.scanet.linalg.Slice.syntax._
+import org.scanet.math
+import org.scanet.math.Generator.uniform
+import org.scanet.math.{Dist, Generator, Random}
 import org.scanet.native.NativeTensorOps
-import org.scanet.syntax.core._
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.{specialized => sp}
+import org.scanet.syntax.core._
 
-class Tensor[@sp A: Numeric](val native: NativeTensor[A], val view: View) {
+class Tensor[@sp A: math.Numeric](val native: NativeTensor[A], val view: View) {
 
   val buffer: Buffer[A] = NativeTensorOps.buffer(native)
 
@@ -26,7 +26,7 @@ class Tensor[@sp A: Numeric](val native: NativeTensor[A], val view: View) {
 
   def toArray: Array[A] = {
     val positions = view.positions
-    Array.tabulate(positions.length)(i => buffer.get(positions(i)))(Numeric[A].classTag)
+    Array.tabulate(positions.length)(i => buffer.get(positions(i)))(math.Numeric[A].classTag)
   }
 
   def foldLeft[Z](zero: Z)(f: (Z, Tensor[A]) => Z): Z = {
@@ -56,7 +56,7 @@ class Tensor[@sp A: Numeric](val native: NativeTensor[A], val view: View) {
 
   override def toString: String = {
     val sep = if (rank > 1) System.lineSeparator else " "
-    s"Tensor[${Numeric[A].show}](shape=${view.shape}):$sep${show()}"
+    s"Tensor[${math.Numeric[A].show}](shape=${view.shape}):$sep${show()}"
   }
 
   def show(): String = {
@@ -110,95 +110,95 @@ class Tensor[@sp A: Numeric](val native: NativeTensor[A], val view: View) {
 
 object Tensor {
 
-  implicit def toNativeTensor[@sp A: Numeric](tensor: Tensor[A]): NativeTensor[A] = tensor.native
+  implicit def toNativeTensor[@sp A: math.Numeric](tensor: Tensor[A]): NativeTensor[A] = tensor.native
 
-  def apply[@sp A: Numeric](native: NativeTensor[A]): Tensor[A] = {
+  def apply[@sp A: math.Numeric](native: NativeTensor[A]): Tensor[A] = {
     // note: pre-initialized variables to overcome @sp issue https://github.com/scala/bug/issues/4511
     new Tensor(native, View(Shape.of(native.shape())))
   }
 
-  def apply[@sp A: Numeric](data: Buffer[A], shape: Shape): Tensor[A] = {
+  def apply[@sp A: math.Numeric](data: Buffer[A], shape: Shape): Tensor[A] = {
     val tensor = Tensor[A](NativeTensorOps.allocate[A](shape))
     tensor.buffer.put(data)
     tensor.buffer.rewind
     tensor
   }
 
-  def apply[@sp A: Numeric](data: Array[A], shape: Shape): Tensor[A] = {
+  def apply[@sp A: math.Numeric](data: Array[A], shape: Shape): Tensor[A] = {
     require(data.length == shape.power,
       s"Shape$shape requires ${shape.power} elements but was passed ${data.length}")
     apply(Buffer.wrap(data), shape)
   }
 
-  def scalar[@sp A: Numeric](value: A): Tensor[A] = apply(Array(value)(Numeric[A].classTag), Shape())
+  def scalar[@sp A: math.Numeric](value: A): Tensor[A] = apply(Array(value)(math.Numeric[A].classTag), Shape())
 
   def vector(range: Range): Tensor[Int] = apply[Int](range.toArray[Int], Shape(range.length))
 
-  def vector[@sp A: Numeric](array: Array[A]): Tensor[A] = apply(array, Shape(array.length))
+  def vector[@sp A: math.Numeric](array: Array[A]): Tensor[A] = apply(array, Shape(array.length))
 
-  def vector[@sp A: Numeric](elements: A*): Tensor[A] = vector(elements.toArray(Numeric[A].classTag))
+  def vector[@sp A: math.Numeric](elements: A*): Tensor[A] = vector(elements.toArray(math.Numeric[A].classTag))
 
-  def matrix[@sp A: Numeric](rows: Array[A]*): Tensor[A] = {
+  def matrix[@sp A: math.Numeric](rows: Array[A]*): Tensor[A] = {
     require(rows.nonEmpty, "at least one row is required")
     val rowSizes = rows.toList.map(_.length)
     require(rowSizes.distinct.size == 1, "all rows should have the same length")
-    val data = rows.foldLeft(new ArrayBuffer[A](rowSizes.sum))((buffer, row) => buffer ++= row).toArray(Numeric[A].classTag)
+    val data = rows.foldLeft(new ArrayBuffer[A](rowSizes.sum))((buffer, row) => buffer ++= row).toArray(math.Numeric[A].classTag)
     apply(data, Shape(rowSizes.length, rowSizes.head))
   }
 
-  def zeros[@sp A: Numeric](shape: Int*): Tensor[A] =
+  def zeros[@sp A: math.Numeric](shape: Int*): Tensor[A] =
     zeros(Shape(shape.toList))
 
-  def zeros[@sp A: Numeric](shape: Shape): Tensor[A] =
+  def zeros[@sp A: math.Numeric](shape: Shape): Tensor[A] =
     Tensor(Buffer.allocate[A](shape.power), shape)
 
-  def ones[@sp A: Numeric](shape: Int*): Tensor[A] =
+  def ones[@sp A: math.Numeric](shape: Int*): Tensor[A] =
     ones(Shape(shape.toList))
 
-  def ones[@sp A: Numeric](shape: Shape): Tensor[A] =
-    fill(shape)(Numeric[A].one)
+  def ones[@sp A: math.Numeric](shape: Shape): Tensor[A] =
+    fill(shape)(math.Numeric[A].one)
 
-  def fill[@sp A: Numeric](shape: Int*)(value: A): Tensor[A] =
+  def fill[@sp A: math.Numeric](shape: Int*)(value: A): Tensor[A] =
     fill(Shape(shape.toList))(value)
 
-  def fill[@sp A: Numeric](shape: Shape)(value: A): Tensor[A] =
+  def fill[@sp A: math.Numeric](shape: Shape)(value: A): Tensor[A] =
     Tensor(Buffer.tabulate[A](shape.power)(_ => value), shape)
 
-  def tabulate[@sp A: Numeric](d1: Int)(f: Int => A): Tensor[A] =
+  def tabulate[@sp A: math.Numeric](d1: Int)(f: Int => A): Tensor[A] =
     tabulate(Shape(d1))(idx => f(idx.head))
 
-  def tabulate[@sp A: Numeric](d1: Int, d2: Int)(f: (Int, Int) => A): Tensor[A] =
+  def tabulate[@sp A: math.Numeric](d1: Int, d2: Int)(f: (Int, Int) => A): Tensor[A] =
     tabulate(Shape(d1, d2))(idx => f(idx.head, idx(1)))
 
-  def tabulate[@sp A: Numeric](d1: Int, d2: Int, d3: Int)(f: (Int, Int, Int) => A): Tensor[A] =
+  def tabulate[@sp A: math.Numeric](d1: Int, d2: Int, d3: Int)(f: (Int, Int, Int) => A): Tensor[A] =
     tabulate(Shape(d1, d2, d3))(idx => f(idx.head, idx(1), idx(2)))
 
-  def tabulate[@sp A: Numeric](shape: Shape)(f: List[Int] => A): Tensor[A] = {
+  def tabulate[@sp A: math.Numeric](shape: Shape)(f: List[Int] => A): Tensor[A] = {
     // note: could be optimized, cause indexOf is a reverse operation
     val buffer = Buffer.tabulate[A](shape.power)(index => f(shape.indexOf(index)))
     Tensor(buffer, shape)
   }
 
-  def diag[@sp A: Numeric](values: A*): Tensor[A] =
-    diag(values.toArray(Numeric[A].classTag))
+  def diag[@sp A: math.Numeric](values: A*): Tensor[A] =
+    diag(values.toArray(math.Numeric[A].classTag))
 
-  def diag[@sp A: Numeric](values: Array[A]): Tensor[A] = {
-    val zero = Numeric[A].zero
+  def diag[@sp A: math.Numeric](values: Array[A]): Tensor[A] = {
+    val zero = math.Numeric[A].zero
     tabulate(values.length, values.length)((x, y) =>
       if (x == y) values(x) else zero)
   }
 
-  def eye[@sp A: Numeric](n: Int): Tensor[A] =
-    diag[A](Array.fill(n)(Numeric[A].one)(Numeric[A].classTag))
+  def eye[@sp A: math.Numeric](n: Int): Tensor[A] =
+    diag[A](Array.fill(n)(math.Numeric[A].one)(math.Numeric[A].classTag))
 
-  def linspace[@sp A: Numeric](first: A, last: A, size: Int = 100): Tensor[A] = {
+  def linspace[@sp A: math.Numeric](first: A, last: A, size: Int = 100): Tensor[A] = {
     val increment = (last - first) / (size - 1)
     tabulate(size)(i => first plus (increment * i))
   }
 
   def range(range: Range): Tensor[Int] = Tensor.range[Int](range.start, range.end, 1)
 
-  def range[@sp A: Numeric](start: A, end: A, step: A, inclusive: Boolean = false): Tensor[A] = {
+  def range[@sp A: math.Numeric](start: A, end: A, step: A, inclusive: Boolean = false): Tensor[A] = {
     val sizeAprox = ((end - start) / step).toInt + 1
     val endAprox = start.plus(step * (sizeAprox - 1))
     val size =
@@ -210,8 +210,8 @@ object Tensor {
     tabulate(size.toInt)(i => start plus (step * i))
   }
 
-  def rand[@sp A: Numeric: Dist](shape: Shape, gen: Generator = uniform): Tensor[A] = {
-    val (_, arr) = Random[A](gen).next(shape.power)(Numeric[A].classTag, Dist[A])
+  def rand[@sp A: math.Numeric: Dist](shape: Shape, gen: Generator = uniform): Tensor[A] = {
+    val (_, arr) = Random[A](gen).next(shape.power)(math.Numeric[A].classTag, Dist[A])
     Tensor[A](arr, shape)
   }
 }

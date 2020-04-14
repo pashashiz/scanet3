@@ -1,7 +1,9 @@
-package org.scanet.linalg
+package org.scanet.core
 
-import org.scanet.core.Numeric
+import org.scanet.math.Numeric
 import org.tensorflow.{Tensor => NativeTensor}
+
+import scala.{specialized => sp}
 
 // Op[A] => Tensor[A]
 // (Op[A], Op[B]) => (Tensor[A], Tensor[B])
@@ -9,13 +11,13 @@ import org.tensorflow.{Tensor => NativeTensor}
 
 // todo: see how shapeless handles that, for now use simple way without typeclasses
 
-case class OpEval[A: Numeric](op: Op[A]) {
+case class OpEval[@sp A: Numeric](op: Op[A]) {
   def eval: Tensor[A] = {
     Session.run(op)
   }
 }
 
-case class Tuple2Eval[A1: Numeric, A2: Numeric](tuple2: (Op[A1], Op[A2])) {
+case class Tuple2Eval[@sp A1: Numeric, @sp A2: Numeric](tuple2: (Op[A1], Op[A2])) {
   def eval: (Tensor[A1], Tensor[A2]) = {
     val tensors = Session.runN(List(tuple2._1, tuple2._2))
     (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),

@@ -1,7 +1,6 @@
-package org.scanet.linalg
+package org.scanet.core
 
-import org.scanet.linalg.Slice.syntax.::
-import org.scanet.linalg.Slice.syntax._
+import org.scanet.core.Slice.syntax.{::, _}
 
 case class Projection(slices: List[Slice]) {
 

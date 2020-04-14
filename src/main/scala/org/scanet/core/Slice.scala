@@ -1,4 +1,4 @@
-package org.scanet.linalg
+package org.scanet.core
 
 import simulacrum.typeclass
 

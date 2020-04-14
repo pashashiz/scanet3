@@ -1,10 +1,10 @@
-package org.scanet.linalg
+package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.Generator.uniform
+import org.scanet.math.Generator.uniform
 import org.scanet.test.CustomMatchers
-import org.scanet.syntax.linalg._
-import org.scanet.linalg.Slice.syntax.::
+import org.scanet.syntax.core._
+import org.scanet.core.Slice.syntax.::
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -227,7 +227,6 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "scalar tensor" should "be shown" in {
-    println(Tensor.scalar(5).toString )
     Tensor.scalar(5).toString should be("Tensor[Int](shape=()): 5")
   }
 
