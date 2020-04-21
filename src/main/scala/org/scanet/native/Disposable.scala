@@ -1,0 +1,41 @@
+package org.scanet.native
+
+import java.util.concurrent.Executors
+
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
+import scala.ref.{PhantomReference, Reference, ReferenceQueue}
+import scala.util.control.NonFatal
+
+/**
+ * Allows an object to register a deallocator
+ * @param deallocator a deallocator which will be called after the object is garbage collected
+ */
+abstract class Disposable(deallocator: () => Unit) {
+  private val ref = new PhantomReference[Disposable](this, Disposable.refs)
+  Disposable.dealocators += (ref -> deallocator)
+}
+
+object Disposable {
+  val dealocators: mutable.Map[Reference[Disposable], () => Unit] = mutable.Map()
+  val refs = new ReferenceQueue[Disposable]
+  implicit val executor: ExecutionContextExecutor =
+    ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
+  Future {
+    while (true) {
+      refs.remove.foreach(ref => {
+        // that is a blocking call so we do not busy wait here
+        dealocators.remove(ref).foreach(deallocator => {
+          try {
+            deallocator()
+          } catch {
+            case _: InterruptedException => Thread.currentThread.interrupt()
+            case NonFatal(e) =>
+              Console.err.println("Error happened when cleaning up an object")
+              e.printStackTrace()
+          }
+        })
+      })
+    }
+  }
+}

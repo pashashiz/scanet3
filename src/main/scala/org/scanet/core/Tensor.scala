@@ -3,14 +3,14 @@ package org.scanet.core
 import org.scanet.math
 import org.scanet.math.Generator.uniform
 import org.scanet.math.{Dist, Generator, Random}
-import org.scanet.native.NativeTensorOps
+import org.scanet.native.{Disposable, NativeTensorOps}
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.{specialized => sp}
 import org.scanet.syntax.core._
 
-class Tensor[@sp A: math.Numeric](val native: NativeTensor[A], val view: View) {
+class Tensor[@sp A: math.Numeric](val native: NativeTensor[A], val view: View) extends Disposable(() => native.close()) {
 
   val buffer: Buffer[A] = NativeTensorOps.buffer(native)
 
@@ -22,6 +22,10 @@ class Tensor[@sp A: math.Numeric](val native: NativeTensor[A], val view: View) {
   def toScalar: A = {
     require(isScalar, "tensor should be a scalar")
     toArray(0)
+  }
+
+  override def finalize(): Unit = {
+    println("final")
   }
 
   def toArray: Array[A] = {
