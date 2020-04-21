@@ -51,6 +51,4 @@ class OpSpec extends AnyFlatSpec with Matchers {
   "product of 3 ops" should "be evaluated" in {
     (const(1), const(2), const(3)).eval should be((Tensor.scalar(1), Tensor.scalar(2), Tensor.scalar(3)))
   }
-
-
 }

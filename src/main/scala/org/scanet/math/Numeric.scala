@@ -1,9 +1,8 @@
 package org.scanet.math
 
+import org.scanet.core.{TfType, TfTypeByte, TfTypeDouble, TfTypeFloat, TfTypeInt, TfTypeLong}
 import org.tensorflow.DataType
 import simulacrum.{op, typeclass}
-
-import scala.reflect.ClassTag
 
 @typeclass trait Eq[A] {
   @op("===", alias = true)
@@ -72,19 +71,9 @@ import scala.reflect.ClassTag
   def asString(a: A): String
 }
 
-@typeclass trait Numeric[A] extends Field[A] with Order[A] with ConvertableTo[A] with ConvertableFrom[A] {
-  def tag: DataType
-  def classTag: ClassTag[A]
-  def show: String = classTag.toString()
-}
+@typeclass trait Numeric[A] extends TfType[A] with Field[A] with Order[A] with ConvertableTo[A] with ConvertableFrom[A] {}
 
 object Numeric {
-
-  val FloatTag: DataType = DataType.FLOAT
-  val DoubleTag: DataType = DataType.DOUBLE
-  val LongTag: DataType = DataType.INT64
-  val IntTag: DataType = DataType.INT32
-  val ByteTag: DataType = DataType.UINT8
 
   trait Instances {
     implicit def floatInst: Numeric[Float] = new NumericFloat {}
@@ -102,9 +91,7 @@ object Numeric {
   object syntax extends Syntax
 }
 
-trait NumericFloat extends Numeric[Float] with ConvertableFromFloat with ConvertableToFloat {
-  override def tag: DataType = Numeric.FloatTag
-  override def classTag: ClassTag[Float] = scala.reflect.classTag[Float]
+trait NumericFloat extends Numeric[Float] with TfTypeFloat with ConvertableFromFloat with ConvertableToFloat {
   override def one: Float = 1.0f
   override def zero: Float = 0.0f
   override def plus[B: ConvertableFrom](left: Float, right: B): Float =
@@ -119,9 +106,7 @@ trait NumericFloat extends Numeric[Float] with ConvertableFromFloat with Convert
   override def compare(x: Float, y: Float): Int = x.compareTo(y)
 }
 
-trait NumericDouble extends Numeric[Double] with ConvertableFromDouble with ConvertableToDouble {
-  override def tag: DataType = Numeric.DoubleTag
-  override def classTag: ClassTag[Double] = scala.reflect.classTag[Double]
+trait NumericDouble extends Numeric[Double] with TfTypeDouble with ConvertableFromDouble with ConvertableToDouble {
   override def one: Double = 1.0d
   override def zero: Double = 0.0d
   override def plus[B: ConvertableFrom](left: Double, right: B): Double =
@@ -136,9 +121,7 @@ trait NumericDouble extends Numeric[Double] with ConvertableFromDouble with Conv
   override def compare(x: Double, y: Double): Int = x.compareTo(y)
 }
 
-trait NumericLong extends Numeric[Long] with ConvertableFromLong with ConvertableToLong {
-  override def tag: DataType = Numeric.LongTag
-  override def classTag: ClassTag[Long] = scala.reflect.classTag[Long]
+trait NumericLong extends Numeric[Long] with TfTypeLong with ConvertableFromLong with ConvertableToLong {
   override def one: Long = 1L
   override def zero: Long = 0L
   override def plus[B: ConvertableFrom](left: Long, right: B): Long =
@@ -153,9 +136,7 @@ trait NumericLong extends Numeric[Long] with ConvertableFromLong with Convertabl
   override def compare(x: Long, y: Long): Int = x.compareTo(y)
 }
 
-trait NumericInt extends Numeric[Int] with ConvertableFromInt with ConvertableToInt {
-  override def tag: DataType = Numeric.IntTag
-  override def classTag: ClassTag[Int] = scala.reflect.classTag[Int]
+trait NumericInt extends Numeric[Int] with TfTypeInt with ConvertableFromInt with ConvertableToInt {
   override def one: Int = 1
   override def zero: Int = 0
   override def plus[B: ConvertableFrom](left: Int, right: B): Int =
@@ -170,9 +151,7 @@ trait NumericInt extends Numeric[Int] with ConvertableFromInt with ConvertableTo
   override def compare(x: Int, y: Int): Int = x.compareTo(y)
 }
 
-trait NumericByte extends Numeric[Byte] with ConvertableFromByte with ConvertableToByte {
-  override def tag: DataType = Numeric.ByteTag
-  override def classTag: ClassTag[Byte] = scala.reflect.classTag[Byte]
+trait NumericByte extends Numeric[Byte] with TfTypeByte with ConvertableFromByte with ConvertableToByte {
   override def one: Byte = 1
   override def zero: Byte = 0
   override def plus[B: ConvertableFrom](left: Byte, right: B): Byte =

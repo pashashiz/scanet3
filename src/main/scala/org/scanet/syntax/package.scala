@@ -1,11 +1,11 @@
 package org.scanet
 
-import org.scanet.core.{Eval, Slice}
+import org.scanet.core.{Eval, Slice, TfType}
 import org.scanet.math.{Convertable, Dist, Numeric}
 
 package object syntax {
 
-  trait MathSyntax extends Convertable.Syntax with Dist.Syntax with Numeric.Syntax
+  trait MathSyntax extends Convertable.Syntax with Dist.Syntax with TfType.Syntax with Numeric.Syntax
 
   object math extends MathSyntax
 

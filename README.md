@@ -23,10 +23,6 @@ math
 linalg
 syntax.{core, math, linalg}
 
-## Tensor
-1. Add native resource cleaning when GC destroys the reference 
-   (use phantom reference + cleanup thread)
-
 ## Tensor Flow Low Level
 1. Enhance Session
 2. Add basics ops
