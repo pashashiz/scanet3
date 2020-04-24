@@ -1,7 +1,5 @@
 package org.scanet.native
 
-import java.nio.{ByteBuffer, ByteOrder}
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.native.Hashing._

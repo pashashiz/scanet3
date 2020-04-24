@@ -8,26 +8,27 @@ import com.google.common.hash.{Hashing => JavaHashing}
 
 object Hashing {
 
-  val mask: Long = 0xa282ead8L
+  val crcMask: Long = 0xa282ead8L
+  val longIntPartMask: Long = 0xffffffffL
 
   def mask(value: Int): Int = {
     val unsigned = unsignedInt(value)
-    val masked = ((unsigned >>> 15) | (unsigned << 17)) + mask
-    (masked & 0xFFFFFFFF).toInt
+    val masked = ((unsigned >>> 15) | (unsigned << 17)) + crcMask
+    (masked & longIntPartMask).toInt
   }
 
   def unmask(value: Int): Int = {
-    val unsigned = unsignedInt(value) - mask
+    val unsigned = unsignedInt(value) - crcMask
     val unmasked = (unsigned >>> 17) | (unsigned << 15)
-    (unmasked & 0xFFFFFFFF).toInt
+    (unmasked & longIntPartMask).toInt
   }
 
-  def unsignedInt(int: Int): Long = int & 0x00000000ffffffffL
+  def unsignedInt(int: Int): Long = int & longIntPartMask
 
   def crc32(bytes: Array[Byte]): Int = {
     val coder = new CRC32()
     coder.update(bytes)
-    (coder.getValue & 0xFFFFFFFF).toInt
+    (coder.getValue & longIntPartMask).toInt
   }
 
   def crc32c(bytes: Array[Byte]): Int = {
