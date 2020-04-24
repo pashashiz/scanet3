@@ -1,5 +1,7 @@
 package org.scanet.core
 
+import java.nio.file.{Path, Paths}
+
 import org.scanet.math.Numeric
 import org.tensorflow.{Tensor => NativeTensor}
 
@@ -15,13 +17,19 @@ case class OpEval[@sp A: Numeric](op: Op[A]) {
   def eval: Tensor[A] = {
     Session.run(op)
   }
+  def display(dir: Path = Paths.get("")): Unit = {
+    TensorBoard.write(List(op), dir)
+  }
 }
 
-case class Tuple2Eval[@sp A1: Numeric, @sp A2: Numeric](tuple2: (Op[A1], Op[A2])) {
+case class Tuple2Eval[@sp A1: Numeric, @sp A2: Numeric](tuple: (Op[A1], Op[A2])) {
   def eval: (Tensor[A1], Tensor[A2]) = {
-    val tensors = Session.runN(List(tuple2._1, tuple2._2))
+    val tensors = Session.runN(List(tuple._1, tuple._2))
     (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
       Tensor[A2](tensors(1).asInstanceOf[NativeTensor[A2]]))
+  }
+  def display(dir: Path = Paths.get("")): Unit = {
+    TensorBoard.write(List(tuple._1, tuple._2), dir)
   }
 }
 
@@ -32,6 +40,9 @@ case class Tuple3Eval[A1: Numeric, A2: Numeric, A3: Numeric](tuple: (Op[A1], Op[
       Tensor[A2](tensors(1).asInstanceOf[NativeTensor[A2]]),
       Tensor[A3](tensors(2).asInstanceOf[NativeTensor[A3]])
     )
+  }
+  def display(dir: Path = Paths.get("")): Unit = {
+    TensorBoard.write(List(tuple._1, tuple._2, tuple._3), dir)
   }
 }
 

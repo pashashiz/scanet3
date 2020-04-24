@@ -2,8 +2,10 @@ package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.syntax.core._
 import org.scanet.core.Op._
+import org.scanet.syntax.core._
+
+import scala.reflect.io.Path._
 
 class OpSpec extends AnyFlatSpec with Matchers {
 
@@ -50,5 +52,15 @@ class OpSpec extends AnyFlatSpec with Matchers {
 
   "product of 3 ops" should "be evaluated" in {
     (const(1), const(2), const(3)).eval should be((Tensor.scalar(1), Tensor.scalar(2), Tensor.scalar(3)))
+  }
+
+  "computation graph" should "be displayed" in {
+    plus(
+      const(Tensor.scalar(1.0f), "a"),
+      const(Tensor.scalar(1.0f), "b"), "c").display()
+    // run tensor-board: tensorboard --logdir .
+    val files = ".".toDirectory.files.map(_.path).filter(_ matches ".*events.out.tfevents.*")
+    files should not be empty
+    files.foreach(_.toFile.delete())
   }
 }

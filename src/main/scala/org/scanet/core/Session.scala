@@ -4,9 +4,9 @@ import org.scanet.core.Op.Context
 import org.scanet.math.Numeric
 import org.tensorflow.op.Scope
 import org.tensorflow.{Graph, Output}
-import org.tensorflow.{Tensor => NativeTensor, Session => NativeSession}
-import collection.JavaConverters._
+import org.tensorflow.{Session => NativeSession, Tensor => NativeTensor}
 
+import collection.JavaConverters._
 import scala.{specialized => sp}
 
 object Session {
@@ -17,6 +17,15 @@ object Session {
   }
 
   def runN(ops: List[Op[_]]): Seq[NativeTensor[_]] = {
+    val (graph, outputs) = compileN(ops)
+    val session = new NativeSession(graph)
+    try {
+      val runner = outputs.reverse.foldLeft(session.runner)((runner, output) => runner.fetch(output))
+      runner.run().asScala
+    } finally if (session != null) session.close()
+  }
+
+  def compileN(ops: List[Op[_]]): (Graph, Seq[Output[_]]) = {
     val graph = new Graph()
     val scope = new Scope(graph)
     val zero = (Context(scope, Map.empty), List[Output[_]]())
@@ -25,10 +34,6 @@ object Session {
       val (nextContext: Context, (_, out)) = op.compile(currentContext)
       (nextContext, out::outs)
     })
-    val session = new NativeSession(graph)
-    try {
-      val runner = outputs.reverse.foldLeft(session.runner)((runner, output) => runner.fetch(output))
-      runner.run().asScala
-    } finally if (session != null) session.close()
+    (graph, outputs)
   }
 }
