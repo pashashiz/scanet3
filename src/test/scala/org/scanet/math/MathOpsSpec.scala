@@ -31,8 +31,8 @@ class MathOpsSpec extends AnyFlatSpec with Matchers {
   }
 
   "computation graph" should "be displayed" in {
-    val a = Tensor.scalar(1.0f).const.as("a")
-    val b = Tensor.scalar(1.0f).const.as("b")
+    val a = 1.0f.const.as("a")
+    val b = 1.0f.const.as("b")
     val c = (a plus b).as("c")
     c.display()
     // run tensor-board: tensorboard --logdir .
