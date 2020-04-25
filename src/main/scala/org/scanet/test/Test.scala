@@ -26,17 +26,16 @@ object Test {
       .addInput(a.output(0))
       .addInput(b.output(0))
       .build()
+    val s = new Session(graph)
     try {
-      val s = new Session(graph)
+      val res = s.runner.fetch("z").run.get(0)
       try {
-        try {
-          val res = s.runner.fetch("z").run.get(0)
-          try System.out.println(res.floatValue) // Will print 6.0f
-          finally {
-            if (res != null) res.close()
-          }
-        }
-      } finally if (s != null) s.close()
+        System.out.println(res.floatValue) // Will print 6.0f
+      } finally {
+        if (res != null) res.close()
+      }
+    } finally {
+      if (s != null) s.close()
     }
   }
 }

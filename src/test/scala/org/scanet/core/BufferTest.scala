@@ -2,7 +2,7 @@ package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.syntax.core._
+import org.scanet.core.syntax._
 
 class BufferTest extends AnyFlatSpec with Matchers {
 

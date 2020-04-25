@@ -1,22 +1,22 @@
 package org.scanet.core
 
-import org.scanet.core.Op.Context
-import org.scanet.math.Numeric
+import org.scanet.core.Output.Context
 import org.tensorflow.op.Scope
-import org.tensorflow.{Graph, Output}
+import org.tensorflow.{Graph, Output => NativeOutput}
 import org.tensorflow.{Session => NativeSession, Tensor => NativeTensor}
 
 import collection.JavaConverters._
 import scala.{specialized => sp}
+import scala.language.existentials
 
 object Session {
 
-  def run[@sp A1: Numeric](op: Op[A1]): Tensor[A1] = {
+  def run[@sp A1: TfType](op: Output[A1]): Tensor[A1] = {
     val tensors = runN(List(op))
     Tensor[A1](tensors.head.asInstanceOf[NativeTensor[A1]])
   }
 
-  def runN(ops: List[Op[_]]): Seq[NativeTensor[_]] = {
+  def runN(ops: List[Output[_]]): Seq[NativeTensor[_]] = {
     val (graph, outputs) = compileN(ops)
     val session = new NativeSession(graph)
     try {
@@ -25,10 +25,10 @@ object Session {
     } finally if (session != null) session.close()
   }
 
-  def compileN(ops: List[Op[_]]): (Graph, Seq[Output[_]]) = {
+  def compileN(ops: List[Output[_]]): (Graph, Seq[NativeOutput[_]]) = {
     val graph = new Graph()
     val scope = new Scope(graph)
-    val zero = (Context(scope, Map.empty), List[Output[_]]())
+    val zero = (Context(scope, Map.empty), List[NativeOutput[_]]())
     val (_, outputs) = ops.foldLeft(zero)((acc, op) => {
       val (currentContext, outs) = acc
       val (nextContext: Context, (_, out)) = op.compile(currentContext)

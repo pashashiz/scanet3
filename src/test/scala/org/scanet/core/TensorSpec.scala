@@ -3,7 +3,9 @@ package org.scanet.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.math.Generator.uniform
 import org.scanet.test.CustomMatchers
-import org.scanet.syntax.core._
+import org.scanet.math.NumericPrimitives.syntax._
+import org.scanet.math.Dist.syntax._
+import org.scanet.core.syntax._
 import org.scanet.core.Slice.syntax.::
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {

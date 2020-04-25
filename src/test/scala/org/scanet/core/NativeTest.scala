@@ -3,7 +3,7 @@ package org.scanet.core
 import java.nio.ByteBuffer
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.syntax.core._
+import org.scanet.core.syntax._
 import org.tensorflow.{Tensor => NativeTensor}
 
 class NativeTest extends AnyFlatSpec {

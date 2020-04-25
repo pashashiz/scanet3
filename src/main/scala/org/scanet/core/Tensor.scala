@@ -1,14 +1,14 @@
 package org.scanet.core
 
-import org.scanet.math.Numeric
 import org.scanet.math.Generator.uniform
-import org.scanet.math.{Dist, Generator, Random}
+import org.scanet.math.{Convertible, Dist, Generator, Numeric, Random}
 import org.scanet.native.{Disposable, NativeTensorOps}
+import org.scanet.math.NumericPrimitives.syntax._
+import org.scanet.core.syntax._
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.{specialized => sp}
-import org.scanet.syntax.core._
 
 class Tensor[@sp A: TfType](val native: NativeTensor[A], val view: View) extends Disposable(() => native.close()) {
 
@@ -150,16 +150,16 @@ object Tensor {
     apply(data, Shape(rowSizes.length, rowSizes.head))
   }
 
-  def zeros[@sp A: Numeric](shape: Int*): Tensor[A] =
+  def zeros[@sp A: TfType: Numeric](shape: Int*): Tensor[A] =
     zeros(Shape(shape.toList))
 
-  def zeros[@sp A: Numeric](shape: Shape): Tensor[A] =
+  def zeros[@sp A: TfType: Numeric](shape: Shape): Tensor[A] =
     Tensor(Buffer.allocate[A](shape.power), shape)
 
-  def ones[@sp A: Numeric](shape: Int*): Tensor[A] =
+  def ones[@sp A: TfType: Numeric](shape: Int*): Tensor[A] =
     ones(Shape(shape.toList))
 
-  def ones[@sp A: Numeric](shape: Shape): Tensor[A] =
+  def ones[@sp A: TfType: Numeric](shape: Shape): Tensor[A] =
     fill(shape)(Numeric[A].one)
 
   def fill[@sp A: TfType](shape: Int*)(value: A): Tensor[A] =
@@ -183,27 +183,27 @@ object Tensor {
     Tensor(buffer, shape)
   }
 
-  def diag[@sp A: Numeric](values: A*): Tensor[A] =
-    diag(values.toArray(Numeric[A].classTag))
+  def diag[@sp A: TfType: Numeric](values: A*): Tensor[A] =
+    diag(values.toArray(TfType[A].classTag))
 
-  def diag[@sp A: Numeric](values: Array[A]): Tensor[A] = {
+  def diag[@sp A: TfType: Numeric](values: Array[A]): Tensor[A] = {
     val zero = Numeric[A].zero
     tabulate(values.length, values.length)((x, y) =>
       if (x == y) values(x) else zero)
   }
 
-  def eye[@sp A: Numeric](n: Int): Tensor[A] =
-    diag[A](Array.fill(n)(Numeric[A].one)(Numeric[A].classTag))
+  def eye[@sp A: TfType: Numeric](n: Int): Tensor[A] =
+    diag[A](Array.fill(n)(Numeric[A].one)(TfType[A].classTag))
 
-  def linspace[@sp A: Numeric](first: A, last: A, size: Int = 100): Tensor[A] = {
-    val increment = (last - first) / (size - 1)
+  def linspace[@sp A: TfType: Numeric](first: A, last: A, size: Int = 100)(implicit c: Convertible[Int, A]): Tensor[A] = {
+    val increment = (last - first) / c.convert(size - 1)
     tabulate(size)(i => first plus (increment * i))
   }
 
   def range(range: Range): Tensor[Int] = Tensor.range[Int](range.start, range.end, 1)
 
-  def range[@sp A: Numeric](start: A, end: A, step: A, inclusive: Boolean = false): Tensor[A] = {
-    val sizeAprox = ((end - start) / step).toInt + 1
+  def range[@sp A: TfType: Numeric](start: A, end: A, step: A, inclusive: Boolean = false)(implicit c1: Convertible[A, Int], c2: Convertible[Int, A]): Tensor[A] = {
+    val sizeAprox = c1.convert((end - start) / step) + 1
     val endAprox = start.plus(step * (sizeAprox - 1))
     val size =
       if (endAprox < end || inclusive && (endAprox === end)) {
@@ -214,8 +214,8 @@ object Tensor {
     tabulate(size.toInt)(i => start plus (step * i))
   }
 
-  def rand[@sp A: Numeric: Dist](shape: Shape, gen: Generator = uniform): Tensor[A] = {
-    val (_, arr) = Random[A](gen).next(shape.power)(Numeric[A].classTag, Dist[A])
+  def rand[@sp A: TfType: Numeric: Dist](shape: Shape, gen: Generator = uniform): Tensor[A] = {
+    val (_, arr) = Random[A](gen).next(shape.power)(TfType[A].classTag, Dist[A])
     Tensor[A](arr, shape)
   }
 }

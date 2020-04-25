@@ -10,7 +10,7 @@ import java.time.Instant
 
 object TensorBoard {
 
-  def write[A](ops: List[Op[_]], dir: Path): Unit = {
+  def write[A](ops: List[Output[_]], dir: Path): Unit = {
     val (graph, _) = Session.compileN(ops)
     val version = Event.newBuilder()
       .setFileVersion("brain.Event:2")
