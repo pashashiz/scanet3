@@ -2,7 +2,6 @@ package org.scanet.core
 
 import java.nio.file.{Path, Paths}
 
-import org.scanet.math.Numeric
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.{specialized => sp}
@@ -13,16 +12,16 @@ import scala.{specialized => sp}
 
 // todo: see how shapeless handles that, for now use simple way without typeclasses
 
-case class OpEval[@sp A: Numeric](op: Op[A]) {
+case class OutputEval[@sp A: TfType](out: Output[A]) {
   def eval: Tensor[A] = {
-    Session.run(op)
+    Session.run(out)
   }
   def display(dir: Path = Paths.get("")): Unit = {
-    TensorBoard.write(List(op), dir)
+    TensorBoard.write(List(out), dir)
   }
 }
 
-case class Tuple2Eval[@sp A1: Numeric, @sp A2: Numeric](tuple: (Op[A1], Op[A2])) {
+case class Tuple2Eval[@sp A1: TfType, @sp A2: TfType](tuple: (Output[A1], Output[A2])) {
   def eval: (Tensor[A1], Tensor[A2]) = {
     val tensors = Session.runN(List(tuple._1, tuple._2))
     (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
@@ -33,7 +32,7 @@ case class Tuple2Eval[@sp A1: Numeric, @sp A2: Numeric](tuple: (Op[A1], Op[A2]))
   }
 }
 
-case class Tuple3Eval[A1: Numeric, A2: Numeric, A3: Numeric](tuple: (Op[A1], Op[A2], Op[A3])) {
+case class Tuple3Eval[A1: TfType, A2: TfType, A3: TfType](tuple: (Output[A1], Output[A2], Output[A3])) {
   def eval: (Tensor[A1], Tensor[A2], Tensor[A3]) = {
     val tensors = Session.runN(List(tuple._1, tuple._2, tuple._3))
     (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
@@ -48,9 +47,9 @@ case class Tuple3Eval[A1: Numeric, A2: Numeric, A3: Numeric](tuple: (Op[A1], Op[
 
 object Eval {
   trait Syntax {
-    implicit def opEval[A: Numeric](op: Op[A]): OpEval[A] = OpEval(op)
-    implicit def tuple2Eval[A1: Numeric, A2: Numeric](tuple: (Op[A1], Op[A2])): Tuple2Eval[A1, A2] = Tuple2Eval(tuple)
-    implicit def tuple3Eval[A1: Numeric, A2: Numeric, A3: Numeric](tuple: (Op[A1], Op[A2], Op[A3])): Tuple3Eval[A1, A2, A3] = Tuple3Eval(tuple)
+    implicit def outputEval[A: TfType](out: Output[A]): OutputEval[A] = OutputEval(out)
+    implicit def tuple2Eval[A1: TfType, A2: TfType](tuple: (Output[A1], Output[A2])): Tuple2Eval[A1, A2] = Tuple2Eval(tuple)
+    implicit def tuple3Eval[A1: TfType, A2: TfType, A3: TfType](tuple: (Output[A1], Output[A2], Output[A3])): Tuple3Eval[A1, A2, A3] = Tuple3Eval(tuple)
   }
   object syntax extends Syntax
 }

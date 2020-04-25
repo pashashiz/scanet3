@@ -3,7 +3,7 @@ package org.scanet.math
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.math.Generator.uniform
-import org.scanet.syntax.core._
+import org.scanet.math.syntax._
 
 class RandomTest extends AnyFlatSpec with Matchers {
 

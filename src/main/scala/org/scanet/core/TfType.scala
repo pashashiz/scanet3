@@ -1,6 +1,5 @@
 package org.scanet.core
 
-import org.scanet.math.Numeric
 import org.tensorflow.DataType
 import simulacrum.typeclass
 

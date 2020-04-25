@@ -2,11 +2,11 @@ package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.syntax.core._
+import org.scanet.math.syntax._
 
-class ConvertablesTest extends AnyFlatSpec with Matchers {
+class ConvertibleTest extends AnyFlatSpec with Matchers {
 
   "Float" should "be converted to Int" in {
-    ConvertableTo[Int].fromFloat(2.5f) should be(2)
+    Convertible[Float, Int].convert(2.5f) should be(2)
   }
 }
