@@ -1,46 +1,60 @@
 package org.scanet.core
 
 import simulacrum.typeclass
-import scala.language.higherKinds
 import org.scanet.core.TfType.syntax._
-
-@typeclass trait ConstTensor[T[_]] {
-  def const[A: TfType](t: T[A]): Output[A]
-}
-
-@typeclass trait ConstScalar[A] {
-  def const(scalar: A): Output[A]
-}
+import org.scanet.core.Const.syntax._
 
 @typeclass trait CoreOps[A] {
   def as(op: A, label: String): A
+  def reshape(op: A, shape: Shape): A
+  // note: shapeless failed to use Int*
+  def reshape(op: A, dim1: Int): A = reshape(op, Shape(dim1))
+  def reshape(op: A, dim1: Int, dim2: Int): A = reshape(op, Shape(dim1, dim2))
+  def reshape(op: A, dim1: Int, dim2: Int, dim3: Int): A = reshape(op, Shape(dim1, dim2, dim3))
+  def squeeze(op: A): A
 }
 
 object CoreOps {
 
-  def const[A: TfType](tensor: Tensor[A], label: String): Output[A] =
-    Output.name[A]("Const")
-      .label(label)
-      .shape(tensor.shape)
-      .compileWithValue(tensor)
-      .build
-
   trait Instances {
 
-    implicit def tensorConst: ConstTensor[Tensor] = new ConstTensor[Tensor] {
-      override def const[A: TfType](tensor: Tensor[A]): Output[A] = CoreOps.const(tensor, "Const")
+    implicit def coreOps[A: TfType]: CoreOps[Output[A]] = new CoreOps[Output[A]] {
+
+      override def as(op: Output[A], label: String): Output[A] = op.copy(label = label)
+
+      override def reshape(op: Output[A], shape: Shape): Output[A] = {
+        require(op.shape.power == shape.power ,
+          s"shape ${op.shape} cannot be reshaped into $shape")
+        if (op.shape != shape) {
+          // note: scalar is a special case, reshape does not work with scalars
+          if (shape.isScalar) {
+            squeeze(op)
+          } else {
+            Output.name[A]("Reshape")
+              .shape(shape)
+              .inputs(op, Tensor.vector(shape.dims: _*).const)
+              .compileWithAllInputs
+              .build
+          }
+        } else {
+          op
+        }
+      }
+
+      override def squeeze(op: Output[A]): Output[A] = {
+        val squeezed = op.shape.squeeze
+        if (squeezed.rank < op.shape.rank) {
+          Output.name[A]("Squeeze")
+            .shape(squeezed)
+            .inputs(op)
+            .compileWithAllInputs
+            .build
+        } else {
+          op
+        }
+      }
     }
-
-    implicit def floatConst: ConstScalar[Float] = (scalar: Float) => const(Tensor.scalar(scalar), "Const")
-    implicit def doubleConst: ConstScalar[Double] = (scalar: Double) => const(Tensor.scalar(scalar), "Const")
-    implicit def longConst: ConstScalar[Long] = (scalar: Long) => const(Tensor.scalar(scalar), "Const")
-    implicit def intConst: ConstScalar[Int] = (scalar: Int) => const(Tensor.scalar(scalar), "Const")
-    implicit def byteConst: ConstScalar[Byte] = (scalar: Byte) => const(Tensor.scalar(scalar), "Const")
-    implicit def stringConst: ConstScalar[String] = (scalar: String) => const(Tensor.scalar(scalar), "Const")
-
-    implicit def coreOps[A: TfType]: CoreOps[Output[A]] = (op: Output[A], label: String) => op.copy(label = label)
-
   }
-  trait Syntax extends Instances with ConstTensor.ToConstTensorOps with ConstScalar.ToConstScalarOps with CoreOps.ToCoreOpsOps
+  trait Syntax extends Instances with CoreOps.ToCoreOpsOps
   object syntax extends Syntax
 }

@@ -117,11 +117,7 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
       "projection (0) has rank '1' which is greater than shape's rank '0'"
   }
 
-  "vector when created with one element" should "be simplified into scalar" in {
-    Tensor.vector(5) should be(Tensor.scalar(5))
-  }
-
-  it should "be indexed" in {
+  "vector" should "be indexed" in {
     Tensor.vector(0, 1, 2).get(1) should be(Tensor.scalar(1))
   }
 
@@ -201,7 +197,7 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   "sliced reshaped into matrix vector" should "be sliced again" in {
     val vector = Tensor.range(0 until 7).get(0 until 4).reshape(2, 2).get(0)
     vector should be(Tensor.vector(0, 1))
-    vector.view.toString should be("(7) x (:4) = (4) -> (2, 2) x (0, :2) = (2)")
+    vector.view.toString should be("(7) x (:4) = (4) -> (2, 2) x (`0, :2) = (2)")
   }
 
   "non sliced tensor" should "fail to slice when power does not match" in {

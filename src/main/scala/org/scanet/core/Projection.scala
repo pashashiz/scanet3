@@ -2,13 +2,13 @@ package org.scanet.core
 
 import org.scanet.core.Slice.syntax.{::, _}
 
-case class Projection(slices: List[Slice]) {
+case class Projection(slices: List[Slice], prune: Int = 0) {
 
   def head: Slice = slices.head
   def tail: Projection = Projection(slices.tail)
   def isEmpty: Boolean = slices.isEmpty
   def rank: Int = slices.size
-  def power: Int = shapeShort.power
+  def power: Int = shapePruned.power
 
   def adjustTo(shape: Shape): Projection = {
     require(shape.isInBound(this),
@@ -22,7 +22,7 @@ case class Projection(slices: List[Slice]) {
   }
 
   def shapeFull: Shape = Shape(slices.map(_.size))
-  def shapeShort: Shape = Shape(slices.map(_.size).dropWhile(_ == 1))
+  def shapePruned: Shape = shapeFull.prune(prune)
 
   def alignLeft(size: Int, using: Slice): Projection = align(size, using, left = true)
   def alignRight(size: Int, using: Slice): Projection = align(size, using, left = false)
@@ -44,6 +44,9 @@ case class Projection(slices: List[Slice]) {
     }
   }
 
+  def canPrune: Int = shapePruned.canPrune
+  def prune(max: Int): Projection = copy(prune = prune + math.max(canPrune, max))
+
   // (*, *, *) :> (1, 2-4, *) = (1, 2-4, *)
   // (1, 2-4, *) :> (1, 2-4) = (1, 1, 2-4)
   def narrow(other: Projection): Projection = {
@@ -51,9 +54,14 @@ case class Projection(slices: List[Slice]) {
       s"given projection's rank ${other.rank} does not match to $rank rank")
     val narrowedSlices = slices.zip(other.slices)
       .map { case (sliceThis: Slice, sliceOther: Slice) => sliceThis narrow sliceOther}
-    Projection(narrowedSlices)
+    copy(slices = narrowedSlices)
   }
-  override def toString: String = s"(${slices.mkString(", ")})"
+  override def toString: String = {
+    val parts = slices.zipWithIndex.map {
+      case (slice, index) => (if (index < prune) "`" else "") + slice.toString
+    }
+    s"(${parts.mkString(", ")})"
+  }
 }
 
 object Projection {

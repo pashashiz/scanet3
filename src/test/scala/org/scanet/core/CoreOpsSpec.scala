@@ -27,4 +27,33 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
   "product of 3 ops" should "be evaluated" in {
     (1.const, 2.const, 3.const).eval should be((Tensor.scalar(1), Tensor.scalar(2), Tensor.scalar(3)))
   }
+
+  "vector" should "be reshaped into matrix" in {
+    Tensor.vector(1, 2, 3, 4).const.reshape(2, 2).eval should be(Tensor.matrix(Array(1, 2), Array(3, 4)))
+  }
+
+  "matrix" should "be reshaped into vector" in {
+    Tensor.matrix(Array(1, 2), Array(3, 4)).const.reshape(4).eval should be(Tensor.vector(1, 2, 3, 4))
+  }
+
+  "matrix" should "be reshaped into other matrix" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6))
+    val b = Tensor.matrix(
+      Array(1, 2),
+      Array(3, 4),
+      Array(5, 6))
+    a.const.reshape(3, 2).eval should be(b)
+  }
+
+  "matrix" should "fail to reshape when power does not match" in {
+    the [IllegalArgumentException] thrownBy {
+      Tensor.range(0 until 7).const.reshape(4, 4)
+    } should have message "requirement failed: shape (7) cannot be reshaped into (4, 4)"
+  }
+
+  "matrix" should "be squeezed into vector when first dimension is 1" in {
+    Tensor.matrix(Array(1, 2, 3)).const.squeeze.eval should be(Tensor.vector(1, 2, 3))
+  }
 }

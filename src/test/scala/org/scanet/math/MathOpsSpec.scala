@@ -2,7 +2,7 @@ package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.Tensor
+import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 
 import scala.reflect.io.Path._
@@ -39,5 +39,49 @@ class MathOpsSpec extends AnyFlatSpec with Matchers {
     val files = ".".toDirectory.files.map(_.path).filter(_ matches ".*events.out.tfevents.*")
     files should not be empty
     files.foreach(_.toFile.delete())
+  }
+
+  "multiply" should "produce dot product on 2 matrices" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(1, 2, 3))
+    val b = Tensor.matrix(
+      Array(1, 2),
+      Array(1, 2),
+      Array(1, 2))
+    val c = Tensor.matrix(
+      Array(6, 12),
+      Array(6, 12))
+    (a.const * b.const).eval should be(c)
+  }
+
+  "multiply" should "produce dot product of vector and matrix" in {
+    val a = Tensor.vector(1, 2, 3)
+    val b = Tensor.matrix(
+      Array(1, 2),
+      Array(1, 2),
+      Array(1, 2))
+    (a.const * b.const).eval should be(Tensor.vector(6, 12))
+  }
+
+  "multiply" should "multiply 2 scalars" in {
+    (2.const * 3.const).eval should be(Tensor.scalar(6))
+  }
+
+  "multiply" should "multiply scalar and vector" in {
+    (2.const * Tensor.vector(1, 2, 3).const).eval should be(Tensor.vector(2, 4, 6))
+  }
+
+  "multiply" should "fail to multiply vector and scalar" in {
+    the [IllegalArgumentException] thrownBy {
+      (Tensor.vector(1, 2, 3).const * 2.const).eval
+    } should have message "requirement failed: cannot multiply tensors with shapes (1, 3) * (1, 1)"
+  }
+
+  "multiply" should "fail to multiply 3D tensors" in {
+    the [IllegalArgumentException] thrownBy {
+      val tensor = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
+      (tensor.const * tensor.const).eval
+    } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes  (2, 2, 2) * (2, 2, 2)"
   }
 }

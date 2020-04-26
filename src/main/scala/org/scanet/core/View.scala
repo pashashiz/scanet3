@@ -5,7 +5,7 @@ import org.scanet.core.Slice.syntax._
 case class View(src: IndexesSource, originalShape: Shape, projection: Projection) {
 
   private val shapeFull: Shape = projection.shapeFull
-  val shape: Shape = projection.shapeShort
+  val shape: Shape = projection.shapePruned
 
   def isScalar: Boolean = shape.isScalar
 
@@ -13,13 +13,13 @@ case class View(src: IndexesSource, originalShape: Shape, projection: Projection
     require(other.rank <= shape.rank,
       s"projection $other has rank '${other.rank}' which is greater than " +
         s"shape's rank '${shape.rank}'")
-    val adjusted = other
+    val adjustedRight = other
       .alignRight(shape.rank, ::.build)
       .adjustTo(shape)
-      .alignLeft(originalShape.rank, 0.build)
+    val adjusted = adjustedRight.alignLeft(originalShape.rank, 0.build)
     require(shapeFull.isInBound(adjusted),
       s"projection $other is out of bound, should fit shape $shape")
-    View(src, originalShape, projection narrow adjusted)
+    copy(projection = projection.narrow(adjusted).prune(adjustedRight.canPrune))
   }
 
   def reshape(into: Shape): View = {
