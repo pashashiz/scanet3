@@ -48,7 +48,7 @@ class SemiringOps[A: TfType: Semiring] extends Semiring[Output[A]] {
     val leftAdjusted = left.reshape(left.shape.alignLeft(2, using = 1))
     val rightAdjusted = rightOut.reshape(rightOut.shape.alignLeft(2, using = 1))
     require(leftAdjusted.rank == 2 && rightAdjusted.rank == 2,
-      s"rank cannot be > 2 but got tensors with shapes  ${leftAdjusted.shape} * ${rightAdjusted.shape}")
+      s"rank cannot be > 2 but got tensors with shapes ${leftAdjusted.shape} * ${rightAdjusted.shape}")
     require(leftAdjusted.shape.last == rightAdjusted.shape.head,
       s"cannot multiply tensors with shapes ${leftAdjusted.shape} * ${rightAdjusted.shape}")
     val resultShape = Shape(leftAdjusted.shape.head, rightAdjusted.shape.last)

@@ -82,6 +82,6 @@ class MathOpsSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       val tensor = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
       (tensor.const * tensor.const).eval
-    } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes  (2, 2, 2) * (2, 2, 2)"
+    } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes (2, 2, 2) * (2, 2, 2)"
   }
 }
