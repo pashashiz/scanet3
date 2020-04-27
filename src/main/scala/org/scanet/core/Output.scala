@@ -74,25 +74,26 @@ object Output {
   sealed trait BuilderState
   object BuilderState {
     sealed trait WithName extends BuilderState
-    sealed trait WithLabel extends BuilderState
     sealed trait WithShape extends BuilderState
     sealed trait WithCompiler extends BuilderState
-    type Complete = WithName with WithLabel with WithShape with WithCompiler
+    type Complete = WithName with WithShape with WithCompiler
     type Transformer[A] = (List[NativeOutput[A]], OperationBuilder) => OperationBuilder
   }
 
   case class Builder[A: TfType, State <: BuilderState](
-                                                        name: String,
-                                                        label: String,
-                                                        shape: Shape,
-                                                        inputs: List[Output[A]],
-                                                        transformers: List[Transformer[A]]) {
+        name: String,
+        label: String,
+        shape: Shape,
+        inputs: List[Output[A]],
+        transformers: List[Transformer[A]]) {
 
-    def label(label: String): Builder[A, State with WithLabel] = copy(label = label)
+    def label(label: String): Builder[A, State] = copy(label = label)
 
     def shape(shape: Shape): Builder[A, State with WithShape] = copy(shape = shape)
 
-    def inputs(inputs: Output[A]*): Builder[A, State] = copy(inputs = inputs.toList)
+    def inputs(inputs: Output[_]*): Builder[A, State] = {
+      copy(inputs = inputs.toList.asInstanceOf[List[Output[A]]])
+    }
 
     def compileWithTransformer(f: Transformer[A]): Builder[A, State with WithCompiler] =
       copy(transformers = f :: transformers)
@@ -108,7 +109,7 @@ object Output {
         inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
 
     def build(implicit ev: State =:= Complete): Output[A] = {
-      core.Output[A](name, label, shape, inputs, (context: OpContext[A]) => {
+      core.Output[A](name, Option(label).getOrElse(name), shape, inputs, (context: OpContext[A]) => {
         val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
         val transformed = transformers.foldLeft(init)((acc, next) => next(context.inputs, acc))
         transformed.build().output(0).asInstanceOf[NativeOutput[A]]

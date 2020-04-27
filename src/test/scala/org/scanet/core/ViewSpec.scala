@@ -6,19 +6,37 @@ import org.scanet.core.Slice.syntax._
 
 class ViewSpec extends AnyFlatSpec with Matchers {
 
+  "projection" should "be filled from other at left side" in {
+    Projection(0 until 5).alignLeft(2, 1.build) should
+      be(Projection(1, 0 until 5))
+  }
+
+  it should "be filled from other at right side" in {
+    Projection(0 until 5).alignRight(2, 1.build) should
+      be(Projection(0 until 5, 1))
+  }
+
+  it should "be pruned when left side contains ones and allowed" in {
+    Projection(1, 0 until 5).prune(1).shapePruned should be(Shape(5))
+  }
+
+  it should "not be pruned when left side contains ones but not allowed" in {
+    Projection(1, 0 until 5).shapePruned should be(Shape(1, 5))
+  }
+
   "view" should "produce right projection when same size" in {
     View(Shape(5, 5, 5), Projection(1, 2 until 4, ::))
-      .shape should be(Shape(2, 5))
+      .shape should be(Shape(1, 2, 5))
   }
 
   it should "produce right projection when smaller size" in {
     View(Shape(5, 5, 5), Projection(1))
-      .shape should be(Shape(5, 5))
+      .shape should be(Shape(1, 5, 5))
   }
 
   it should "produce right projection when index" in {
     View(Shape(5, 5, 5), Projection(1, 1, 1))
-      .shape should be(Shape())
+      .shape should be(Shape(1, 1, 1))
   }
 
   it should "produce right projection when unbound right" in {
@@ -40,22 +58,12 @@ class ViewSpec extends AnyFlatSpec with Matchers {
     View(Shape(5, 5)).projection should be(Projection(0 until 5, 0 until 5))
   }
 
-  "projection" should "be filled from other at left side" in {
-    Projection(0 until 5).alignLeft(2, 1.build) should
-      be(Projection(1, 0 until 5))
-  }
-
-  it should "be filled from other at right side" in {
-    Projection(0 until 5).alignRight(2, 1.build) should
-      be(Projection(0 until 5, 1))
-  }
-
   it should "should be projected right first time" in {
     val view = View(Shape(5, 5, 5)) narrow Projection(1, 2 until 4, ::)
     view.shape should be(Shape(2, 5))
   }
 
-  "view" should "should be projected right second time" in {
+  it should "should be projected right second time" in {
     val view = View(Shape(5, 5, 5)) narrow Projection(1, 2 until 4) narrow Projection(0 until 2)
     view.shape should be(Shape(2, 5))
   }

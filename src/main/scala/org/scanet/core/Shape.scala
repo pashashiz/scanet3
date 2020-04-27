@@ -62,6 +62,23 @@ case class Shape(dims: List[Int]) {
     }
   }
 
+  def canPrune: Int = dims.takeWhile(_ == 1).size
+  def pruneAll: Shape = Shape(dims.dropWhile(_ == 1))
+  def prune(max: Int): Shape = {
+    val (_, pruned) = dims.foldLeft((max, List[Int]()))(
+      (acc, dim) => {
+        val (toPrune, dims) = acc
+        if (toPrune > 0 && dim == 1) {
+          (toPrune - 1, dims)
+        } else {
+          (0, dim :: dims)
+        }
+      })
+    Shape(pruned.reverse)
+  }
+
+  def squeeze: Shape = Shape(dims.filter(_ > 1))
+
   def endsWith(other: Shape): Boolean = dims.endsWith(other.dims)
 
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray

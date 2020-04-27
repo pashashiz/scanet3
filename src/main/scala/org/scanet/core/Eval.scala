@@ -1,7 +1,5 @@
 package org.scanet.core
 
-import java.nio.file.{Path, Paths}
-
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.{specialized => sp}
@@ -16,7 +14,7 @@ case class OutputEval[@sp A: TfType](out: Output[A]) {
   def eval: Tensor[A] = {
     Session.run(out)
   }
-  def display(dir: Path = Paths.get("")): Unit = {
+  def display(dir: String = ""): Unit = {
     TensorBoard.write(List(out), dir)
   }
 }
@@ -27,7 +25,7 @@ case class Tuple2Eval[@sp A1: TfType, @sp A2: TfType](tuple: (Output[A1], Output
     (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
       Tensor[A2](tensors(1).asInstanceOf[NativeTensor[A2]]))
   }
-  def display(dir: Path = Paths.get("")): Unit = {
+  def display(dir: String = ""): Unit = {
     TensorBoard.write(List(tuple._1, tuple._2), dir)
   }
 }
@@ -40,7 +38,7 @@ case class Tuple3Eval[A1: TfType, A2: TfType, A3: TfType](tuple: (Output[A1], Ou
       Tensor[A3](tensors(2).asInstanceOf[NativeTensor[A3]])
     )
   }
-  def display(dir: Path = Paths.get("")): Unit = {
+  def display(dir: String = ""): Unit = {
     TensorBoard.write(List(tuple._1, tuple._2, tuple._3), dir)
   }
 }
