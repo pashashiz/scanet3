@@ -4,7 +4,7 @@ import simulacrum.typeclass
 import org.scanet.core.TfType.syntax._
 import org.scanet.core.Const.syntax._
 
-@typeclass trait CoreOps[A] {
+@typeclass trait CoreOp[A] {
 
   /** Adds label to the output
    *
@@ -46,11 +46,11 @@ import org.scanet.core.Const.syntax._
   def squeeze(op: A): A
 }
 
-object CoreOps {
+object CoreOp {
 
   trait Instances {
 
-    implicit def coreOps[A: TfType]: CoreOps[Output[A]] = new CoreOps[Output[A]] {
+    implicit def coreOps[A: TfType]: CoreOp[Output[A]] = new CoreOp[Output[A]] {
 
       override def as(out: Output[A], label: String): Output[A] = out.copy(label = label)
 
@@ -87,6 +87,6 @@ object CoreOps {
       }
     }
   }
-  trait Syntax extends Instances with CoreOps.ToCoreOpsOps
+  trait Syntax extends Instances with CoreOp.ToCoreOpOps
   object syntax extends Syntax
 }
