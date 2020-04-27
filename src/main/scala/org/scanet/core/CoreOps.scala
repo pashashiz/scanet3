@@ -5,12 +5,44 @@ import org.scanet.core.TfType.syntax._
 import org.scanet.core.Const.syntax._
 
 @typeclass trait CoreOps[A] {
-  def as(op: A, label: String): A
+
+  /** Adds label to the output
+   *
+   * @param label to add
+   * @return an output with a label attached
+   */
+  def as(out: A, label: String): A
+
+  /** Reshapes an output tensor.
+    *
+    * Requirements:
+    * - the number of elements in old and new shape should be the same
+    *
+    * Example:
+    * {{{
+    * val a = Tensor.matrix(
+    *   Array(1, 2, 3),
+    *   Array(4, 5, 6))
+    * val b = Tensor.matrix(
+    *   Array(1, 2),
+    *   Array(3, 4),
+    *   Array(5, 6))
+    * a.const.reshape(3, 2).eval should be(b)
+    * }}}
+    * @param shape a new shape
+    * @return an output with new shape
+    */
   def reshape(op: A, shape: Shape): A
-  // note: shapeless failed to use Int*
   def reshape(op: A, dim1: Int): A = reshape(op, Shape(dim1))
   def reshape(op: A, dim1: Int, dim2: Int): A = reshape(op, Shape(dim1, dim2))
   def reshape(op: A, dim1: Int, dim2: Int, dim3: Int): A = reshape(op, Shape(dim1, dim2, dim3))
+
+  /** Removes dimensions of size 1 from the shape of a tensor.
+    *
+    * Given a tensor, this operation returns a tensor of the same type with all dimensions of size 1 removed.
+    *
+    * @return squeezed output
+    */
   def squeeze(op: A): A
 }
 
@@ -20,7 +52,7 @@ object CoreOps {
 
     implicit def coreOps[A: TfType]: CoreOps[Output[A]] = new CoreOps[Output[A]] {
 
-      override def as(op: Output[A], label: String): Output[A] = op.copy(label = label)
+      override def as(out: Output[A], label: String): Output[A] = out.copy(label = label)
 
       override def reshape(op: Output[A], shape: Shape): Output[A] = {
         require(op.shape.power == shape.power ,

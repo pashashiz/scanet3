@@ -5,8 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 
-import scala.reflect.io.Path._
-
 class MathOpsSpec extends AnyFlatSpec with Matchers {
 
   "plus" should "add 2 scalars" in {
@@ -34,17 +32,6 @@ class MathOpsSpec extends AnyFlatSpec with Matchers {
       Tensor.matrix(Array(1, 2), Array(1, 2)).const plus Tensor.vector(1, 2, 3).const
     } should have message "requirement failed: tensors with shapes (2, 2) and (3) cannot be added, " +
       "one of the tensors should have shape which includes the other"
-  }
-
-  "computation graph" should "be displayed" in {
-    val a = 1.0f.const.as("a")
-    val b = 1.0f.const.as("b")
-    val c = (a plus b).as("c")
-    c.display()
-    // run tensor-board: tensorboard --logdir .
-    val files = ".".toDirectory.files.map(_.path).filter(_ matches ".*events.out.tfevents.*")
-    files should not be empty
-    files.foreach(_.toFile.delete())
   }
 
   "multiply" should "produce dot product on 2 matrices" in {
