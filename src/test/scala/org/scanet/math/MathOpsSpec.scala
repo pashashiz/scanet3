@@ -14,8 +14,14 @@ class MathOpsSpec extends AnyFlatSpec with Matchers {
   }
 
   "plus" should "add 2 tensors when one includes shape of the other" in {
-    val result = Tensor.matrix(Array(1, 2), Array(1, 2)).const plus Tensor.vector(1, 2).const
-    result.eval should be(Tensor.matrix(Array(2, 4), Array(2, 4)))
+    val a = Tensor.matrix(
+      Array(1, 2),
+      Array(1, 2))
+    val b = Tensor.vector(1, 2)
+    val c = Tensor.matrix(
+      Array(2, 4),
+      Array(2, 4))
+    (a.const plus b.const).eval should be(c)
   }
 
   "plus" should "work when adding same tensor" in {
