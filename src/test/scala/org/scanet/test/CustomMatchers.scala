@@ -14,6 +14,6 @@ trait CustomMatchers extends Matchers {
   def containData[A](data: Array[A]): Matcher[Tensor[A]] =
     tensor => {
       val existing = tensor.toArray
-      MatchResult(existing sameElements data, s"data $existing was not equal to data $data", "", Vector(existing, data))
+      MatchResult(existing sameElements data, s"data ${existing.mkString(", ")} was not equal to data ${data.mkString(", ")}", "", Vector(existing, data))
     }
 }
