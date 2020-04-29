@@ -15,9 +15,14 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
       (haveShape (Shape()) and containData (Array(5)))
   }
 
-  "vector" should "be allocated" in {
+  "vector" should "be allocated with Int" in {
     Tensor.vector(1, 2, 3) should
       (haveShape (Shape(3)) and containData (Array(1, 2, 3)))
+  }
+
+  "vector" should "be allocated with Boolean" in {
+    Tensor.vector(true, false, true) should
+      (haveShape (Shape(3)) and containData (Array(true, false, true)))
   }
 
   "matrix" should "be allocated" in {

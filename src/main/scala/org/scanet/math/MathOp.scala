@@ -1,6 +1,6 @@
 package org.scanet.math
 
-import org.scanet.core.{Output, Shape, TfType}
+import org.scanet.core.{Output, Shape, TensorType}
 import org.scanet.core.CoreOp.syntax._
 import simulacrum.{op, typeclass}
 import Ordering.Implicits._
@@ -124,7 +124,7 @@ import Ordering.Implicits._
 object MathOp {
 
   trait Instances {
-    implicit def outputIsMathOp[A: TfType: Numeric]: MathOp[Output[A]] = new OutputIsMathOp[A]
+    implicit def outputIsMathOp[A: TensorType: Numeric]: MathOp[Output[A]] = new OutputIsMathOp[A]
   }
 
   trait Syntax extends Instances with MathOp.ToMathOpOps
@@ -132,7 +132,7 @@ object MathOp {
   object syntax extends Syntax
 }
 
-class OutputIsMathOp[A: TfType: Numeric] extends MathOp[Output[A]] {
+class OutputIsMathOp[A: TensorType: Numeric] extends MathOp[Output[A]] {
 
   override def plus[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
