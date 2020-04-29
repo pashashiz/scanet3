@@ -11,7 +11,7 @@ import scala.language.existentials
 
 object Session {
 
-  def run[@sp A1: TfType](op: Output[A1]): Tensor[A1] = {
+  def run[@sp A1: TensorType](op: Output[A1]): Tensor[A1] = {
     val tensors = runN(List(op))
     Tensor[A1](tensors.head.asInstanceOf[NativeTensor[A1]])
   }

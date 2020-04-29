@@ -1,11 +1,11 @@
 package org.scanet.core
 
 import simulacrum.typeclass
-import org.scanet.core.TfType.syntax._
+import org.scanet.core.TensorType.syntax._
 import scala.language.higherKinds
 
 @typeclass trait ConstTensor[T[_]] {
-  def const[A: TfType](t: T[A]): Output[A]
+  def const[A: TensorType](t: T[A]): Output[A]
 }
 
 @typeclass trait ConstScalar[A] {
@@ -14,7 +14,7 @@ import scala.language.higherKinds
 
 object Const {
 
-  def apply[A: TfType](tensor: Tensor[A], label: String): Output[A] =
+  def apply[A: TensorType](tensor: Tensor[A], label: String): Output[A] =
     Output.name[A]("Const")
       .label(label)
       .shape(tensor.shape)
@@ -24,7 +24,7 @@ object Const {
   trait Instances {
 
     implicit def tensorConst: ConstTensor[Tensor] = new ConstTensor[Tensor] {
-      override def const[A: TfType](tensor: Tensor[A]): Output[A] = Const(tensor, "Const")
+      override def const[A: TensorType](tensor: Tensor[A]): Output[A] = Const(tensor, "Const")
     }
 
     implicit def floatConst: ConstScalar[Float] = (scalar: Float) => Const(Tensor.scalar(scalar), "Const")

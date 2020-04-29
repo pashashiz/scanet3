@@ -1,16 +1,13 @@
 package org.scanet.math
 
-import org.scanet.core.{Output, Shape, TfType}
+import org.scanet.core.{Output, Shape, TensorType}
 import org.scanet.core.CoreOp.syntax._
 import simulacrum.{op, typeclass}
+import Ordering.Implicits._
 
 @typeclass trait MathOp[A] {
 
-  /** Add two tensors.
-   *
-   * Requirements:
-   * - `left` and `right` should have the same dimensions
-   * - or one of the tensors should have shape which includes the other
+  /** Add two tensors. Supports broadcasting.
    *
    * {{{
    * val a = Tensor.matrix(
@@ -78,11 +75,7 @@ import simulacrum.{op, typeclass}
   @op("*", alias = true)
   def multiply[B](left: A, right: B)(implicit c: Convertible[B, A]): A
 
-  /** Subtract two tensors.
-   *
-   * Requirements:
-   * - `left` and `right` should have the same dimensions
-   * - or one of the tensors should have shape which includes the other
+  /** Subtract two tensors. Supports broadcasting.
    *
    * {{{(2.const - Tensor.vector(5, 10).const).eval should be(Tensor.vector(-3, -8))}}}
    *
@@ -104,12 +97,34 @@ import simulacrum.{op, typeclass}
   // todo: figure out why unary_- operator is not resolved
   @op("unary_-", alias = true)
   def negate(out: A): A
+
+  /** Element-wise division. Supports broadcasting.
+   *
+   * {{{(Tensor.vector(5, 10, 15).const /:/ 5.const).eval should be(Tensor.vector(1, 2, 3))}}}
+   *
+   * @param left side
+   * @param right side
+   * @return a result of division
+   */
+  @op("/:/", alias = true)
+  def divElementWise[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+
+  /** Element-wise multiplication. Supports broadcasting.
+   *
+   * {{{(Tensor.vector(1, 2, 3).const *:* 5.const).eval should be(Tensor.vector(5, 10, 15))}}}
+   *
+   * @param left side
+   * @param right side
+   * @return a result of multiplication
+   */
+  @op("*:*", alias = true)
+  def multiplyElementWise[B](left: A, right: B)(implicit c: Convertible[B, A]): A
 }
 
 object MathOp {
 
   trait Instances {
-    implicit def outputIsMathOp[A: TfType: Numeric]: MathOp[Output[A]] = new OutputIsMathOp[A]
+    implicit def outputIsMathOp[A: TensorType: Numeric]: MathOp[Output[A]] = new OutputIsMathOp[A]
   }
 
   trait Syntax extends Instances with MathOp.ToMathOpOps
@@ -117,15 +132,14 @@ object MathOp {
   object syntax extends Syntax
 }
 
-class OutputIsMathOp[A: TfType: Numeric] extends MathOp[Output[A]] {
+class OutputIsMathOp[A: TensorType: Numeric] extends MathOp[Output[A]] {
 
   override def plus[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
-    require(left.shape.endsWith(rightOut.shape) || rightOut.shape.endsWith(left.shape) ,
-      s"tensors with shapes ${left.shape} and ${rightOut.shape} cannot be added, " +
-        "one of the tensors should have shape which includes the other")
+    require(left.broadcastableAny(rightOut),
+      s"cannot add tensors with shapes ${left.shape} + ${rightOut.shape}")
     Output.name("Add")
-      .shape(if (left.rank > rightOut.rank) left.shape else rightOut.shape)
+      .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
       .build
@@ -152,11 +166,10 @@ class OutputIsMathOp[A: TfType: Numeric] extends MathOp[Output[A]] {
 
   override def minus[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
-    require(left.shape.endsWith(rightOut.shape) || rightOut.shape.endsWith(left.shape) ,
-      s"tensors with shapes ${left.shape} and ${rightOut.shape} cannot be subtracted, " +
-        "one of the tensors should have shape which includes the other")
+    require(left.broadcastableAny(rightOut),
+      s"cannot subtracted tensors with shapes ${left.shape} - ${rightOut.shape}")
     Output.name("Sub")
-      .shape(if (left.rank > rightOut.rank) left.shape else rightOut.shape)
+      .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
       .build
@@ -166,6 +179,28 @@ class OutputIsMathOp[A: TfType: Numeric] extends MathOp[Output[A]] {
     Output.name("Neg")
       .shape(a.shape)
       .inputs(a)
+      .compileWithAllInputs
+      .build
+  }
+
+  override def divElementWise[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
+      s"cannot divide tensors with shapes ${left.shape} /:/ ${rightOut.shape}")
+    Output.name("Div")
+      .shape(left.shape max rightOut.shape)
+      .inputs(left, rightOut)
+      .compileWithAllInputs
+      .build
+  }
+
+  override def multiplyElementWise[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
+      s"cannot multiply tensors with shapes ${left.shape} *:* ${rightOut.shape}")
+    Output.name("Mul")
+      .shape(left.shape max rightOut.shape)
+      .inputs(left, rightOut)
       .compileWithAllInputs
       .build
   }

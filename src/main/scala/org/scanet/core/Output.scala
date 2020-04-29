@@ -8,7 +8,7 @@ import org.scanet.core.Output.BuilderState._
 import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{OperationBuilder, Output => NativeOutput}
 
-case class Output[A: TfType](
+case class Output[A: TensorType](
               name: String,
               label: String,
               shape: Shape,
@@ -18,6 +18,10 @@ case class Output[A: TfType](
   val id: String = UUID.randomUUID().toString
 
   def rank: Int = shape.rank
+
+  def broadcastableBy(smaller: Output[A]): Boolean = shape.broadcastableBy(smaller.shape)
+
+  def broadcastableAny(other: Output[A]): Boolean = shape.broadcastableAny(other.shape)
 
   def compile(context: Context): (Context, Compiled[A]) = {
     val (contextAfterInput, outputs) = inputs.foldLeft((context, List[NativeOutput[A]]()))(
@@ -61,7 +65,7 @@ object Output {
 
   type Compiled[A] = (Label, NativeOutput[A])
 
-  case class OpContext[A: TfType](global: Context, op: Output[A], label: Label, inputs: List[NativeOutput[A]])
+  case class OpContext[A: TensorType](global: Context, op: Output[A], label: Label, inputs: List[NativeOutput[A]])
 
   case class Context(scope: NativeScope, outputs: Map[String, Compiled[_]]) {
     def maxLabelIndex(name: String): Int = {
@@ -80,7 +84,7 @@ object Output {
     type Transformer[A] = (List[NativeOutput[A]], OperationBuilder) => OperationBuilder
   }
 
-  case class Builder[A: TfType, State <: BuilderState](
+  case class Builder[A: TensorType, State <: BuilderState](
         name: String,
         label: String,
         shape: Shape,
@@ -101,7 +105,7 @@ object Output {
     def compileWithValue(tensor: Tensor[A]): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder
         .setAttr("value", tensor)
-        .setAttr("dtype", TfType[A].tag)
+        .setAttr("dtype", TensorType[A].tag)
       )
 
     def compileWithAllInputs: Builder[A, State with WithCompiler] =
@@ -117,8 +121,7 @@ object Output {
     }
   }
 
-  def name[A: TfType](name: String): Builder[A, WithName] = {
+  def name[A: TensorType](name: String): Builder[A, WithName] = {
     Builder[A, WithName](name, label = null, shape = null, inputs = Nil, transformers = Nil)
   }
 }
-

@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.syntax._
+import org.scanet.io.Buffer
 import org.tensorflow.{Tensor => NativeTensor}
 
 class NativeTest extends AnyFlatSpec {
@@ -32,9 +33,5 @@ class NativeTest extends AnyFlatSpec {
 //    val result = Array.ofDim[Byte](2, 2, 0)
 //    tensor.copyTo(result)
 //    println(result)
-  }
-
-  "tensor-board" should "work" in {
-
   }
 }

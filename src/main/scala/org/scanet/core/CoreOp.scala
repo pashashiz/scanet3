@@ -1,7 +1,7 @@
 package org.scanet.core
 
 import simulacrum.typeclass
-import org.scanet.core.TfType.syntax._
+import org.scanet.core.TensorType.syntax._
 import org.scanet.core.Const.syntax._
 
 @typeclass trait CoreOp[A] {
@@ -50,7 +50,7 @@ object CoreOp {
 
   trait Instances {
 
-    implicit def coreOps[A: TfType]: CoreOp[Output[A]] = new CoreOp[Output[A]] {
+    implicit def coreOps[A: TensorType]: CoreOp[Output[A]] = new CoreOp[Output[A]] {
 
       override def as(out: Output[A], label: String): Output[A] = out.copy(label = label)
 
