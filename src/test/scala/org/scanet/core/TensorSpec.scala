@@ -25,6 +25,11 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
       (haveShape (Shape(3)) and containData (Array(true, false, true)))
   }
 
+  "vector" should "be allocated with String" in {
+    Tensor.vector("Hello", "World", "From TensorFlow") should
+      (haveShape (Shape(3)) and containData (Array("Hello", "World", "From TensorFlow")))
+  }
+
   "matrix" should "be allocated" in {
       Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)) should
         (haveShape (Shape(2, 3)) and containData (Array(1, 2, 3, 4, 5, 6)))

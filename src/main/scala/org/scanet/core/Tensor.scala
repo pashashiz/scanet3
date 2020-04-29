@@ -12,7 +12,7 @@ import scala.{specialized => sp}
 
 class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) extends Disposable(() => native.close()) {
 
-  val buffer: TensorBuffer[A] = TensorBuffer[A](NativeTensorOps.buffer(native))
+  val buffer: TensorBuffer[A] = TensorBuffer[A](NativeTensorOps.buffer(native), view.originalShape.power)
 
   def shape: Shape = view.shape
   def rank: Int = shape.rank
@@ -124,7 +124,8 @@ object Tensor {
   def apply[@sp A: TensorType](data: Array[A], shape: Shape): Tensor[A] = {
     require(data.length == shape.power,
       s"Shape$shape requires ${shape.power} elements but was passed ${data.length}")
-    val tensor = Tensor[A](NativeTensorOps.allocate[A](shape))
+    val size = TensorType[A].coder.size(data)
+    val tensor = Tensor[A](NativeTensorOps.allocate[A](shape.toLongArray, size))
     tensor.buffer.write(data)
     tensor
   }
