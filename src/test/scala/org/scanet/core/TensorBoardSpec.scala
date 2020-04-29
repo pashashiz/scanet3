@@ -19,4 +19,10 @@ class TensorBoardSpec extends AnyFlatSpec with Matchers {
     files should not be empty
     "tmp".toDirectory.deleteRecursively()
   }
+
+  "computation graph" should "be displayed 2" in {
+    val c = (1.0f.const.as("a") * 2.0f.const.as("a")).as("c")
+    val d = (c plus 10.0f.const minus 5.0f.const).as("d")
+    d.display()
+  }
 }

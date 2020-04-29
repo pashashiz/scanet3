@@ -19,6 +19,10 @@ case class Output[A: TfType](
 
   def rank: Int = shape.rank
 
+  def broadcastableBy(smaller: Output[A]): Boolean = shape.broadcastableBy(smaller.shape)
+
+  def broadcastableAny(other: Output[A]): Boolean = shape.broadcastableAny(other.shape)
+
   def compile(context: Context): (Context, Compiled[A]) = {
     val (contextAfterInput, outputs) = inputs.foldLeft((context, List[NativeOutput[A]]()))(
       (acc, op) => {

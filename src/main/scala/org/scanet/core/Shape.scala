@@ -1,6 +1,6 @@
 package org.scanet.core
 
-case class Shape(dims: List[Int]) {
+case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   require(dims.forall(_ > 0), "dimension size cannot be 0")
   val power: Int = dims.product
@@ -81,9 +81,21 @@ case class Shape(dims: List[Int]) {
 
   def endsWith(other: Shape): Boolean = dims.endsWith(other.dims)
 
+  def broadcastableBy(smaller: Shape): Boolean = {
+    val alignedSmaller = smaller.alignLeft(rank, 1)
+    dims.zip(alignedSmaller.dims).forall {case (g, s) => s == 1 || g == s}
+  }
+
+  def broadcastableAny(other: Shape): Boolean =
+    broadcastableBy(other) || other.broadcastableBy(this)
+
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
 
   override def toString: String = s"(${dims.mkString(", ")})"
+
+  override def compare(that: Shape): Int = {
+    if (this.rank == that.rank) 0 else if (this.rank > that.rank) 1 else -1
+  }
 }
 
 object Shape {
