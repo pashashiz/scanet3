@@ -109,30 +109,44 @@ class MathOpSpec extends AnyFlatSpec with Matchers {
   }
 
   "element-wise division" should "work on tensors with same dimensions" in {
-    (Tensor.vector(5, 10, 15).const /:/ Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(1, 2, 3))
+    (Tensor.vector(5, 10, 15).const / Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(1, 2, 3))
   }
 
   it should "support broadcasting" in {
-    (Tensor.vector(5, 10, 15).const /:/ 5.const).eval should be(Tensor.vector(1, 2, 3))
+    (Tensor.vector(5, 10, 15).const / 5.const).eval should be(Tensor.vector(1, 2, 3))
   }
 
   it should "fail when tensors have incompatible dimensions" in {
     the [IllegalArgumentException] thrownBy {
-      (Tensor.matrix(Array(1, 2), Array(1, 2)).const /:/ Tensor.vector(1, 2, 3).const).eval
-    } should have message "requirement failed: cannot divide tensors with shapes (2, 2) /:/ (3)"
+      (Tensor.matrix(Array(1, 2), Array(1, 2)).const / Tensor.vector(1, 2, 3).const).eval
+    } should have message "requirement failed: cannot divide tensors with shapes (2, 2) / (3)"
   }
 
   "element-wise multiplication" should "work on tensors with same dimensions" in {
-    (Tensor.vector(1, 2, 3).const *:* Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(5, 10, 15))
+    (Tensor.vector(1, 2, 3).const :* Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(5, 10, 15))
   }
 
   it should "support broadcasting" in {
-    (Tensor.vector(1, 2, 3).const *:* 5.const).eval should be(Tensor.vector(5, 10, 15))
+    (Tensor.vector(1, 2, 3).const :* 5.const).eval should be(Tensor.vector(5, 10, 15))
   }
 
   it should "fail when tensors have incompatible dimensions" in {
     the [IllegalArgumentException] thrownBy {
-      (Tensor.matrix(Array(1, 2), Array(1, 2)).const *:* Tensor.vector(1, 2, 3).const).eval
-    } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) *:* (3)"
+      (Tensor.matrix(Array(1, 2), Array(1, 2)).const :* Tensor.vector(1, 2, 3).const).eval
+    } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) :* (3)"
+  }
+
+  "element-wise equality" should "work on tensors with same dimensions" in {
+    (Tensor.vector(1, 2, 3).const :== Tensor.vector(1, 2, 5).const).eval should be(Tensor.vector(true, true, false))
+  }
+
+  it should "support broadcasting" in {
+    (Tensor.vector(1, 2, 3).const :== 1.const).eval should be(Tensor.vector(true, false, false))
+  }
+
+  it should "fail when tensors have incompatible dimensions" in {
+    the [IllegalArgumentException] thrownBy {
+      (Tensor.matrix(Array(1, 2), Array(1, 2)).const :== Tensor.vector(1, 2, 3).const).eval
+    } should have message "requirement failed: cannot check for equality tensors with shapes (2, 2) :== (3)"
   }
 }

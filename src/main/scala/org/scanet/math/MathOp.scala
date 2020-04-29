@@ -2,10 +2,13 @@ package org.scanet.math
 
 import org.scanet.core.{Output, Shape, TensorType}
 import org.scanet.core.CoreOp.syntax._
+import org.scanet.core.TensorType.syntax._
 import simulacrum.{op, typeclass}
-import Ordering.Implicits._
 
-@typeclass trait MathOp[A] {
+import Ordering.Implicits._
+import scala.language.higherKinds
+
+@typeclass trait MathOp[F[_]] {
 
   /** Add two tensors. Supports broadcasting.
    *
@@ -22,12 +25,12 @@ import Ordering.Implicits._
    *
    * @param left side
    * @param right side
-   * @tparam B type which can be converted into output
+   * @tparam C type which can be converted into output
    * @return a result of addition
    */
   // todo: figure out why + operator is not resolved
   @op("+", alias = true)
-  def plus[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+  def plus[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Multiply 2 tensors.
    *
@@ -69,11 +72,11 @@ import Ordering.Implicits._
    *
    * @param left side
    * @param right side
-   * @tparam B type which can be converted into output
+   * @tparam C type which can be converted into output
    * @return a result of multiplication
    */
   @op("*", alias = true)
-  def multiply[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+  def multiply[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Subtract two tensors. Supports broadcasting.
    *
@@ -81,11 +84,11 @@ import Ordering.Implicits._
    *
    * @param left side
    * @param right side
-   * @tparam B type which can be converted into output
+   * @tparam C type which can be converted into output
    * @return a result of subtraction
    */
   @op("-", alias = true)
-  def minus[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+  def minus[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Negate a tensor.
    *
@@ -96,7 +99,7 @@ import Ordering.Implicits._
    */
   // todo: figure out why unary_- operator is not resolved
   @op("unary_-", alias = true)
-  def negate(out: A): A
+  def negate[A: TensorType](out: F[A]): F[A]
 
   /** Element-wise division. Supports broadcasting.
    *
@@ -106,8 +109,8 @@ import Ordering.Implicits._
    * @param right side
    * @return a result of division
    */
-  @op("/:/", alias = true)
-  def divElementWise[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+  @op("/", alias = true)
+  def div[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Element-wise multiplication. Supports broadcasting.
    *
@@ -117,14 +120,26 @@ import Ordering.Implicits._
    * @param right side
    * @return a result of multiplication
    */
-  @op("*:*", alias = true)
-  def multiplyElementWise[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+  @op(":*", alias = true)
+  def multiplyElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+
+  @op("==", alias = true)
+  def eq[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
+
+  @op("!=", alias = true)
+  def neq[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean] = negate(eq(left, right))
+
+  @op(":==", alias = true)
+  def eqElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
+
+  @op(":!=", alias = true)
+  def neqElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean] = negate(eqElementWise(left, right))
 }
 
 object MathOp {
 
   trait Instances {
-    implicit def outputIsMathOp[A: TensorType: Numeric]: MathOp[Output[A]] = new OutputIsMathOp[A]
+    implicit def outputIsMathOp: MathOp[Output] = new OutputIsMathOp
   }
 
   trait Syntax extends Instances with MathOp.ToMathOpOps
@@ -132,20 +147,20 @@ object MathOp {
   object syntax extends Syntax
 }
 
-class OutputIsMathOp[A: TensorType: Numeric] extends MathOp[Output[A]] {
+class OutputIsMathOp extends MathOp[Output] {
 
-  override def plus[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+  override def plus[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot add tensors with shapes ${left.shape} + ${rightOut.shape}")
-    Output.name("Add")
+    Output.name[A]("Add")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
       .build
   }
 
-  override def multiply[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+  override def multiply[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     val leftAdjusted = left.reshape(left.shape.alignLeft(2, using = 1))
     val rightAdjusted = rightOut.reshape(rightOut.shape.alignLeft(2, using = 1))
@@ -154,7 +169,7 @@ class OutputIsMathOp[A: TensorType: Numeric] extends MathOp[Output[A]] {
     require(leftAdjusted.shape.last == rightAdjusted.shape.head,
       s"cannot multiply tensors with shapes ${leftAdjusted.shape} * ${rightAdjusted.shape}")
     val resultShape = Shape(leftAdjusted.shape.head, rightAdjusted.shape.last)
-    val result = Output.name("MatMul")
+    val result = Output.name[A]("MatMul")
       .shape(resultShape)
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
@@ -164,41 +179,55 @@ class OutputIsMathOp[A: TensorType: Numeric] extends MathOp[Output[A]] {
     result.reshape(resultShape.prune(adjusted))
   }
 
-  override def minus[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+  override def minus[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot subtracted tensors with shapes ${left.shape} - ${rightOut.shape}")
-    Output.name("Sub")
+    Output.name[A]("Sub")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
       .build
   }
 
-  override def negate(a: Output[A]): Output[A] = {
-    Output.name("Neg")
-      .shape(a.shape)
-      .inputs(a)
+  override def negate[A: TensorType](out: Output[A]): Output[A] = {
+    Output.name[A]("Neg")
+      .shape(out.shape)
+      .inputs(out)
       .compileWithAllInputs
       .build
   }
 
-  override def divElementWise[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+  override def div[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
-      s"cannot divide tensors with shapes ${left.shape} /:/ ${rightOut.shape}")
-    Output.name("Div")
+      s"cannot divide tensors with shapes ${left.shape} / ${rightOut.shape}")
+    Output.name[A]("Div")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
       .build
   }
 
-  override def multiplyElementWise[B](left: Output[A], right: B)(implicit c: Convertible[B, Output[A]]): Output[A] = {
+  override def multiplyElementWise[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
-      s"cannot multiply tensors with shapes ${left.shape} *:* ${rightOut.shape}")
-    Output.name("Mul")
+      s"cannot multiply tensors with shapes ${left.shape} :* ${rightOut.shape}")
+    Output.name[A]("Mul")
+      .shape(left.shape max rightOut.shape)
+      .inputs(left, rightOut)
+      .compileWithAllInputs
+      .build
+  }
+
+  // need to have some sort of sum/reduce
+  override def eq[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = ???
+
+  override def eqElementWise[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
+      s"cannot check for equality tensors with shapes ${left.shape} :== ${rightOut.shape}")
+    Output.name[Boolean]("Equal")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
