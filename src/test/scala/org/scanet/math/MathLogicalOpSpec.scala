@@ -2,10 +2,10 @@ package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.{Shape, Tensor}
+import org.scanet.core.Tensor
 import org.scanet.math.syntax._
 
-class MathBoolOpSpec extends AnyFlatSpec with Matchers {
+class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
 
   "element-wise equality" should "work on tensors with same dimensions" in {
     (Tensor.vector(1, 2, 3).const :== Tensor.vector(1, 2, 5).const).eval should be(Tensor.vector(true, true, false))

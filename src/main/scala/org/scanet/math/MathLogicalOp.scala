@@ -8,7 +8,7 @@ import simulacrum.{op, typeclass}
 import scala.Ordering.Implicits._
 import scala.language.higherKinds
 
-@typeclass trait MathBoolOp[F[_]] {
+@typeclass trait MathLogicalOp[F[_]] {
 
   /** Check if 2 tensors are equal (tensors should have the same shape)
    *
@@ -134,18 +134,18 @@ import scala.language.higherKinds
 
 }
 
-object MathBoolOp {
+object MathLogicalOp {
 
   trait Instances {
-    implicit def outputIsMathOpBool: MathBoolOp[Output] = new OutputIsMathBoolOp
+    implicit def outputIsMathLogicalOp: MathLogicalOp[Output] = new OutputIsMathLogicalOp
   }
 
-  trait Syntax extends Instances with MathBoolOp.ToMathBoolOpOps
+  trait Syntax extends Instances with MathLogicalOp.ToMathLogicalOpOps
 
   object syntax extends Syntax
 }
 
-class OutputIsMathBoolOp extends MathBoolOp[Output] {
+class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
 
   override def all[A: TensorType](out: Output[A]): Output[Boolean] = all(out, 0 until out.rank)
 
