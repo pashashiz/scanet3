@@ -2,7 +2,7 @@ package org.scanet.native
 
 import java.nio.ByteBuffer
 
-import org.scanet.core.{Shape, TensorType}
+import org.scanet.core.TensorType
 import org.tensorflow.{DataType, Tensor => NativeTensor}
 
 object NativeTensorOps {
