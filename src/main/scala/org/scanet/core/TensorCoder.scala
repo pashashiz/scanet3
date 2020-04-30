@@ -1,6 +1,6 @@
 package org.scanet.core
 
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 
 import scala.annotation.tailrec
 
@@ -86,27 +86,47 @@ class StringTensorCoder extends TensorCoder[String] {
 
       val curr = offset(pos)
       val next = offset(pos + 1)
-      val len = next - curr - bytes(next - curr - 1)
+      val offsetLen = next - curr
+      val len = offsetLen - bytes(offsetLen - bytes(offsetLen))
       loop(0, curr + bytes(len), Array.ofDim[Byte](len))
    }
 
    override def write(buf: ByteBuffer, array: Array[String]): Unit = {
-      // TODO: this is wrong - it will work only if buffer is empty
-      // if we are appending strings - we would need to update offsets header
       array.foldLeft(0)((offset, str) => {
          buf.putLong(offset)
-         offset + bytes(str.length) + str.length
+         offset + strLen(str)
       })
       array.foreach(str => {
-         if (str.length > Byte.MaxValue) buf.putInt(str.length)
-         else buf.put(str.length.toByte)
+         buf.put(asUBytes(str.length, buf.order))
          buf.put(str.getBytes)
       })
       buf.rewind()
    }
 
-   override def size(array: Array[String]): Int =
-      array.length * 8 + array.foldLeft(0)((size, str) => size + bytes(str.length) + str.length)
+   override def size(array: Array[String]): Int = array.length * 8 + array.map(strLen).sum
 
-   def bytes(i: Int): Int = if (i <= Byte.MaxValue) 1 else 4
+   private def strLen(str: String): Int = bytes(str.length) + str.length
+
+   private def bytes(num: Long): Int = {
+      @tailrec
+      def loop(i: Long, len: Int): Int =
+         if (i <= Byte.MaxValue) len
+         else loop(i >> 7, len + 1)
+      loop(num, 1)
+   }
+
+   private def asUBytes(int: Int, order: ByteOrder): Array[Byte] = {
+      val len = bytes(int)
+      val arr = Array.ofDim[Byte](len)
+      @tailrec
+      def loop(i: Int): Array[Byte] = {
+         if (i < 0) arr
+         else {
+            val idx = if (order == ByteOrder.BIG_ENDIAN) i else len - i - 1
+            arr(idx) = (int >>> (i * 8) & 0xFF).toByte
+            loop(i - 1)
+         }
+      }
+      loop(len - 1)
+   }
 }
