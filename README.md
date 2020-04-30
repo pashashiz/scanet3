@@ -1,5 +1,8 @@
 # ScalaNet
 
+[![Build Status](https://travis-ci.org/pashashiz/scanet3.svg?branch=master)](https://travis-ci.org/pashashiz/scanet3)
+
+
 Type-safe, high performance, distributed Neural networks in Scala (not Python, finally...).
 
 ## Architecture Intro
