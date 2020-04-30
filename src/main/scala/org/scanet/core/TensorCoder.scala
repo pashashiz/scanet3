@@ -87,8 +87,8 @@ class StringTensorCoder extends TensorCoder[String] {
       val curr = offset(pos)
       val next = offset(pos + 1)
       val offsetLen = next - curr
-      val len = offsetLen - bytes(offsetLen - bytes(offsetLen))
-      loop(0, curr + bytes(len), Array.ofDim[Byte](len))
+      val len = offsetLen - ubytes(offsetLen - ubytes(offsetLen))
+      loop(0, curr + ubytes(len), Array.ofDim[Byte](len))
    }
 
    override def write(buf: ByteBuffer, array: Array[String]): Unit = {
@@ -105,9 +105,9 @@ class StringTensorCoder extends TensorCoder[String] {
 
    override def size(array: Array[String]): Int = array.length * 8 + array.map(strLen).sum
 
-   private def strLen(str: String): Int = bytes(str.length) + str.length
+   private def strLen(str: String): Int = ubytes(str.length) + str.length
 
-   private def bytes(num: Long): Int = {
+   private def ubytes(num: Long): Int = {
       @tailrec
       def loop(i: Long, len: Int): Int =
          if (i <= Byte.MaxValue) len
@@ -116,7 +116,7 @@ class StringTensorCoder extends TensorCoder[String] {
    }
 
    private def asUBytes(int: Int, order: ByteOrder): Array[Byte] = {
-      val len = bytes(int)
+      val len = ubytes(int)
       val arr = Array.ofDim[Byte](len)
       @tailrec
       def loop(i: Int): Array[Byte] = {
