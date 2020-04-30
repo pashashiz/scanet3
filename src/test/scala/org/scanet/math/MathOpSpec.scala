@@ -149,4 +149,11 @@ class MathOpSpec extends AnyFlatSpec with Matchers {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :== Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot check for equality tensors with shapes (2, 2) :== (3)"
   }
+
+  "x" should "work" in {
+    println(Tensor.matrix(Array(false, false), Array(true, true)).const.all.eval)
+    println((Tensor.vector(1, 2, 3).const === Tensor.vector(1, 2, 3).const).eval)
+    println((Tensor.vector(1, 2, 3).const !== Tensor.vector(1, 2, 3).const).eval)
+//    println(Tensor.vector(true, false, false).const.any.eval)
+  }
 }
