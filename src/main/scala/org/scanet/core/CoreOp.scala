@@ -50,7 +50,7 @@ import simulacrum.typeclass
    *
    * {{{ Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3")) }}}
    *
-   * @return casted output
+   * @return output converted to strings
    */
   def asString[A: TensorType](op: F[A]): F[String]
 
