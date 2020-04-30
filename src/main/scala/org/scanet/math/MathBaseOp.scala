@@ -1,15 +1,13 @@
 package org.scanet.math
 
-import org.scanet.core.{Output, Shape, Tensor, TensorType}
 import org.scanet.core.CoreOp.syntax._
-import org.scanet.core.Const.syntax._
-import org.scanet.core.TensorType.syntax._
+import org.scanet.core.{Output, Shape, TensorType}
 import simulacrum.{op, typeclass}
 
-import Ordering.Implicits._
+import scala.Ordering.Implicits._
 import scala.language.higherKinds
 
-@typeclass trait MathOp[F[_]] {
+@typeclass trait MathBaseOp[F[_]] {
 
   /** Add two tensors. Supports broadcasting.
    *
@@ -124,39 +122,20 @@ import scala.language.higherKinds
   @op(":*", alias = true)
   def multiplyElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
-  @op("===", alias = true)
-  def eq[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
-
-  @op("!==", alias = true)
-  def neq[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
-
-  @op(":==", alias = true)
-  def eqElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
-
-  @op(":!=", alias = true)
-  def neqElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
-
-  def all[A: TensorType](out: F[A]): F[Boolean]
-
-  def any[A: TensorType](out: F[A]): F[Boolean]
-
-  // all
-  // any
-
 }
 
-object MathOp {
+object MathBaseOp {
 
   trait Instances {
-    implicit def outputIsMathOp: MathOp[Output] = new OutputIsMathOp
+    implicit def outputIsMathOp: MathBaseOp[Output] = new OutputIsMathBaseOp
   }
 
-  trait Syntax extends Instances with MathOp.ToMathOpOps
+  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps
 
   object syntax extends Syntax
 }
 
-class OutputIsMathOp extends MathOp[Output] {
+class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def plus[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
@@ -223,52 +202,6 @@ class OutputIsMathOp extends MathOp[Output] {
     require(left.broadcastableAny(rightOut),
       s"cannot multiply tensors with shapes ${left.shape} :* ${rightOut.shape}")
     Output.name[A]("Mul")
-      .shape(left.shape max rightOut.shape)
-      .inputs(left, rightOut)
-      .compileWithAllInputs
-      .build
-  }
-
-  override def all[A: TensorType](out: Output[A]): Output[Boolean] = {
-    Output.name[Boolean]("All")
-      .shape(out.shape)
-      .inputs(out, Tensor.vector[Long]((0L until out.rank).toArray).const)
-      .compileWithAllInputs
-      .build
-  }
-
-  override def any[A: TensorType](out: Output[A]): Output[Boolean] = {
-    Output.name[Boolean]("Any")
-      .shape(out.shape)
-      .inputs(out, Tensor.vector[Long]((0L until out.rank).toArray).const)
-      .compileWithAllInputs
-      .build
-  }
-
-  override def eq[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
-    all(eqElementWise(left, right))
-  }
-
-  override def neq[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
-    any(neqElementWise(left, right))
-  }
-
-  override def eqElementWise[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
-    val rightOut: Output[A] = c.convert(right)
-    require(left.broadcastableAny(rightOut),
-      s"cannot check for equality tensors with shapes ${left.shape} :== ${rightOut.shape}")
-    Output.name[Boolean]("Equal")
-      .shape(left.shape max rightOut.shape)
-      .inputs(left, rightOut)
-      .compileWithAllInputs
-      .build
-  }
-
-  override def neqElementWise[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
-    val rightOut: Output[A] = c.convert(right)
-    require(left.broadcastableAny(rightOut),
-      s"cannot check for equality tensors with shapes ${left.shape} :== ${rightOut.shape}")
-    Output.name[Boolean]("NotEqual")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs

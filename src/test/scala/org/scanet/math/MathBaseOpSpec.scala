@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 
-class MathOpSpec extends AnyFlatSpec with Matchers {
+class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   "plus" should "add 2 scalars" in {
     (2.0f.const plus 5.0f.const).eval should be(Tensor.scalar(7.0f))
@@ -134,26 +134,5 @@ class MathOpSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :* Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) :* (3)"
-  }
-
-  "element-wise equality" should "work on tensors with same dimensions" in {
-    (Tensor.vector(1, 2, 3).const :== Tensor.vector(1, 2, 5).const).eval should be(Tensor.vector(true, true, false))
-  }
-
-  it should "support broadcasting" in {
-    (Tensor.vector(1, 2, 3).const :== 1.const).eval should be(Tensor.vector(true, false, false))
-  }
-
-  it should "fail when tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
-      (Tensor.matrix(Array(1, 2), Array(1, 2)).const :== Tensor.vector(1, 2, 3).const).eval
-    } should have message "requirement failed: cannot check for equality tensors with shapes (2, 2) :== (3)"
-  }
-
-  "x" should "work" in {
-    println(Tensor.matrix(Array(false, false), Array(true, true)).const.all.eval)
-    println((Tensor.vector(1, 2, 3).const === Tensor.vector(1, 2, 3).const).eval)
-    println((Tensor.vector(1, 2, 3).const !== Tensor.vector(1, 2, 3).const).eval)
-//    println(Tensor.vector(true, false, false).const.any.eval)
   }
 }
