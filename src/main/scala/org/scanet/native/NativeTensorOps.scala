@@ -13,18 +13,18 @@ object NativeTensorOps {
     method.invoke(tensor).asInstanceOf[ByteBuffer]
   }
 
-  def allocate[A: TensorType](shape: Shape): NativeTensor[A] = {
+  def allocate[A: TensorType](shape: Array[Long], size: Int): NativeTensor[A] = {
     val method = classOf[NativeTensor[A]].getDeclaredMethod(
       "allocateForBuffer",
       classOf[DataType],
       classOf[Array[Long]],
       Integer.TYPE)
     method.setAccessible(true)
-     method.invoke(
-       null,
-       TensorType[A].tag,
-       shape.toLongArray,
-       shape.power.asInstanceOf[AnyRef]
-     ).asInstanceOf[NativeTensor[A]]
+    method.invoke(
+      null,
+      TensorType[A].tag,
+      shape,
+      size.asInstanceOf[AnyRef]
+    ).asInstanceOf[NativeTensor[A]]
   }
 }
