@@ -1,17 +1,17 @@
 package org.scanet.core
 
-import simulacrum.typeclass
-import org.scanet.core.TensorType.syntax._
 import org.scanet.core.Const.syntax._
+import org.scanet.core.TensorType.syntax._
+import simulacrum.typeclass
 
-@typeclass trait CoreOp[A] {
+@typeclass trait CoreOp[F[_]] {
 
   /** Adds label to the output
    *
    * @param label to add
    * @return an output with a label attached
    */
-  def as(out: A, label: String): A
+  def as[A: TensorType](out: F[A], label: String): F[A]
 
   /** Reshapes an output tensor.
     *
@@ -32,10 +32,10 @@ import org.scanet.core.Const.syntax._
     * @param shape a new shape
     * @return an output with new shape
     */
-  def reshape(op: A, shape: Shape): A
-  def reshape(op: A, dim1: Int): A = reshape(op, Shape(dim1))
-  def reshape(op: A, dim1: Int, dim2: Int): A = reshape(op, Shape(dim1, dim2))
-  def reshape(op: A, dim1: Int, dim2: Int, dim3: Int): A = reshape(op, Shape(dim1, dim2, dim3))
+  def reshape[A: TensorType](op: F[A], shape: Shape): F[A]
+  def reshape[A: TensorType](op: F[A], dim1: Int): F[A] = reshape(op, Shape(dim1))
+  def reshape[A: TensorType](op: F[A], dim1: Int, dim2: Int): F[A] = reshape(op, Shape(dim1, dim2))
+  def reshape[A: TensorType](op: F[A], dim1: Int, dim2: Int, dim3: Int): F[A] = reshape(op, Shape(dim1, dim2, dim3))
 
   /** Removes dimensions of size 1 from the shape of a tensor.
     *
@@ -43,18 +43,34 @@ import org.scanet.core.Const.syntax._
     *
     * @return squeezed output
     */
-  def squeeze(op: A): A
+  def squeeze[A: TensorType](op: F[A]): F[A]
+
+  /** Converts elements of given tensor into Strings.
+   * Returns given input if tensor already contains Strings.
+   *
+   * {{{ Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3")) }}}
+   *
+   * @return output converted to strings
+   */
+  def asString[A: TensorType](op: F[A]): F[String]
+
+  /** Cast elements of given tensor form type A into B.
+   * Returns given input if A is already equal to B.
+   *
+   * @return casted output
+   */
+  def cast[A: TensorType, B: TensorType](op: F[A]): F[B]
 }
 
 object CoreOp {
 
   trait Instances {
 
-    implicit def coreOps[A: TensorType]: CoreOp[Output[A]] = new CoreOp[Output[A]] {
+    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] {
 
-      override def as(out: Output[A], label: String): Output[A] = out.copy(label = label)
+      override def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
-      override def reshape(op: Output[A], shape: Shape): Output[A] = {
+      override def reshape[A: TensorType](op: Output[A], shape: Shape): Output[A] = {
         require(op.shape.power == shape.power ,
           s"shape ${op.shape} cannot be reshaped into $shape")
         if (op.shape != shape) {
@@ -73,7 +89,7 @@ object CoreOp {
         }
       }
 
-      override def squeeze(op: Output[A]): Output[A] = {
+      override def squeeze[A: TensorType](op: Output[A]): Output[A] = {
         val squeezed = op.shape.squeeze
         if (squeezed.rank < op.shape.rank) {
           Output.name[A]("Squeeze")
@@ -83,6 +99,29 @@ object CoreOp {
             .build
         } else {
           op
+        }
+      }
+
+      override def asString[A: TensorType](op: Output[A]): Output[String] = {
+        if (TensorType[A] == TensorType[String]) op.asInstanceOf[Output[String]]
+        else {
+          Output.name[String]("AsString")
+            .shape(op.shape)
+            .inputs(op)
+            .compileWithAllInputs
+            .build
+        }
+      }
+
+      override def cast[A: TensorType, B: TensorType](op: Output[A]): Output[B] = {
+        if (TensorType[A] == TensorType[B]) op.asInstanceOf[Output[B]]
+        else {
+          Output.name[B]("Cast")
+            .shape(op.shape)
+            .inputs(op)
+            .compileWithAttr("DstT", TensorType[B])
+            .compileWithAllInputs
+            .build
         }
       }
     }
