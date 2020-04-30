@@ -112,6 +112,9 @@ object Output {
       compileWithTransformer((inputs, builder) =>
         inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
 
+    def compileWithAttr(name: String, tp: TensorType[_]): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder.setAttr(name, tp.tag))
+
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](name, Option(label).getOrElse(name), shape, inputs, (context: OpContext[A]) => {
         val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
