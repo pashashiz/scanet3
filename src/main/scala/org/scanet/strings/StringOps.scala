@@ -13,7 +13,7 @@ import scala.language.higherKinds
    *
    * {{{Tensor.vector("ab", "cd").const.concat("e".const).eval should be(Tensor.vector("abe", "cde")}}}
    *
-   * @param left side
+   * @param left  side
    * @param right side to append
    * @return tensors containing joined corresponding strings of left and right tensors
    */
@@ -83,7 +83,8 @@ object StringOps {
      * @return single string tensor
      */
     def join(sep: String, ops: Output[String]*): Output[String] = {
-      require(ops.zip(ops.tail).forall({ case (o1, o2) => o1.broadcastableAny(o2) }))
+      require(ops.zip(ops.tail).forall({ case (o1, o2) => o1.broadcastableAny(o2) }),
+        s"all tensors should have broadcastable shapes ${ops.map(_.shape)}")
       Output.name[String]("StringJoin")
         .shape(ops.map(_.shape).max)
         .inputs(ops: _*)
@@ -100,7 +101,8 @@ object StringOps {
 class OutputStringOps extends StringOps[Output] {
 
   override def concat[A: TensorType : StringLike](left: Output[A], right: Output[A]): Output[A] = {
-    require(left.shape.broadcastableAny(right.shape))
+    require(left.shape.broadcastableAny(right.shape),
+      s"cannot join tensors with shapes ${left.shape} + ${right.shape}")
     Output.name[A]("StringJoin")
       .shape(left.shape max right.shape)
       .inputs(left, right)
@@ -126,8 +128,9 @@ class OutputStringOps extends StringOps[Output] {
   }
 
   override def substring[A: TensorType : StringLike](op: Output[A], pos: Output[Int], len: Output[Int]): Output[A] = {
-    require(pos.shape == len.shape)
-    require(op.shape.broadcastableBy(pos.shape))
+    require(pos.shape == len.shape, s"pos and len shapes are not equal ${pos.shape}, ${len.shape}")
+    require(op.shape.broadcastableBy(pos.shape),
+      s"string tensor shape (${op.shape}) is not broadcastable by len/pos shape ${pos.shape}")
     Output.name[A]("Substr")
       .shape(op.shape)
       .inputs(op, pos, len)
