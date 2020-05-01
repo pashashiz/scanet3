@@ -34,7 +34,7 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
     Tensor.vector("1.1", "2.2", "3.3").const.toNumber[Float].eval should be(Tensor.vector(1.1f, 2.2f, 3.3f))
   }
 
-  "substring" should "" in {
+  "substring" should "calculate substrings by given pos and len" in {
     val strings = Tensor.matrix(
       Array("ten", "eleven", "twelve"),
       Array("thirteen", "fourteen", "fifteen'"),
