@@ -3,6 +3,8 @@ package org.scanet.math
 import org.scanet.core.Const.syntax._
 import org.scanet.core.TensorType.syntax._
 import org.scanet.core.{Output, Tensor, TensorType}
+import org.scanet.math.Logical.syntax._
+import org.scanet.math.NumericPrimitives.syntax._
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._
@@ -61,7 +63,7 @@ import scala.language.higherKinds
    * @param axises axises to make a reduction
    * @return a result of reduction
    */
-  def all[A: TensorType](out: F[A], axises: Seq[Int]): F[Boolean]
+  def all[A: TensorType: Logical](out: F[A], axises: Seq[Int]): F[Boolean]
 
   /** Reduces tensor along all dimensions using logical AND.
    *
@@ -69,7 +71,7 @@ import scala.language.higherKinds
    *
    * @return a result of reduction
    */
-  def all[A: TensorType](out: F[A]): F[Boolean]
+  def all[A: TensorType: Logical](out: F[A]): F[Boolean]
 
   /** Reduces tensor along the dimensions given in axis using logical OR.
    *
@@ -78,7 +80,7 @@ import scala.language.higherKinds
    * @param axises axises to make a reduction
    * @return a result of reduction
    */
-  def any[A: TensorType](out: F[A], axises: Seq[Int]): F[Boolean]
+  def any[A: TensorType: Logical](out: F[A], axises: Seq[Int]): F[Boolean]
 
   /** Reduces tensor along all dimensions using logical OR.
    *
@@ -86,7 +88,7 @@ import scala.language.higherKinds
    *
    * @return a result of reduction
    */
-  def any[A: TensorType](out: F[A]): F[Boolean]
+  def any[A: TensorType: Logical](out: F[A]): F[Boolean]
 
   /** Element-wise check whether left tensor is greater than right tensor. Supports broadcasting.
    *
@@ -132,6 +134,48 @@ import scala.language.higherKinds
   @op("<=", alias = true)
   def lte[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
 
+  /** Logically AND element-wise. Supports broadcasting.
+   *
+   * {{{(Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval should be(Tensor.vector(true, false))}}}
+   *
+   * @param left side
+   * @param right side
+   * @return a result of logical AND
+   */
+  @op("&&", alias = true)
+  def and[A: TensorType: Logical, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
+
+  /** Logically OR element-wise. Supports broadcasting.
+   *
+   * {{{(Tensor.vector(true, false).const || Tensor.vector(true, true).const).eval should be(Tensor.vector(true, true))}}}
+   *
+   * @param left side
+   * @param right side
+   * @return a result of logical OR
+   */
+  @op("||", alias = true)
+  def or[A: TensorType: Logical, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
+
+  /** Logically XOR element-wise. Supports broadcasting.
+   *
+   * {{{(Tensor.vector(true, false).const ^ Tensor.vector(true, true).const).eval should be(Tensor.vector(false, true))}}}
+   *
+   * @param left side
+   * @param right side
+   * @return a result of logical XOR
+   */
+  @op("^", alias = true)
+  def xor[A: TensorType: Logical, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Boolean]
+
+  /** Logically NOT element-wise.
+   *
+   * {{{Tensor.vector(true, false).const.not.eval should be(Tensor.vector(false, true))}}}
+   *
+   * @return a result of logical NOT
+   */
+  @op("unary_!", alias = true)
+  def not[A: TensorType: Logical](out: F[A]): F[Boolean]
+
 }
 
 object MathLogicalOp {
@@ -147,9 +191,9 @@ object MathLogicalOp {
 
 class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
 
-  override def all[A: TensorType](out: Output[A]): Output[Boolean] = all(out, 0 until out.rank)
+  override def all[A: TensorType: Logical](out: Output[A]): Output[Boolean] = all(out, 0 until out.rank)
 
-  override def all[A: TensorType](out: Output[A], axises: Seq[Int]): Output[Boolean] = {
+  override def all[A: TensorType: Logical](out: Output[A], axises: Seq[Int]): Output[Boolean] = {
     require(axises.forall(_ < out.rank), s"tensor with rank ${out.rank} does not have (${axises.mkString(", ")}) axises")
     Output.name[Boolean]("All")
       .shape(out.shape)
@@ -158,9 +202,9 @@ class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
       .build
   }
 
-  override def any[A: TensorType](out: Output[A]): Output[Boolean] = any(out, 0 until out.rank)
+  override def any[A: TensorType: Logical](out: Output[A]): Output[Boolean] = any(out, 0 until out.rank)
 
-  override def any[A: TensorType](out: Output[A], axises: Seq[Int]): Output[Boolean] = {
+  override def any[A: TensorType: Logical](out: Output[A], axises: Seq[Int]): Output[Boolean] = {
     require(axises.forall(_ < out.rank), s"tensor with rank ${out.rank} does not have (${axises.mkString(", ")}) axises")
     Output.name[Boolean]("Any")
       .shape(out.shape)
@@ -245,6 +289,45 @@ class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
     Output.name[Boolean]("LessEqual")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
+      .compileWithAllInputs
+      .build
+  }
+
+  override def and[A: TensorType: Logical, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
+      s"cannot logically AND tensors with shapes ${left.shape} && ${rightOut.shape}")
+    Output.name[Boolean]("LogicalAnd")
+      .shape(left.shape max rightOut.shape)
+      .inputs(left, rightOut)
+      .compileWithAllInputs
+      .build
+  }
+
+  override def or[A: TensorType: Logical, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
+      s"cannot logically OR tensors with shapes ${left.shape} || ${rightOut.shape}")
+    Output.name[Boolean]("LogicalOr")
+      .shape(left.shape max rightOut.shape)
+      .inputs(left, rightOut)
+      .compileWithAllInputs
+      .build
+  }
+
+
+  override def xor[A: TensorType : Logical, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
+      s"cannot logically XOR tensors with shapes ${left.shape} ^ ${rightOut.shape}")
+    // (x | y) & (~x | ~y);
+    and(or(left, rightOut), or(not(left), not(rightOut)))
+  }
+
+  override def not[A: TensorType: Logical](out: Output[A]): Output[Boolean] = {
+    Output.name[Boolean]("LogicalNot")
+      .shape(out.shape)
+      .inputs(out)
       .compileWithAllInputs
       .build
   }
