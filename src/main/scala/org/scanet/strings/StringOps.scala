@@ -17,7 +17,7 @@ import scala.language.higherKinds
    * @param right side to append
    * @return tensors containing joined corresponding strings of left and right tensors
    */
-  def concat[A: TensorType : StringLike](left: F[A], right: F[A]): F[A]
+  def concat[A: TensorType : Textual](left: F[A], right: F[A]): F[A]
 
   /** Computes the length of each string given in the input tensor.
    *
@@ -25,7 +25,7 @@ import scala.language.higherKinds
    *
    * @return tensor with strings lengths
    */
-  def length[A: TensorType : StringLike](op: F[A]): F[Int]
+  def length[A: TensorType : Textual](op: F[A]): F[Int]
 
   /** Converts each string in the input Tensor to the specified numeric type.
    *
@@ -34,7 +34,7 @@ import scala.language.higherKinds
    * @tparam B data type for output tensor
    * @return tensor with parsed numbers
    */
-  def toNumber[A: TensorType : StringLike, B: TensorType](op: F[A]): F[B]
+  def toNumber[A: TensorType : Textual, B: TensorType](op: F[A]): F[B]
 
   /** Return substrings from tensor of strings.
    *
@@ -57,19 +57,19 @@ import scala.language.higherKinds
    * @param len - tensor of substrings lengths
    * @return tensor of substrings
    */
-  def substring[A: TensorType : StringLike](op: F[A], pos: F[Int], len: F[Int]): F[A]
+  def substring[A: TensorType : Textual](op: F[A], pos: F[Int], len: F[Int]): F[A]
 
   //  def split[A: TensorType : StringLike](op: F[A], sep: F[String]): F[String]
 }
 
-trait StringLike[S]
+trait Textual[S]
 
 object StringOps {
 
   trait Instances {
     implicit def outputStringOps: StringOps[Output] = new OutputStringOps
 
-    implicit def stringLikeInst: StringLike[String] = new StringLike[String] {}
+    implicit def stringIsTextual: Textual[String] = new Textual[String] {}
   }
 
   trait Syntax extends Instances with StringOps.ToStringOpsOps {
@@ -100,7 +100,7 @@ object StringOps {
 
 class OutputStringOps extends StringOps[Output] {
 
-  override def concat[A: TensorType : StringLike](left: Output[A], right: Output[A]): Output[A] = {
+  override def concat[A: TensorType : Textual](left: Output[A], right: Output[A]): Output[A] = {
     require(left.shape.broadcastableAny(right.shape),
       s"cannot join tensors with shapes ${left.shape} + ${right.shape}")
     Output.name[A]("StringJoin")
@@ -110,7 +110,7 @@ class OutputStringOps extends StringOps[Output] {
       .build
   }
 
-  override def length[A: TensorType : StringLike](op: Output[A]): Output[Int] = {
+  override def length[A: TensorType : Textual](op: Output[A]): Output[Int] = {
     Output.name[Int]("StringLength")
       .shape(op.shape)
       .inputs(op)
@@ -118,7 +118,7 @@ class OutputStringOps extends StringOps[Output] {
       .build
   }
 
-  override def toNumber[A: TensorType : StringLike, B: TensorType](op: Output[A]): Output[B] = {
+  override def toNumber[A: TensorType : Textual, B: TensorType](op: Output[A]): Output[B] = {
     Output.name[B]("StringToNumber")
       .shape(op.shape)
       .inputs(op)
@@ -127,7 +127,7 @@ class OutputStringOps extends StringOps[Output] {
       .build
   }
 
-  override def substring[A: TensorType : StringLike](op: Output[A], pos: Output[Int], len: Output[Int]): Output[A] = {
+  override def substring[A: TensorType : Textual](op: Output[A], pos: Output[Int], len: Output[Int]): Output[A] = {
     require(pos.shape == len.shape, s"pos and len shapes are not equal ${pos.shape}, ${len.shape}")
     require(op.shape.broadcastableBy(pos.shape),
       s"string tensor shape (${op.shape}) is not broadcastable by len/pos shape ${pos.shape}")
