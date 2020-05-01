@@ -58,8 +58,6 @@ import scala.language.higherKinds
    * @return tensor of substrings
    */
   def substring[A: TensorType : Textual](op: F[A], pos: F[Int], len: F[Int]): F[A]
-
-  //  def split[A: TensorType : StringLike](op: F[A], sep: F[String]): F[String]
 }
 
 trait Textual[S]
@@ -137,12 +135,4 @@ class OutputStringOps extends StringOps[Output] {
       .compileWithAllInputs
       .build
   }
-
-  //  override def split[A: TensorType : StringLike](op: Output[A], sep: Output[String]): Output[String] = {
-  //    Output.name[String]("StringSplitV2")
-  //      .shape(op.shape) // TODO: this is wrong, result is SparseTensor with different shape
-  //      .inputs(op, sep)
-  //      .compileWithAllInputs
-  //      .build
-  //  }
 }

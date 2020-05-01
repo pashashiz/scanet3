@@ -49,8 +49,4 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
 
     strings.const.substring(positions.const, lengths.const).eval should be(expected)
   }
-
-  //  "split" should "split string values with given separator" in {
-  //    Tensor.vector("a, b, c", "d, e").const.split(", ".const).eval should be(Tensor.vector("a", "b", "c", "d", "e"))
-  //  }
 }
