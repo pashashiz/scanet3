@@ -15,10 +15,7 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
   }
 
   "concat" should "concatenate with scalar" in {
-    val a = Tensor.vector("1", "2").const
-    val b = "3".const
-
-    a.concat(b).eval should be(Tensor.vector("13", "23"))
+    Tensor.vector("1", "2").const.concat("3".const).eval should be(Tensor.vector("13", "23"))
   }
 
   "length" should "return length of string elements" in {
@@ -33,7 +30,27 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
     join(", ", a, b, c).eval should be(Tensor.vector("1, 3, 5", "2, 4, 6"))
   }
 
-//  "split" should "split string values with given separator" in {
-//    Tensor.vector("a, b, c", "d, e").const.split(", ".const).eval should be(Tensor.vector("a", "b", "c", "d", "e"))
-//  }
+  "toNumber" should "parse string values" in {
+    Tensor.vector("1.1", "2.2", "3.3").const.toNumber[Float].eval should be(Tensor.vector(1.1f, 2.2f, 3.3f))
+  }
+
+  "substring" should "" in {
+    val strings = Tensor.matrix(
+      Array("ten", "eleven", "twelve"),
+      Array("thirteen", "fourteen", "fifteen'"),
+      Array("sixteen", "seventeen", "eighteen"))
+    val positions = Tensor.matrix(Array(1, 2, 3), Array(1, 2, 3), Array(1, 2, 3))
+    val lengths = Tensor.matrix(Array(2, 3, 4), Array(4, 3, 2), Array(5, 5, 5))
+
+    val expected = Tensor.matrix(
+      Array("en", "eve", "lve"),
+      Array("hirt", "urt", "te"),
+      Array("ixtee", "vente", "hteen"))
+
+    strings.const.substring(positions.const, lengths.const).eval should be(expected)
+  }
+
+  //  "split" should "split string values with given separator" in {
+  //    Tensor.vector("a, b, c", "d, e").const.split(", ".const).eval should be(Tensor.vector("a", "b", "c", "d", "e"))
+  //  }
 }
