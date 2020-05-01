@@ -1,7 +1,7 @@
 package org.scanet.strings
 
 import org.scanet.core.TensorType.syntax._
-import org.scanet.core.{Output, TensorType, TfTypeString}
+import org.scanet.core.{Output, TensorType}
 import simulacrum.typeclass
 
 import scala.Ordering.Implicits._
@@ -69,7 +69,7 @@ object StringOps {
   trait Instances {
     implicit def outputStringOps: StringOps[Output] = new OutputStringOps
 
-    implicit def stringLikeInst: StringLike[String] = new StringLike[String] with TfTypeString
+    implicit def stringLikeInst: StringLike[String] = new StringLike[String] {}
   }
 
   trait Syntax extends Instances with StringOps.ToStringOpsOps {
