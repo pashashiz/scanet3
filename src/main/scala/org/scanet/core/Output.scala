@@ -112,8 +112,14 @@ object Output {
       compileWithTransformer((inputs, builder) =>
         inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
 
+    def compileWithInputList: Builder[A, State with WithCompiler] =
+      compileWithTransformer((inputs, builder) => builder.addInputList(inputs.toArray))
+
     def compileWithAttr(name: String, tp: TensorType[_]): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, tp.tag))
+
+    def compileWithAttr(name: String, str: String): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder.setAttr(name, str))
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](name, Option(label).getOrElse(name), shape, inputs, (context: OpContext[A]) => {
