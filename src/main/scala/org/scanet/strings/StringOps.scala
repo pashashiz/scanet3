@@ -11,6 +11,8 @@ import scala.language.higherKinds
 
   /** Concatenates current and given String tensors
    *
+   * {{{Tensor.vector("ab", "cd").const.concat("e".const).eval should be(Tensor.vector("abe", "cde")}}}
+   *
    * @param left side
    * @param right side to append
    * @return tensors containing joined corresponding strings of left and right tensors
@@ -19,11 +21,15 @@ import scala.language.higherKinds
 
   /** Computes the length of each string given in the input tensor.
    *
+   * {{{Tensor.vector("a", "bb").const.length.eval should be(Tensor.vector(1, 2))}}}
+   *
    * @return tensor with strings lengths
    */
   def length[A: TensorType : StringLike](op: F[A]): F[Int]
 
   /** Converts each string in the input Tensor to the specified numeric type.
+   *
+   * {{{Tensor.vector("1.1", "2.2").const.toNumber[Float].eval should be(Tensor.vector(1.1f, 2.2f))}}}
    *
    * @tparam B data type for output tensor
    * @return tensor with parsed numbers
@@ -44,6 +50,8 @@ import scala.language.higherKinds
    * then an InvalidArgumentError is thrown.
    *
    * pos and len must have the same shape and supports broadcasting up to two dimensions
+   *
+   * {{{"abcde".const.substring(1.const, 3.const).eval should be("bcd".const)}}}
    *
    * @param pos - tensor of substring starting positions
    * @param len - tensor of substrings lengths
@@ -67,6 +75,8 @@ object StringOps {
   trait Syntax extends Instances with StringOps.ToStringOpsOps {
 
     /** Joins the strings in the given list of string tensors into one tensor with given separator
+     *
+     * {{{join(",", "a".const, "b".const, "c".const).eval should be("a,b,c".const)}}}
      *
      * @param sep elements separator
      * @param ops list of string tensors to join
