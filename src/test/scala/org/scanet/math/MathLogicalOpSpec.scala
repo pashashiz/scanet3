@@ -162,4 +162,56 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
       (Tensor.vector(1, 2, 3).const <= Tensor.vector(2, 3).const).eval
     } should have message "requirement failed: cannot compare tensors with shapes (3) <= (2)"
   }
+
+  "logical and" should "work" in {
+    println((Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval)
+    println((Tensor.vector(true, false).const || Tensor.vector(true, true).const).eval)
+    println(Tensor.vector(true, false).const.not.eval)
+  }
+
+  "logical and" should "work on tensors with same dimensions" in {
+    (Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval should be(Tensor.vector(true, false))
+  }
+
+  it should "support broadcasting" in {
+    (Tensor.vector(true, false).const && Tensor.vector(true).const).eval should be(Tensor.vector(true, false))
+  }
+
+  it should "fail when tensors have incompatible dimensions" in {
+    the [IllegalArgumentException] thrownBy {
+      (Tensor.vector(true, false).const && Tensor.vector(true, true, true).const).eval
+    } should have message "requirement failed: cannot logically AND tensors with shapes (2) && (3)"
+  }
+
+  "logical or" should "work on tensors with same dimensions" in {
+    (Tensor.vector(true, false).const || Tensor.vector(true, true).const).eval should be(Tensor.vector(true, true))
+  }
+
+  it should "support broadcasting" in {
+    (Tensor.vector(true, false).const || Tensor.vector(true).const).eval should be(Tensor.vector(true, true))
+  }
+
+  it should "fail when tensors have incompatible dimensions" in {
+    the [IllegalArgumentException] thrownBy {
+      (Tensor.vector(true, false).const || Tensor.vector(true, true, true).const).eval
+    } should have message "requirement failed: cannot logically OR tensors with shapes (2) || (3)"
+  }
+
+  "logical not" should "work" in {
+    Tensor.vector(true, false).const.not.eval should be(Tensor.vector(false, true))
+  }
+
+  "logical xor" should "work on tensors with same dimensions" in {
+    (Tensor.vector(true, false).const ^ Tensor.vector(true, true).const).eval should be(Tensor.vector(false, true))
+  }
+
+  it should "support broadcasting" in {
+    (Tensor.vector(true, false).const ^ Tensor.vector(true).const).eval should be(Tensor.vector(false, true))
+  }
+
+  it should "fail when tensors have incompatible dimensions" in {
+    the [IllegalArgumentException] thrownBy {
+      (Tensor.vector(true, false).const ^ Tensor.vector(true, true, true).const).eval
+    } should have message "requirement failed: cannot logically XOR tensors with shapes (2) ^ (3)"
+  }
 }

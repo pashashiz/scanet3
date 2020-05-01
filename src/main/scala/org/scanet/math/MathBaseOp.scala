@@ -29,7 +29,7 @@ import scala.language.higherKinds
    */
   // todo: figure out why + operator is not resolved
   @op("+", alias = true)
-  def plus[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  def plus[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Multiply 2 tensors.
    *
@@ -75,7 +75,7 @@ import scala.language.higherKinds
    * @return a result of multiplication
    */
   @op("*", alias = true)
-  def multiply[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  def multiply[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Subtract two tensors. Supports broadcasting.
    *
@@ -87,7 +87,7 @@ import scala.language.higherKinds
    * @return a result of subtraction
    */
   @op("-", alias = true)
-  def minus[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  def minus[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Negate a tensor.
    *
@@ -98,7 +98,7 @@ import scala.language.higherKinds
    */
   // todo: figure out why unary_- operator is not resolved
   @op("unary_-", alias = true)
-  def negate[A: TensorType](out: F[A]): F[A]
+  def negate[A: TensorType: Numeric](out: F[A]): F[A]
 
   /** Element-wise division. Supports broadcasting.
    *
@@ -109,7 +109,7 @@ import scala.language.higherKinds
    * @return a result of division
    */
   @op("/", alias = true)
-  def div[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  def div[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Element-wise multiplication. Supports broadcasting.
    *
@@ -120,7 +120,7 @@ import scala.language.higherKinds
    * @return a result of multiplication
    */
   @op(":*", alias = true)
-  def multiplyElementWise[A: TensorType, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  def multiplyElementWise[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
 }
 
@@ -137,7 +137,7 @@ object MathBaseOp {
 
 class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
-  override def plus[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  override def plus[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot add tensors with shapes ${left.shape} + ${rightOut.shape}")
@@ -148,7 +148,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def multiply[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  override def multiply[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     val leftAdjusted = left.reshape(left.shape.alignLeft(2, using = 1))
     val rightAdjusted = rightOut.reshape(rightOut.shape.alignLeft(2, using = 1))
@@ -167,7 +167,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     result.reshape(resultShape.prune(adjusted))
   }
 
-  override def minus[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  override def minus[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot subtracted tensors with shapes ${left.shape} - ${rightOut.shape}")
@@ -178,7 +178,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def negate[A: TensorType](out: Output[A]): Output[A] = {
+  override def negate[A: TensorType: Numeric](out: Output[A]): Output[A] = {
     Output.name[A]("Neg")
       .shape(out.shape)
       .inputs(out)
@@ -186,7 +186,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def div[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  override def div[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot divide tensors with shapes ${left.shape} / ${rightOut.shape}")
@@ -197,7 +197,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def multiplyElementWise[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  override def multiplyElementWise[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot multiply tensors with shapes ${left.shape} :* ${rightOut.shape}")
