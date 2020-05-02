@@ -62,15 +62,18 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
 
   it should "format matrix summary" in {
     val matrix = Tensor.matrix(
-      Array(1, 2, 3, 4),
-      Array(5, 6, 7, 8),
-      Array(9, 10, 11, 12),
-      Array(13, 14, 15, 16),
-      Array(17, 18, 19, 20)
+      Array(1, 2),
+      Array(3, 4),
+      Array(5, 6),
+      Array(7, 8),
+      Array(9, 10),
+      Array(11, 12),
+      Array(13, 14),
+      Array(15, 16)
     )
 
-    val formatted = matrix.const.format(FormatOps(summarize = 2, template = "matrix: {}", placeholder = "{}")).eval
-    formatted should be(Tensor.scalar("matrix: [[1 2 3 4]\n [5 6 7 8]\n ...\n [13 14 15 16]\n [17 18 19 20]]"))
+    val formatted = matrix.const.format("matrix: {}").eval
+    formatted should be(Tensor.scalar("matrix: [[1 2]\n [3 4]\n [5 6]\n ...\n [11 12]\n [13 14]\n [15 16]]"))
   }
 
   it should "print and return the same vector" in {
@@ -87,11 +90,20 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
       Array(2, 4))
 
     val file = "test_" + System.currentTimeMillis() + ".txt"
-    (a.const.print(file) plus b.const).print(file).eval should be(c)
+    val out = ToFile(file)
+    (a.const.print(out) plus b.const).print(out).eval should be(c)
 
     file.toFile.exists should be(true)
     val source = scala.io.Source.fromFile(file)
     source.mkString should be("[[1 2]\n [1 2]]\n[[2 4]\n [2 4]]\n")
     file.toFile.delete() // TODO: this doesn't work :(
+  }
+
+  it should "print multiple tensors" in {
+    val a = 1.const
+    val b = 2.const
+    val c = (a plus b) << print("a + b = {} + {}", a, b)
+
+    c.eval should be(Tensor.scalar(3))
   }
 }

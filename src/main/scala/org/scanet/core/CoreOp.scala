@@ -2,7 +2,7 @@ package org.scanet.core
 
 import org.scanet.core.Const.syntax._
 import org.scanet.core.TensorType.syntax._
-import simulacrum.typeclass
+import simulacrum.{op, typeclass}
 
 import scala.language.higherKinds
 
@@ -46,6 +46,24 @@ import scala.language.higherKinds
     * @return squeezed output
     */
   def squeeze[A: TensorType](op: F[A]): F[A]
+
+  /** Add operation which will be executed right after current operation and
+   * return current operation as output to continue chaining.
+   *
+   * Can be used to add logging or assert operations.
+   *
+   * {{{
+   * val a = 1.const
+   * val b = 2.const
+   * val c = (a plus b) << print(ToFile("temp.txt"), "a + b = {} + {}", a, b)
+   * c.eval should be(Tensor.scalar(3)) // and prints `a + b = 1 + 2` before performing add op
+   * }}}
+   *
+   * @param dep dependant leaf operation
+   * @return current output
+   */
+  @op("<<", alias = true)
+  def dependsOn[A: TensorType](op: F[A], dep: F[_]): F[A]
 
   /** Cast elements of given tensor form type A into B.
    * Returns given input if A is already equal to B.
@@ -105,6 +123,16 @@ object CoreOp {
             .compileWithAllInputs
             .build
         }
+      }
+
+      override def dependsOn[A: TensorType](op: Output[A], dep: Output[_]): Output[A] = {
+        Output.name[A]("Identity")
+          .shape(op.shape)
+          .inputs(op)
+          .controlInputs(dep)
+          .compileWithAllInputs
+          .compileWithControlInputs
+          .build
       }
     }
   }
