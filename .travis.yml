@@ -3,7 +3,7 @@ language: scala
 jdk: openjdk8
 
 scala:
-  - 2.12.8
+  - 2.13.2
 
 cache:
   directories:
