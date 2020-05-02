@@ -4,8 +4,6 @@ import org.scanet.core.syntax._
 import org.scanet.core.{Output, Shape, TensorType}
 import simulacrum.typeclass
 
-import scala.language.higherKinds
-
 @typeclass trait StringOps[F[_]] {
 
   /** Print current tensor during graph evaluation into default location.

@@ -4,8 +4,6 @@ import org.scanet.core.Const.syntax._
 import org.scanet.core.TensorType.syntax._
 import simulacrum.{op, typeclass}
 
-import scala.language.higherKinds
-
 @typeclass trait CoreOp[F[_]] {
 
   /** Adds label to the output

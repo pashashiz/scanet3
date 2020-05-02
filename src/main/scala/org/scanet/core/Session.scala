@@ -4,7 +4,7 @@ import org.scanet.core.Output.Context
 import org.tensorflow.op.Scope
 import org.tensorflow.{Graph, Operation, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.{specialized => sp}
 import scala.language.existentials
 
@@ -20,7 +20,7 @@ object Session {
     val session = new NativeSession(graph)
     try {
       val runner = outputs.reverse.foldLeft(session.runner)((runner, output) => runner.fetch(output))
-      runner.run().asScala
+      runner.run().asScala.toList
     } finally if (session != null) session.close()
   }
 

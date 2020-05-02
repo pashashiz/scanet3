@@ -5,7 +5,6 @@ import org.scanet.core.{Output, Shape, TensorType}
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._
-import scala.language.higherKinds
 
 @typeclass trait MathBaseOp[F[_]] {
 
