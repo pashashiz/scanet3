@@ -107,4 +107,40 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
 
     c.eval should be(Tensor.scalar(3))
   }
+
+  "assert" should "verify current output" in {
+    val a = Tensor.vector(1, 2).const
+    val b = Tensor.vector(3, 4).const
+    val c = Tensor.vector(4, 6).const
+
+    (a plus b).assert(_ === c).eval should be(Tensor.vector(4, 6))
+  }
+
+  "assert" should "throw when current condition is false" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = Tensor.vector(1, 2).const
+      val b = Tensor.vector(3, 4).const
+      val c = Tensor.vector(5, 6).const
+
+      (a plus b).assert(_ === c).eval
+    } should have message "assertion failed: [value: [4 6]]\n\t [[{{node Assert_0}}]]"
+  }
+
+  "assert that" should "verify dependent condition" in {
+    val a = 1.const
+    val b = 2.const
+    val c = (a plus b) << assertThat((a gt 0.const) and (b gt 0.const), "{} {}", a, b)
+
+    c.eval should be(Tensor.scalar(3))
+  }
+
+  "assert that" should "should fail when dependent condition is false" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = Tensor.vector(1, 2).const
+      val b = 0.const
+      val c = (a div b) << assertThat(b gt 0.const, "b was {}, should be > 0", b)
+
+      c.eval should be(Tensor.scalar(3))
+    } should have message "assertion failed: [b was 0, should be > 0]\n\t [[{{node Assert_0}}]]"
+  }
 }

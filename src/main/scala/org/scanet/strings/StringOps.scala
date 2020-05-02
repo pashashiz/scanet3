@@ -43,6 +43,39 @@ import scala.language.higherKinds
    */
   def print[A: TensorType](op: F[A], dst: PrintTo, template: String): F[A]
 
+  /** Asserts that given condition (constructed from current tensor by specified fn)
+   * is true or fail graph execution (and prints current value).
+   *
+   * {{{
+   * val a = Tensor.vector(1, 2).const
+   * val b = Tensor.vector(3, 4).const
+   * val c = Tensor.vector(4, 6).const
+   *
+   * (a plus b).assert(_ === c, "sum was {}").eval should be(Tensor.vector(4, 6))
+   * }}}
+   *
+   * @param f function to build assertion condition from current op
+   * @param template message with `{}` placeholder for current op
+   * @return current op for chaining
+   */
+  def assert[A: TensorType](op: F[A], f: F[A] => F[Boolean], template: String): F[A]
+
+  /** Asserts that given condition (constructed from current tensor by specified fn)
+   * is true or fail graph execution (and prints current value).
+   *
+   * {{{
+   * val a = Tensor.vector(1, 2).const
+   * val b = Tensor.vector(3, 4).const
+   * val c = Tensor.vector(4, 6).const
+   *
+   * (a plus b).assert(_ === c).eval should be(Tensor.vector(4, 6))
+   * }}}
+   *
+   * @param f function to build assertion condition from current op
+   * @return current op for chaining
+   */
+  def assert[A: TensorType](op: F[A], f: F[A] => F[Boolean]): F[A] = assert(op, f, "value: {}")
+
   /** Format summary of given tensor into scalar string.
    *
    * {{{Tensor.vector(1, 2, 3).const.format.eval should be(Tensor.scalar("[1 2 3]"))}}}
@@ -182,7 +215,37 @@ trait OutputStringMultiOps {
       .compileWithAttr("output_stream", dst.name)
       .compileWithAllInputs
       .build
-      .asLeaf
+      .asVoid
+  }
+
+  /** Asserts that given condition is true or fail graph execution.
+   * Optional outputs can be specified to print on assertion failure.
+   *
+   * {{{
+   * val a = 2.const
+   * val b = 1.const
+   * val c = (a div b) << assertThat(a gt b, "{} {}", a, b)
+   * c.eval should be(Tensor.scalar(2))
+   * }}}
+   *
+   * @param cond  assertion condition
+   * @param template message with `{}` placeholder for current op
+   * @param ops outputs to format into error message
+   * @see dependsOn
+   * @return leaf node to add as dependant op
+   */
+  def assertThat[A: TensorType](cond: Output[Boolean], template: String, ops: Output[A]*): Output[Nothing] = {
+    Output.name[Boolean]("Assert")
+      .shape(Shape())
+      .inputs(cond, format(template, ops: _*))
+      .compileWithTransformer((ctx, builder) => {
+        // add condition as input
+        builder.addInput(ctx.inputs.head.output(0))
+        // add formatted msg as value to print
+        builder.addInputList(ctx.inputs.tail.map(_.output(0)).toArray)
+      })
+      .build
+      .asVoid
   }
 
   /** Format given tensors with specified template.
@@ -254,6 +317,10 @@ class OutputStringOps extends StringOps[Output] with OutputStringMultiOps {
 
   override def format[A: TensorType](op: Output[A], template: String): Output[String] = {
     format(template, op)
+  }
+
+  override def assert[A: TensorType](op: Output[A], f: Output[A] => Output[Boolean], template: String): Output[A] = {
+    op dependsOn assertThat(f(op), template, op)
   }
 
   override def concat[A: TensorType : Textual](left: Output[A], right: Output[A]): Output[A] = {
