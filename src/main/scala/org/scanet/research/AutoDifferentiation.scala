@@ -12,37 +12,37 @@ object AutoDifferentiation {
   }
 
   def sample1(): Unit = {
-    // c = 2x + 5 -> 2 | x = 3
+    // f(x) = 2x + 5 -> df/dx = 2 | x = 3
     val a = Const(2)
     val b = Const(5)
     val x = Const(3)
-    val c = Plus(Multiply(a, x), b)
-    println(s"sample 1: ${c.eval}, ${c.grad(x)}") // 11.0, 2.0
+    val f = Plus(Multiply(a, x), b)
+    println(s"sample 1: ${f.eval}, ${f.grad(x)}") // 11.0, 2.0
   }
 
   def sample2(): Unit = {
-    // c = x * x + 2 * x + 5 -> 2x + 2 | x = 3
+    // f(x) = x * x + 2 * x + 5 -> df/dx = 2x + 2 | x = 3
     val a = Const(2)
     val b = Const(5)
     val x = Const(3)
-    val c = Plus(Plus(Multiply(x, x), Multiply(a, x)), b)
-    println(s"sample 2: ${c.eval}, ${c.grad(x)}") // 20.0, 8.0
+    val f = Plus(Plus(Multiply(x, x), Multiply(a, x)), b)
+    println(s"sample 2: ${f.eval}, ${f.grad(x)}") // 20.0, 8.0
 
   }
 
   def sample3(): Unit = {
-    // c = x * (x + 5) -> 2x + 5 | x = 3
+    // f(x) = x * (x + 5) -> df/dx = 2x + 5 | x = 3
     val a = Const(5)
     val x = Const(3)
-    val c = Multiply(x, Plus(x, a))
-    println(s"sample 3: ${c.eval}, ${c.grad(x)}") // 24, 11
+    val f = Multiply(x, Plus(x, a))
+    println(s"sample 3: ${f.eval}, ${f.grad(x)}") // 24, 11
   }
 
   def sample4(): Unit = {
-    // c = x * x * x -> 3x^2 | x = 4
+    // f(x) = x * x * x -> df/dx = 3x^2 | x = 4
     val x = Const(4)
-    val c = Multiply(Multiply(x, x), x)
-    println(s"sample 4: ${c.eval}, ${c.grad(x)}") // 64, 48
+    val f = Multiply(Multiply(x, x), x)
+    println(s"sample 4: ${f.eval}, ${f.grad(x)}") // 64, 48
   }
 }
 
