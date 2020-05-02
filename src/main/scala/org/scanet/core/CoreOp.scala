@@ -55,8 +55,8 @@ import scala.language.higherKinds
    * {{{
    * val a = 1.const
    * val b = 2.const
-   * val c = (a plus b) << print(ToFile("temp.txt"), "a + b = {} + {}", a, b)
-   * c.eval should be(Tensor.scalar(3)) // and prints `a + b = 1 + 2` before performing add op
+   * val c = (a plus b) << print("a + b = {} + {}", a, b)
+   * c.eval should be(Tensor.scalar(3)) // and prints `a + b = 1 + 2` before performing plus op
    * }}}
    *
    * @param dep dependant leaf operation

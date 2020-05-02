@@ -96,7 +96,8 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
     file.toFile.exists should be(true)
     val source = scala.io.Source.fromFile(file)
     source.mkString should be("[[1 2]\n [1 2]]\n[[2 4]\n [2 4]]\n")
-    file.toFile.delete() // TODO: this doesn't work :(
+    source.close()
+    file.toFile.delete()
   }
 
   it should "print multiple tensors" in {
