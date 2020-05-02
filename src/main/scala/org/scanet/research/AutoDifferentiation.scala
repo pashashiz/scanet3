@@ -7,29 +7,34 @@ object AutoDifferentiation {
   def main(args: Array[String]): Unit = {
     sample1()
     sample2()
+    sample3()
   }
 
   def sample1(): Unit = {
-    // c = 2x + 5 | x = 3
+    // c = 2x + 5 -> 2 | x = 3
     val a = Const(2)
     val b = Const(5)
     val x = Const(3)
     val c = Plus(Multiply(a, x), b)
-    println(c.eval) // 11
-    // df/dx ?
-    println(c.grad(x)) // 2
+    println(s"sample 1: ${c.eval}, ${c.grad(x)}") // 11.0, 2.0
   }
 
   def sample2(): Unit = {
-    // c = x * x + 2 * x + 5 | x = 3
+    // c = x * x + 2 * x + 5 -> 2x + 2 | x = 3
     val a = Const(2)
     val b = Const(5)
     val x = Const(3)
-    // c = 2x + 5
     val c = Plus(Plus(Multiply(x, x), Multiply(a, x)), b)
-    println(c.eval) // 20
-    // df/dx ?
-    println(c.grad(x)) // 8
+    println(s"sample 2: ${c.eval}, ${c.grad(x)}") // 20.0, 8.0
+
+  }
+
+  def sample3(): Unit = {
+    // c = x * (x + 5) -> 2x + 5 | x = 3
+    val a = Const(5)
+    val x = Const(3)
+    val c = Multiply(x, Plus(x, a))
+    println(s"sample 1: ${c.eval}, ${c.grad(x)}") // 24 11
   }
 }
 
