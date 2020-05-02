@@ -138,6 +138,9 @@ object Output {
     def compileWithAttr(name: String, str: String): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => Option(str).fold(builder)(builder.setAttr(name, _)))
 
+    def compileWithAttrs(attrs: Map[String, String]): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => attrs.foldLeft(builder)({case (b, (k, v)) => b.setAttr(k, v)}))
+
     def compileWithAttr(name: String, l: Long): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, l))
 

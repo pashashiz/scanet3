@@ -189,20 +189,19 @@ trait OutputStringMultiOps {
    *
    * {{{format("vector: {}, Tensor.vector(1, 2, 3) should be(Tensor.scalar("[1 2 3]"))}}}
    *
-   * @param template string with `{}` placeholder for current tensor
+   * @param tpl string with `{}` placeholder for current tensor
    * @param ops      tensors to format with given template
    * @return formatted scalar string
    */
-  def format[A: TensorType](template: String, ops: Output[A]*): Output[String] = {
-    if (template.isEmpty && ops.size == 1 && ops.head.shape.isScalar) {
+  def format[A: TensorType](tpl: String, ops: Output[A]*): Output[String] = {
+    if (tpl.isEmpty && ops.size == 1 && ops.head.shape.isScalar) {
       // if template is empty and given single scalar value - just convert it to string
       asString(ops.head)
     } else {
       Output.name[String]("StringFormat")
         .shape(Shape())
         .inputs(ops: _*)
-        .compileWithAttr("template", if (!template.isEmpty) template else null)
-        .compileWithAttr("placeholder", if (!template.isEmpty) "{}" else null)
+        .compileWithAttrs(if (!tpl.isEmpty) Map("template" -> tpl, "placeholder" -> "{}") else Map())
         .compileWithInputList
         .build
     }
@@ -293,15 +292,9 @@ class OutputStringOps extends StringOps[Output] with OutputStringMultiOps {
 }
 
 sealed abstract class PrintTo(val name: String)
-
 case object LogInfo extends PrintTo("log(info)")
-
 case object LogWarn extends PrintTo("log(warning)")
-
 case object LogErr extends PrintTo("log(error)")
-
 case object StdErr extends PrintTo("stderr")
-
 case object StdOut extends PrintTo("stdout")
-
 case class ToFile(path: String) extends PrintTo("file://" + path)
