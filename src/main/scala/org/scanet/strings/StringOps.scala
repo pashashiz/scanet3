@@ -185,19 +185,17 @@ class OutputStringOps extends StringOps[Output] {
       .compileWithAttr("template", ops.template)
       .compileWithAttr("placeholder", ops.placeholder)
       .compileWithAttr("summarize", ops.summarize)
-      .compileWithAllInputs
+      .compileWithInputList
       .build
   }
 
   override def asString[A: TensorType](op: Output[A]): Output[String] = {
     if (TensorType[A] == TensorType[String]) op.asInstanceOf[Output[String]]
-    else {
-      Output.name[String]("AsString")
-        .shape(op.shape)
-        .inputs(op)
-        .compileWithAllInputs
-        .build
-    }
+    else Output.name[String]("AsString")
+      .shape(op.shape)
+      .inputs(op)
+      .compileWithAllInputs
+      .build
   }
 
   override def concat[A: TensorType : Textual](left: Output[A], right: Output[A]): Output[A] = {
