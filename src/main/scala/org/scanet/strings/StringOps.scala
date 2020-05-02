@@ -182,7 +182,7 @@ trait OutputStringMultiOps {
       .compileWithAttr("output_stream", dst.name)
       .compileWithAllInputs
       .build
-      .asInstanceOf[Output[Nothing]]
+      .asLeaf
   }
 
   /** Format given tensors with specified template.
@@ -190,7 +190,7 @@ trait OutputStringMultiOps {
    * {{{format("vector: {}, Tensor.vector(1, 2, 3) should be(Tensor.scalar("[1 2 3]"))}}}
    *
    * @param tpl string with `{}` placeholder for current tensor
-   * @param ops      tensors to format with given template
+   * @param ops tensors to format with given template
    * @return formatted scalar string
    */
   def format[A: TensorType](tpl: String, ops: Output[A]*): Output[String] = {

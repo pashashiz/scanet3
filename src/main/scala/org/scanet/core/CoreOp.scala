@@ -65,19 +65,43 @@ import scala.language.higherKinds
   @op("<<", alias = true)
   def dependsOn[A: TensorType](op: F[A], dep: F[_]): F[A]
 
+  /** Asserts that given condition (constructed from current tensor by specified fn)
+   * is true or fail graph execution (and prints current value).
+   *
+   * {{{
+   * val a = Tensor.vector(1, 2).const
+   * val b = Tensor.vector(3, 4).const
+   * val c = Tensor.vector(4, 6).const
+   *
+   * (a plus b).assert(_ === c).eval should be(Tensor.vector(4, 6))
+   * }}}
+   *
+   * @param f function to build assertion condition from current op
+   * @return current op for chaining
+   */
+  def assert[A: TensorType](op: F[A], f: F[A] => F[Boolean]): F[A]
+
   /** Cast elements of given tensor form type A into B.
    * Returns given input if A is already equal to B.
    *
    * @return casted output
    */
   def cast[A: TensorType, B: TensorType](op: F[A]): F[B]
+
+  /** Return current op as leaf operation - means it doesnt produce output
+   * and can be evaluated in graph only if added as dependant operation.
+   *
+   * @see dependsOn
+   * @return current leaf node
+   */
+  def asLeaf[A: TensorType](op: F[A]): F[Nothing]
 }
 
 object CoreOp {
 
   trait Instances {
 
-    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] {
+    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with OutputCoreOps {
 
       override def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
@@ -134,8 +158,50 @@ object CoreOp {
           .compileWithControlInputs
           .build
       }
+
+      override def assert[A: TensorType](op: Output[A], f: Output[A] => Output[Boolean]): Output[A] = {
+        dependsOn(op, assertThat(f(op), op))
+      }
     }
   }
-  trait Syntax extends Instances with CoreOp.ToCoreOpOps
+
+  trait OutputCoreOps {
+
+    /** Asserts that given condition is true or fail graph execution.
+     * Optional outputs can be specified to print on assertion failure.
+     *
+     * {{{
+     * val a = 2.const
+     * val b = 1.const
+     * val c = (a div b) << assertThat(a gt b)
+     * c.eval should be(Tensor.scalar(2))
+     * }}}
+     *
+     * @param cond  assertion condition
+     * @param print outputs to print on assert error
+     * @see dependsOn
+     * @return leaf node to add as dependant op
+     */
+    def assertThat(cond: Output[Boolean], print: Output[_]*): Output[Nothing] = {
+      val ops = if (print.isEmpty) List("assertion error".const) else print.toList
+      val assert = Output.name[Boolean]("Assert")
+        .shape(Shape())
+        .inputs(cond :: ops: _*)
+        .compileWithTransformer((ctx, builder) => {
+          // add condition as input
+          builder.addInput(ctx.inputs.head.output(0))
+          // add ops to print as input list (has to be not empty list)
+          builder.addInputList(ctx.inputs.tail.map(_.output(0)).toArray)
+        })
+        .build
+      asLeaf(assert)
+    }
+
+    def asLeaf[A: TensorType](op: Output[A]): Output[Nothing] = {
+      op.asInstanceOf[Output[Nothing]]
+    }
+  }
+
+  trait Syntax extends Instances with CoreOp.ToCoreOpOps with OutputCoreOps
   object syntax extends Syntax
 }

@@ -2,7 +2,7 @@ package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.syntax._
+import org.scanet.syntax._
 
 class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
@@ -59,5 +59,41 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
   "vector of Floats" should "be casted into Ints" in {
     Tensor.vector(1.2f, 2.2f, 3.3f).const.cast[Int].eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  "assert" should "verify current output" in {
+    val a = Tensor.vector(1, 2).const
+    val b = Tensor.vector(3, 4).const
+    val c = Tensor.vector(4, 6).const
+
+    (a plus b).assert(_ === c).eval should be(Tensor.vector(4, 6))
+  }
+
+  "assert" should "throw when current condition is false" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = Tensor.vector(1, 2).const
+      val b = Tensor.vector(3, 4).const
+      val c = Tensor.vector(5, 6).const
+
+      (a plus b).assert(_ === c).eval
+    } should have message "assertion failed: [4 6]\n\t [[{{node Assert_0}}]]"
+  }
+
+  "assert that" should "verify dependent condition" in {
+    val a = 1.const
+    val b = 2.const
+    val c = (a plus b) << assertThat((a gt 0.const) and (b gt 0.const))
+
+    c.eval should be(Tensor.scalar(3))
+  }
+
+  "assert that" should "should fail when dependent condition is false" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = Tensor.vector(1, 2).const
+      val b = 0.const
+      val c = (a div b) << assertThat(b gt 0.const, b)
+
+      c.eval should be(Tensor.scalar(3))
+    } should have message "assertion failed: [0]\n\t [[{{node Assert_0}}]]"
   }
 }
