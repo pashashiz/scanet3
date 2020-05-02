@@ -9,8 +9,7 @@ import scala.language.higherKinds
 
 @typeclass trait StringOps[F[_]] {
 
-  /** Print current tensor when graph is evaluated with default destination
-   * and formatting options.
+  /** Print current tensor during graph evaluation with default destination and formatting options.
    *
    * {{{Tensor.vector(1, 2).const.print.eval should be(Tensor.vector(1, 2))}}}
    *
@@ -18,8 +17,7 @@ import scala.language.higherKinds
    */
   def print[A: TensorType](op: F[A]): F[A] = print(op, PrintOps())
 
-  /** Print current tensor when graph is evaluated into specified file with
-   * given formatting options.
+  /** Print current tensor during graph evaluation into specified file with given formatting options.
    *
    * {{{Tensor.vector(1, 2).const.print("tensor.log").eval should be(Tensor.vector(1, 2))}}}
    *
@@ -28,7 +26,7 @@ import scala.language.higherKinds
    */
   def print[A: TensorType](op: F[A], file: String): F[A] = print(op, PrintOps(dst = ToFile(file)))
 
-  /** Print current tensor when graph is evaluated into specified
+  /** Print current tensor during graph evaluation into specified
    * output (i.e. stdout or a file) with given formatting options.
    *
    * {{{Tensor.vector(1, 2).const.print(dst = LogInfo).eval should be(Tensor.vector(1, 2))}}}
@@ -242,7 +240,7 @@ class OutputStringOps extends StringOps[Output] {
 }
 
 case class FormatOps(template: String = null, placeholder: String = null, summarize: Int = 3)
-case class PrintOps(dst: PrintTo = StdOut, formatOps: FormatOps = FormatOps(), sep: String = null)
+case class PrintOps(dst: PrintTo = StdErr, formatOps: FormatOps = FormatOps(), sep: String = null)
 
 sealed abstract class PrintTo(val name: String)
 case object LogInfo extends PrintTo("log(info)")
