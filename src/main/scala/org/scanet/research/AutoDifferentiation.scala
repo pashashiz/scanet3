@@ -8,6 +8,7 @@ object AutoDifferentiation {
     sample1()
     sample2()
     sample3()
+    sample4()
   }
 
   def sample1(): Unit = {
@@ -34,7 +35,14 @@ object AutoDifferentiation {
     val a = Const(5)
     val x = Const(3)
     val c = Multiply(x, Plus(x, a))
-    println(s"sample 1: ${c.eval}, ${c.grad(x)}") // 24 11
+    println(s"sample 3: ${c.eval}, ${c.grad(x)}") // 24, 11
+  }
+
+  def sample4(): Unit = {
+    // c = x * x * x -> 3x^2 | x = 4
+    val x = Const(4)
+    val c = Multiply(Multiply(x, x), x)
+    println(s"sample 4: ${c.eval}, ${c.grad(x)}") // 64, 48
   }
 }
 
