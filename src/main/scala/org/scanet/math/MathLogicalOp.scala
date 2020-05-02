@@ -8,7 +8,6 @@ import org.scanet.math.NumericPrimitives.syntax._
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._
-import scala.language.higherKinds
 
 @typeclass trait MathLogicalOp[F[_]] {
 

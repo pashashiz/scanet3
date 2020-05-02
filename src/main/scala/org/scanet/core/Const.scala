@@ -2,7 +2,6 @@ package org.scanet.core
 
 import simulacrum.typeclass
 import org.scanet.core.TensorType.syntax._
-import scala.language.higherKinds
 
 @typeclass trait ConstTensor[T[_]] {
   def const[A: TensorType](t: T[A]): Output[A]

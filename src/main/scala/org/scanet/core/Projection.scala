@@ -15,8 +15,8 @@ case class Projection(slices: List[Slice], prune: Int = 0) {
       s"projection $this is out of bound, should fit shape $shape")
     val filledSlices = shape.dims
       .zip(alignRight(shape.rank, ::.build).slices)
-      .map { case (shapeSize: Int, slice: Slice) => {
-        if (slice.isOpenedRight) (slice.from until shapeSize).build else slice}
+      .map { case (shapeSize: Int, slice: Slice) =>
+        if (slice.isOpenedRight) (slice.from until shapeSize).build else slice
       }
     Projection(filledSlices)
   }

@@ -181,7 +181,7 @@ trait FromLongToByte extends Convertible[Long, Byte] {
 }
 
 trait FromIntToFloat extends Convertible[Int, Float] {
-  override def convert(a: Int): Float = a
+  override def convert(a: Int): Float = a.toFloat
 }
 trait FromIntToDouble extends Convertible[Int, Double] {
   override def convert(a: Int): Double = a.toDouble
