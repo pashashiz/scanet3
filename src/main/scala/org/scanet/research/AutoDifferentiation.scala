@@ -57,7 +57,7 @@ case class Const(value: Float) extends Expr {
   override def id: String = nextId
   override def eval: Float = value
   // x -> 1
-  // 2 -> 0
+  // a -> 0
   override def grad(input: Expr): Float =
     if (this == input) 1.0f
     else 0.0f
@@ -67,8 +67,8 @@ case class Plus(left: Expr, right: Expr) extends Expr {
   override def id: String = nextId
   override def eval: Float = left.eval + right.eval
   // x + x -> 1 + 1
-  // 2 + x -> 0 + 1
-  // 2 + 2 -> 0 + 0
+  // a + x -> 0 + 1
+  // a + b -> 0 + 0
   override def grad(input: Expr): Float = {
     left.grad(input) + right.grad(input)
   }
@@ -77,8 +77,8 @@ case class Plus(left: Expr, right: Expr) extends Expr {
 case class Multiply(left: Expr, right: Expr) extends Expr {
   override def id: String = nextId
   override def eval: Float = left.eval * right.eval
-  // 2 * 1 = 2 * 0 + 1 * 0
-  // 2 * x = 2 * 1 + x * 0
+  // a * b = a * 0 + b * 0
+  // a * x = a * 1 + x * 0
   // x * x = x * 1 + x * 1
   override def grad(input: Expr): Float = {
     left.eval * right.grad(input) + right.eval * left.grad(input)
