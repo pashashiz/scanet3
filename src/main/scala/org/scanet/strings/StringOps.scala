@@ -161,7 +161,6 @@ class OutputStringOps extends StringOps[Output] {
     val formatted = format(op, ops.formatOps)
     // print op doesn't have output - so we attach it as control op into next operation
     val printOp = Output.name[String]("PrintV2")
-      .label(op.id)
       .shape(op.shape)
       .inputs(formatted)
       .compileWithAttr("output_stream", ops.dst.name)
@@ -172,14 +171,14 @@ class OutputStringOps extends StringOps[Output] {
     Output.name[A]("Identity")
       .shape(op.shape)
       .inputs(op)
+      .controlInputs(printOp)
       .compileWithAllInputs
-      .compileWithControlOp(printOp)
+      .compileWithControlInputs
       .build
   }
 
   override def format[A: TensorType](op: Output[A], ops: FormatOps): Output[String] = {
     Output.name[String]("StringFormat")
-      .label(op.id)
       .shape(Shape())
       .inputs(op)
       .compileWithAttr("template", ops.template)

@@ -13,6 +13,7 @@ case class Output[A: TensorType](
               label: String,
               shape: Shape,
               inputs: List[Output[A]],
+              controls: List[Output[A]],
               compiler: OpContext[A] => Operation) {
 
   val id: String = UUID.randomUUID().toString
@@ -24,18 +25,24 @@ case class Output[A: TensorType](
   def broadcastableAny(other: Output[A]): Boolean = shape.broadcastableAny(other.shape)
 
   def compile(context: Context): (Context, Compiled[A]) = {
-    val (contextAfterInput, outputs) = inputs.foldLeft((context, List[Operation]()))(
+    val (contextAfterInput, outputs) = compileInputs(inputs, context)
+    val (contextAfterControls, controlOuts) = compileInputs(controls, contextAfterInput)
+    val uniqueLabel = Label(label, contextAfterControls.maxLabelIndex(label) + 1)
+    val output = compiler(OpContext(contextAfterControls, this, uniqueLabel, outputs.reverse, controlOuts))
+    val compiled = (uniqueLabel, output)
+    val newCache = contextAfterControls.outputs + (id -> compiled)
+    val contextAfterOutput = contextAfterControls.copy(outputs = newCache)
+    (contextAfterOutput, compiled)
+  }
+
+  private def compileInputs(in: List[Output[A]], context: Context): (Context, List[Operation]) = {
+    val (contextAfterInput, outputs) = in.foldLeft((context, List[Operation]()))(
       (acc, op) => {
         val (currentContext, outs) = acc
         val (newContext, out) = op.findOrCompile(currentContext)
-        (newContext, out._2::outs)
+        (newContext, out._2 :: outs)
       })
-    val uniqueLabel = Label(label, contextAfterInput.maxLabelIndex(label) + 1)
-    val output = compiler(OpContext(contextAfterInput, this, uniqueLabel, outputs.reverse))
-    val compiled = (uniqueLabel, output)
-    val newCache = contextAfterInput.outputs + (id -> compiled)
-    val contextAfterOutput = contextAfterInput.copy(outputs = newCache)
-    (contextAfterOutput, compiled)
+    (contextAfterInput, outputs)
   }
 
   def findOrCompile(context: Context): (Context, Compiled[A]) = {
@@ -65,7 +72,12 @@ object Output {
 
   type Compiled[A] = (Label, Operation)
 
-  case class OpContext[A: TensorType](global: Context, op: Output[A], label: Label, inputs: List[Operation])
+  case class OpContext[A: TensorType](
+      global: Context,
+      op: Output[A],
+      label: Label,
+      inputs: List[Operation],
+      controls: List[Operation])
 
   case class Context(scope: NativeScope, outputs: Map[String, Compiled[_]]) {
     def maxLabelIndex(name: String): Int = {
@@ -89,6 +101,7 @@ object Output {
         label: String,
         shape: Shape,
         inputs: List[Output[A]],
+        controls: List[Output[A]],
         transformers: List[Transformer[A]]) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
@@ -97,6 +110,10 @@ object Output {
 
     def inputs(inputs: Output[_]*): Builder[A, State] = {
       copy(inputs = inputs.toList.asInstanceOf[List[Output[A]]])
+    }
+
+    def controlInputs(controls: Output[_]*): Builder[A, State] = {
+      copy(controls = controls.toList.asInstanceOf[List[Output[A]]])
     }
 
     def compileWithTransformer(f: Transformer[A]): Builder[A, State with WithCompiler] =
@@ -124,14 +141,11 @@ object Output {
     def compileWithAttr(name: String, l: Long): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, l))
 
-    def compileWithControlOp(op: Output[_]): Builder[A, State with WithCompiler] =
-      compileWithTransformer((ctx, builder) => {
-        val nativeOp = ctx.global.outputs.getOrElse(op.id, op.compile(ctx.global)._2)
-        builder.addControlInput(nativeOp._2)
-      })
+    def compileWithControlInputs: Builder[A, State with WithCompiler] =
+      compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
     def build(implicit ev: State =:= Complete): Output[A] = {
-      core.Output[A](name, Option(label).getOrElse(name), shape, inputs, (context: OpContext[A]) => {
+      core.Output[A](name, Option(label).getOrElse(name), shape, inputs, controls, (context: OpContext[A]) => {
         val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
         val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
         transformed.build()
@@ -140,6 +154,6 @@ object Output {
   }
 
   def name[A: TensorType](name: String): Builder[A, WithName] = {
-    Builder[A, WithName](name, label = null, shape = null, inputs = Nil, transformers = Nil)
+    Builder[A, WithName](name, label = null, shape = null, inputs = Nil, controls = Nil, transformers = Nil)
   }
 }
