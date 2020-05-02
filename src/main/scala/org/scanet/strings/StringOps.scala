@@ -1,13 +1,73 @@
 package org.scanet.strings
 
 import org.scanet.core.TensorType.syntax._
-import org.scanet.core.{Output, TensorType}
+import org.scanet.core.{Output, Shape, TensorType}
 import simulacrum.typeclass
 
 import scala.Ordering.Implicits._
 import scala.language.higherKinds
 
 @typeclass trait StringOps[F[_]] {
+
+  /** Print current tensor when graph is evaluated with default destination
+   * and formatting options.
+   *
+   * {{{Tensor.vector(1, 2).const.print.eval should be(Tensor.vector(1, 2))}}}
+   *
+   * @return current tensor (with print side effect)
+   */
+  def print[A: TensorType](op: F[A]): F[A] = print(op, PrintOps())
+
+  /** Print current tensor when graph is evaluated into specified file with
+   * given formatting options.
+   *
+   * {{{Tensor.vector(1, 2).const.print("tensor.log").eval should be(Tensor.vector(1, 2))}}}
+   *
+   * @param file name to write (append) current tensor
+   * @return current tensor (with print side effect)
+   */
+  def print[A: TensorType](op: F[A], file: String): F[A] = print(op, PrintOps(dst = ToFile(file)))
+
+  /** Print current tensor when graph is evaluated into specified
+   * output (i.e. stdout or a file) with given formatting options.
+   *
+   * {{{Tensor.vector(1, 2).const.print(dst = LogInfo).eval should be(Tensor.vector(1, 2))}}}
+   *
+   * @param ops output (destination, delimiter) and formatting options
+   * @return current tensor (with print side effect)
+   */
+  def print[A: TensorType](op: F[A], ops: PrintOps): F[A]
+
+  /** Format summary of given tensor into scalar string with default options.
+   *
+   * {{{Tensor.vector(1, 2, 3).const.format.eval should be(Tensor.scalar("[1 2 3]"))}}}
+   *
+   * @param op tensor to format
+   * @return formatted tensor
+   */
+  def format[A: TensorType](op: F[A]): F[String] = format(op, FormatOps())
+
+  /** Format summary of given tensor into scalar string.
+   *
+   * Formatting can be parametrised with template string, placeholder value (for current tensor)
+   * and tensor summarize (number of leading and trailing tensor rows to print).
+   *
+   * {{{Tensor.vector(1, 2, 3).const.format.eval should be(Tensor.scalar("[1 2 3]"))}}}
+   *
+   * @param op  tensor to format
+   * @param ops formatting options
+   * @return formatted tensor
+   */
+  def format[A: TensorType](op: F[A], ops: FormatOps): F[String]
+
+  /** Converts elements of given tensor into Strings.
+   * Returns given input if tensor already contains Strings.
+   *
+   * {{{ Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3")) }}}
+   *
+   * @return output converted to strings
+   */
+  def asString[A: TensorType](op: F[A]): F[String]
 
   /** Concatenates current and given String tensors
    *
@@ -98,6 +158,50 @@ object StringOps {
 
 class OutputStringOps extends StringOps[Output] {
 
+  override def print[A: TensorType](op: Output[A], ops: PrintOps): Output[A] = {
+    // format input op into scalar string
+    val formatted = format(op, ops.formatOps)
+    // print op doesn't have output - so we attach it as control op into next operation
+    val printOp = Output.name[String]("PrintV2")
+      .label(op.id)
+      .shape(op.shape)
+      .inputs(formatted)
+      .compileWithAttr("output_stream", ops.dst.name)
+      .compileWithAttr("end", ops.sep)
+      .compileWithAllInputs
+      .build
+    // add identity op to attach print op and return origin output for chaining
+    Output.name[A]("Identity")
+      .shape(op.shape)
+      .inputs(op)
+      .compileWithAllInputs
+      .compileWithControlOp(printOp)
+      .build
+  }
+
+  override def format[A: TensorType](op: Output[A], ops: FormatOps): Output[String] = {
+    Output.name[String]("StringFormat")
+      .label(op.id)
+      .shape(Shape())
+      .inputs(op)
+      .compileWithAttr("template", ops.template)
+      .compileWithAttr("placeholder", ops.placeholder)
+      .compileWithAttr("summarize", ops.summarize)
+      .compileWithAllInputs
+      .build
+  }
+
+  override def asString[A: TensorType](op: Output[A]): Output[String] = {
+    if (TensorType[A] == TensorType[String]) op.asInstanceOf[Output[String]]
+    else {
+      Output.name[String]("AsString")
+        .shape(op.shape)
+        .inputs(op)
+        .compileWithAllInputs
+        .build
+    }
+  }
+
   override def concat[A: TensorType : Textual](left: Output[A], right: Output[A]): Output[A] = {
     require(left.shape.broadcastableAny(right.shape),
       s"cannot join tensors with shapes ${left.shape} + ${right.shape}")
@@ -136,3 +240,14 @@ class OutputStringOps extends StringOps[Output] {
       .build
   }
 }
+
+case class FormatOps(template: String = null, placeholder: String = null, summarize: Int = 3)
+case class PrintOps(dst: PrintTo = StdOut, formatOps: FormatOps = FormatOps(), sep: String = null)
+
+sealed abstract class PrintTo(val name: String)
+case object LogInfo extends PrintTo("log(info)")
+case object LogWarn extends PrintTo("log(warning)")
+case object LogErr extends PrintTo("log(error)")
+case object StdErr extends PrintTo("stderr")
+case object StdOut extends PrintTo("stdout")
+case class ToFile(path: String) extends PrintTo("file://" + path)

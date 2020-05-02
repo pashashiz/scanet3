@@ -47,15 +47,6 @@ import scala.language.higherKinds
     */
   def squeeze[A: TensorType](op: F[A]): F[A]
 
-  /** Converts elements of given tensor into Strings.
-   * Returns given input if tensor already contains Strings.
-   *
-   * {{{ Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3")) }}}
-   *
-   * @return output converted to strings
-   */
-  def asString[A: TensorType](op: F[A]): F[String]
-
   /** Cast elements of given tensor form type A into B.
    * Returns given input if A is already equal to B.
    *
@@ -101,17 +92,6 @@ object CoreOp {
             .build
         } else {
           op
-        }
-      }
-
-      override def asString[A: TensorType](op: Output[A]): Output[String] = {
-        if (TensorType[A] == TensorType[String]) op.asInstanceOf[Output[String]]
-        else {
-          Output.name[String]("AsString")
-            .shape(op.shape)
-            .inputs(op)
-            .compileWithAllInputs
-            .build
         }
       }
 

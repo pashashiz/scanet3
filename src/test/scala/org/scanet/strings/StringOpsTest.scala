@@ -3,7 +3,9 @@ package org.scanet.strings
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
-import org.scanet.strings.syntax._
+import org.scanet.syntax._
+
+import scala.reflect.io.Path._
 
 class StringOpsTest extends AnyFlatSpec with Matchers {
 
@@ -48,5 +50,48 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
       Array("ixtee", "vente", "hteen"))
 
     strings.const.substring(positions.const, lengths.const).eval should be(expected)
+  }
+
+  "vector" should "be converted into String" in {
+    Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3"))
+  }
+
+  it should "format vector into string scalar" in {
+    Tensor.vector(1, 2, 3).const.format.eval should be(Tensor.scalar("[1 2 3]"))
+  }
+
+  it should "format matrix summary" in {
+    val matrix = Tensor.matrix(
+      Array(1, 2, 3, 4),
+      Array(5, 6, 7, 8),
+      Array(9, 10, 11, 12),
+      Array(13, 14, 15, 16),
+      Array(17, 18, 19, 20)
+    )
+
+    val formatted = matrix.const.format(FormatOps(summarize = 2, template = "matrix: {}", placeholder = "{}")).eval
+    formatted should be(Tensor.scalar("matrix: [[1 2 3 4]\n [5 6 7 8]\n ...\n [13 14 15 16]\n [17 18 19 20]]"))
+  }
+
+  it should "print and return the same vector" in {
+    Tensor.vector(1, 2).const.print.eval should be(Tensor.vector(1, 2))
+  }
+
+  it should "print graph vertices" in {
+    val a = Tensor.matrix(
+      Array(1, 2),
+      Array(1, 2))
+    val b = Tensor.vector(1, 2)
+    val c = Tensor.matrix(
+      Array(2, 4),
+      Array(2, 4))
+
+    val file = "test_" + System.currentTimeMillis() + ".txt"
+    (a.const.print(file) plus b.const).print(file).eval should be(c)
+
+    file.toFile.exists should be(true)
+    val source = scala.io.Source.fromFile(file)
+    source.mkString should be("[[1 2]\n [1 2]]\n[[2 4]\n [2 4]]\n")
+    file.toFile.delete() // TODO: this doesn't work :(
   }
 }

@@ -3,17 +3,17 @@ package org.scanet.core
 import java.util.UUID
 
 import org.scanet.core
-import org.scanet.core.Output._
 import org.scanet.core.Output.BuilderState._
+import org.scanet.core.Output._
 import org.tensorflow.op.{Scope => NativeScope}
-import org.tensorflow.{OperationBuilder, Output => NativeOutput}
+import org.tensorflow.{Operation, OperationBuilder}
 
 case class Output[A: TensorType](
               name: String,
               label: String,
               shape: Shape,
               inputs: List[Output[A]],
-              compiler: OpContext[A] => NativeOutput[A]) {
+              compiler: OpContext[A] => Operation) {
 
   val id: String = UUID.randomUUID().toString
 
@@ -24,7 +24,7 @@ case class Output[A: TensorType](
   def broadcastableAny(other: Output[A]): Boolean = shape.broadcastableAny(other.shape)
 
   def compile(context: Context): (Context, Compiled[A]) = {
-    val (contextAfterInput, outputs) = inputs.foldLeft((context, List[NativeOutput[A]]()))(
+    val (contextAfterInput, outputs) = inputs.foldLeft((context, List[Operation]()))(
       (acc, op) => {
         val (currentContext, outs) = acc
         val (newContext, out) = op.findOrCompile(currentContext)
@@ -33,14 +33,14 @@ case class Output[A: TensorType](
     val uniqueLabel = Label(label, contextAfterInput.maxLabelIndex(label) + 1)
     val output = compiler(OpContext(contextAfterInput, this, uniqueLabel, outputs.reverse))
     val compiled = (uniqueLabel, output)
-    val newCache = contextAfterInput.outputs + (id -> compiled.asInstanceOf[Compiled[_]])
+    val newCache = contextAfterInput.outputs + (id -> compiled)
     val contextAfterOutput = contextAfterInput.copy(outputs = newCache)
     (contextAfterOutput, compiled)
   }
 
   def findOrCompile(context: Context): (Context, Compiled[A]) = {
     context.outputs.get(id)
-      .map(compiled => (context, compiled.asInstanceOf[Compiled[A]]))
+      .map(compiled => (context, compiled))
       .getOrElse {compile(context)}
   }
 
@@ -63,9 +63,9 @@ object Output {
     override def toString: String = s"${value}_$index"
   }
 
-  type Compiled[A] = (Label, NativeOutput[A])
+  type Compiled[A] = (Label, Operation)
 
-  case class OpContext[A: TensorType](global: Context, op: Output[A], label: Label, inputs: List[NativeOutput[A]])
+  case class OpContext[A: TensorType](global: Context, op: Output[A], label: Label, inputs: List[Operation])
 
   case class Context(scope: NativeScope, outputs: Map[String, Compiled[_]]) {
     def maxLabelIndex(name: String): Int = {
@@ -81,7 +81,7 @@ object Output {
     sealed trait WithShape extends BuilderState
     sealed trait WithCompiler extends BuilderState
     type Complete = WithName with WithShape with WithCompiler
-    type Transformer[A] = (List[NativeOutput[A]], OperationBuilder) => OperationBuilder
+    type Transformer[A] = (OpContext[A], OperationBuilder) => OperationBuilder
   }
 
   case class Builder[A: TensorType, State <: BuilderState](
@@ -109,23 +109,32 @@ object Output {
       )
 
     def compileWithAllInputs: Builder[A, State with WithCompiler] =
-      compileWithTransformer((inputs, builder) =>
-        inputs.foldLeft(builder)((acc, next) => acc.addInput(next)))
+      compileWithTransformer((ctx, builder) =>
+        ctx.inputs.foldLeft(builder)((acc, next) => acc.addInput(next.output(0))))
 
     def compileWithInputList: Builder[A, State with WithCompiler] =
-      compileWithTransformer((inputs, builder) => builder.addInputList(inputs.toArray))
+      compileWithTransformer((ctx, builder) => builder.addInputList(ctx.inputs.map(_.output(0)).toArray))
 
     def compileWithAttr(name: String, tp: TensorType[_]): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, tp.tag))
 
     def compileWithAttr(name: String, str: String): Builder[A, State with WithCompiler] =
-      compileWithTransformer((_, builder) => builder.setAttr(name, str))
+      compileWithTransformer((_, builder) => Option(str).fold(builder)(builder.setAttr(name, _)))
+
+    def compileWithAttr(name: String, l: Long): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder.setAttr(name, l))
+
+    def compileWithControlOp(op: Output[_]): Builder[A, State with WithCompiler] =
+      compileWithTransformer((ctx, builder) => {
+        val nativeOp = ctx.global.outputs.getOrElse(op.id, op.compile(ctx.global)._2)
+        builder.addControlInput(nativeOp._2)
+      })
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](name, Option(label).getOrElse(name), shape, inputs, (context: OpContext[A]) => {
         val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
-        val transformed = transformers.foldLeft(init)((acc, next) => next(context.inputs, acc))
-        transformed.build().output(0).asInstanceOf[NativeOutput[A]]
+        val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
+        transformed.build()
       })
     }
   }
