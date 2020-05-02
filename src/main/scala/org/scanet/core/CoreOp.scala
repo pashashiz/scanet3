@@ -71,6 +71,14 @@ import scala.language.higherKinds
    * @return casted output
    */
   def cast[A: TensorType, B: TensorType](op: F[A]): F[B]
+
+  /** Return current op as leaf operation - means it doesnt produce output
+   * and can be evaluated in graph only if added as dependant operation.
+   *
+   * @see dependsOn
+   * @return current leaf node
+   */
+  def asVoid[A: TensorType](op: F[A]): F[Nothing]
 }
 
 object CoreOp {
@@ -134,6 +142,9 @@ object CoreOp {
           .compileWithControlInputs
           .build
       }
+
+      override def asVoid[A: TensorType](op: Output[A]): Output[Nothing] =
+        op.asInstanceOf[Output[Nothing]]
     }
   }
   trait Syntax extends Instances with CoreOp.ToCoreOpOps
