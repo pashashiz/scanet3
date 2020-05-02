@@ -57,10 +57,6 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     Tensor.matrix(Array(1, 2, 3)).const.squeeze.eval should be(Tensor.vector(1, 2, 3))
   }
 
-  "vector" should "be converted into String" in {
-    Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3"))
-  }
-
   "vector of Floats" should "be casted into Ints" in {
     Tensor.vector(1.2f, 2.2f, 3.3f).const.cast[Int].eval should be(Tensor.vector(1, 2, 3))
   }

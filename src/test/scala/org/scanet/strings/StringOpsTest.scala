@@ -3,7 +3,9 @@ package org.scanet.strings
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
-import org.scanet.strings.syntax._
+import org.scanet.syntax._
+
+import scala.reflect.io.Path._
 
 class StringOpsTest extends AnyFlatSpec with Matchers {
 
@@ -48,5 +50,61 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
       Array("ixtee", "vente", "hteen"))
 
     strings.const.substring(positions.const, lengths.const).eval should be(expected)
+  }
+
+  "vector" should "be converted into String" in {
+    Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3"))
+  }
+
+  it should "format vector into string scalar" in {
+    Tensor.vector(1, 2, 3).const.format.eval should be(Tensor.scalar("[1 2 3]"))
+  }
+
+  it should "format matrix summary" in {
+    val matrix = Tensor.matrix(
+      Array(1, 2),
+      Array(3, 4),
+      Array(5, 6),
+      Array(7, 8),
+      Array(9, 10),
+      Array(11, 12),
+      Array(13, 14),
+      Array(15, 16)
+    )
+
+    val formatted = matrix.const.format("matrix: {}").eval
+    formatted should be(Tensor.scalar("matrix: [[1 2]\n [3 4]\n [5 6]\n ...\n [11 12]\n [13 14]\n [15 16]]"))
+  }
+
+  it should "print and return the same vector" in {
+    Tensor.vector(1, 2).const.print.eval should be(Tensor.vector(1, 2))
+  }
+
+  it should "print graph vertices" in {
+    val a = Tensor.matrix(
+      Array(1, 2),
+      Array(1, 2))
+    val b = Tensor.vector(1, 2)
+    val c = Tensor.matrix(
+      Array(2, 4),
+      Array(2, 4))
+
+    val file = "test_" + System.currentTimeMillis() + ".txt"
+    val out = ToFile(file)
+    (a.const.print(out) plus b.const).print(out).eval should be(c)
+
+    file.toFile.exists should be(true)
+    val source = scala.io.Source.fromFile(file)
+    source.mkString should be("[[1 2]\n [1 2]]\n[[2 4]\n [2 4]]\n")
+    source.close()
+    file.toFile.delete()
+  }
+
+  it should "print multiple tensors" in {
+    val a = 1.const
+    val b = 2.const
+    val c = (a plus b) << print("a + b = {} + {}", a, b)
+
+    c.eval should be(Tensor.scalar(3))
   }
 }

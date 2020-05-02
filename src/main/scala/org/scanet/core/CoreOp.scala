@@ -2,7 +2,7 @@ package org.scanet.core
 
 import org.scanet.core.Const.syntax._
 import org.scanet.core.TensorType.syntax._
-import simulacrum.typeclass
+import simulacrum.{op, typeclass}
 
 import scala.language.higherKinds
 
@@ -47,14 +47,23 @@ import scala.language.higherKinds
     */
   def squeeze[A: TensorType](op: F[A]): F[A]
 
-  /** Converts elements of given tensor into Strings.
-   * Returns given input if tensor already contains Strings.
+  /** Add operation which will be executed right after current operation and
+   * return current operation as output to continue chaining.
    *
-   * {{{ Tensor.vector(1, 2, 3).const.asString.eval should be(Tensor.vector("1", "2", "3")) }}}
+   * Can be used to add logging or assert operations.
    *
-   * @return output converted to strings
+   * {{{
+   * val a = 1.const
+   * val b = 2.const
+   * val c = (a plus b) << print("a + b = {} + {}", a, b)
+   * c.eval should be(Tensor.scalar(3)) // and prints `a + b = 1 + 2` before performing plus op
+   * }}}
+   *
+   * @param dep dependant leaf operation
+   * @return current output
    */
-  def asString[A: TensorType](op: F[A]): F[String]
+  @op("<<", alias = true)
+  def dependsOn[A: TensorType](op: F[A], dep: F[_]): F[A]
 
   /** Cast elements of given tensor form type A into B.
    * Returns given input if A is already equal to B.
@@ -104,17 +113,6 @@ object CoreOp {
         }
       }
 
-      override def asString[A: TensorType](op: Output[A]): Output[String] = {
-        if (TensorType[A] == TensorType[String]) op.asInstanceOf[Output[String]]
-        else {
-          Output.name[String]("AsString")
-            .shape(op.shape)
-            .inputs(op)
-            .compileWithAllInputs
-            .build
-        }
-      }
-
       override def cast[A: TensorType, B: TensorType](op: Output[A]): Output[B] = {
         if (TensorType[A] == TensorType[B]) op.asInstanceOf[Output[B]]
         else {
@@ -125,6 +123,16 @@ object CoreOp {
             .compileWithAllInputs
             .build
         }
+      }
+
+      override def dependsOn[A: TensorType](op: Output[A], dep: Output[_]): Output[A] = {
+        Output.name[A]("Identity")
+          .shape(op.shape)
+          .inputs(op)
+          .controlInputs(dep)
+          .compileWithAllInputs
+          .compileWithControlInputs
+          .build
       }
     }
   }

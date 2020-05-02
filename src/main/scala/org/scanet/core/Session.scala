@@ -2,8 +2,7 @@ package org.scanet.core
 
 import org.scanet.core.Output.Context
 import org.tensorflow.op.Scope
-import org.tensorflow.{Graph, Output => NativeOutput}
-import org.tensorflow.{Session => NativeSession, Tensor => NativeTensor}
+import org.tensorflow.{Graph, Operation, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
 
 import collection.JavaConverters._
 import scala.{specialized => sp}
@@ -31,8 +30,8 @@ object Session {
     val zero = (Context(scope, Map.empty), List[NativeOutput[_]]())
     val (_, outputs) = ops.foldLeft(zero)((acc, op) => {
       val (currentContext, outs) = acc
-      val (nextContext: Context, (_, out)) = op.compile(currentContext)
-      (nextContext, out::outs)
+      val (nextContext: Context, (_, out: Operation)) = op.compile(currentContext)
+      (nextContext, out.output(0)::outs)
     })
     (graph, outputs)
   }
