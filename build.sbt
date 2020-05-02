@@ -7,8 +7,6 @@ scalaVersion := "2.13.2"
 //scalacOptions += "-Ypartial-unification"
 scalacOptions += "-Ymacro-annotations"
 
-//addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
-
 libraryDependencies ++= Seq(
   "org.typelevel" %% "spire" % "0.17.0-M1",
   "org.typelevel" %% "cats-core" % "2.0.0",
