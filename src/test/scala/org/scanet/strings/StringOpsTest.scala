@@ -2,8 +2,7 @@ package org.scanet.strings
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.{Shape, Tensor}
-import org.scanet.math.Generator.uniform
+import org.scanet.core.Tensor
 import org.scanet.syntax._
 
 import scala.reflect.io.Path._

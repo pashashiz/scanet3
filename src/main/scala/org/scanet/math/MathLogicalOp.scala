@@ -1,10 +1,10 @@
 package org.scanet.math
 
-import org.scanet.core.Const.syntax._
+import org.scanet.core.ConstOp.syntax._
 import org.scanet.core.TensorType.syntax._
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Logical.syntax._
-import org.scanet.math.NumericPrimitives.syntax._
+import org.scanet.math.Numeric.syntax._
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._

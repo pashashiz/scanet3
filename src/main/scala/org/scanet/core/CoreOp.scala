@@ -1,6 +1,7 @@
 package org.scanet.core
 
-import org.scanet.core.Const.syntax._
+import org.scanet.core.ConstOp.syntax._
+import org.scanet.math.Numeric.syntax._
 import org.scanet.core.TensorType.syntax._
 import simulacrum.{op, typeclass}
 

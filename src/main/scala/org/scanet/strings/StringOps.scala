@@ -153,14 +153,10 @@ import simulacrum.typeclass
   def substring[A: TensorType : Textual](op: F[A], pos: F[Int], len: F[Int]): F[A]
 }
 
-trait Textual[S]
-
 object StringOps {
 
   trait Instances {
     implicit def outputStringOps: StringOps[Output] = new OutputStringOps
-
-    implicit def stringIsTextual: Textual[String] = new Textual[String] {}
   }
 
   trait Syntax extends Instances with StringOps.ToStringOpsOps with OutputStringMultiOps

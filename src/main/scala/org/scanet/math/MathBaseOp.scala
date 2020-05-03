@@ -3,7 +3,7 @@ package org.scanet.math
 import org.scanet.core.CoreOp.syntax._
 import org.scanet.core.{Output, Shape, TensorType}
 import org.scanet.math.MathGradOp.syntax._
-import org.scanet.math.NumericPrimitives.syntax._
+import org.scanet.math.Numeric.syntax._
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._
