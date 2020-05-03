@@ -18,6 +18,12 @@ object Const {
       .label(label)
       .shape(tensor.shape)
       .compileWithValue(tensor)
+      .gradOpt(ctx => {
+        val value =
+          if (ctx.current == ctx.variable) TensorType[A].oneIfNumeric
+          else TensorType[A].zeroIfNumeric
+        value.map(v => Const(Tensor.fill(tensor.shape)(v), "Const"))
+      })
       .build
 
   trait Instances {

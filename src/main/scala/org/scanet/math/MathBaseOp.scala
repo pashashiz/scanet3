@@ -2,6 +2,8 @@ package org.scanet.math
 
 import org.scanet.core.CoreOp.syntax._
 import org.scanet.core.{Output, Shape, TensorType}
+import org.scanet.math.MathGradOp.syntax._
+import org.scanet.math.NumericPrimitives.syntax._
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._
@@ -144,6 +146,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
+      .grad(ctx => plus(left.grad(ctx.variable), rightOut.grad(ctx.variable)))
       .build
   }
 

@@ -7,6 +7,17 @@ import org.scanet.math.syntax._
 
 class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
+  "const" should "have zeros gradient if input is other const" in {
+    val a = 2.const
+    val b = 3.const
+    (a grad b).eval should be(Tensor.scalar(0))
+  }
+
+  "const" should "have ones gradient if input is same const" in {
+    val a = 2.const
+    (a grad a).eval should be(Tensor.scalar(1))
+  }
+
   "plus" should "add 2 scalars" in {
     (2.0f.const plus 5.0f.const).eval should be(Tensor.scalar(7.0f))
   }
@@ -32,6 +43,30 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Tensor.matrix(Array(1, 2), Array(1, 2)).const plus Tensor.vector(1, 2, 3).const
     } should have message
       "requirement failed: cannot add tensors with shapes (2, 2) + (3)"
+  }
+
+  it should "calculate zero gradient if both sides do not contain a differentiable variable" in {
+    val a = 2.const
+    val b = 3.const
+    val x = 4.const
+    ((a + b) grad x).eval should be(Tensor.scalar(0))
+  }
+
+  it should "calculate a gradient equals to 1 if left side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((x + a) grad x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate a gradient equals to 1 if right side is a differentiable variable" in {
+    val a = 2.const
+    val x = 3.const
+    ((a + x) grad x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate a gradient equals to 2 if right and lest side is a differentiable variable" in {
+    val x = 2.const
+    ((x + x) grad x).eval should be(Tensor.scalar(2))
   }
 
   "multiply" should "produce dot product on 2 matrices" in {

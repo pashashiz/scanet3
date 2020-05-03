@@ -1,6 +1,6 @@
 package org.scanet.math
 
-import org.scanet.core.{TfTypeByte, TfTypeDouble, TfTypeFloat, TfTypeInt, TfTypeLong}
+import org.scanet.core.{TensorTypeByte, TensorTypeDouble, TensorTypeFloat, TensorTypeInt, TensorTypeLong}
 
 object NumericPrimitives {
 
@@ -53,7 +53,7 @@ object NumericPrimitives {
   object syntax extends Syntax
 }
 
-trait NumericFloat extends Numeric[Float] with TfTypeFloat {
+trait NumericFloat extends Numeric[Float] with TensorTypeFloat {
   override def one: Float = 1.0f
   override def zero: Float = 0.0f
   override def plus[B](left: Float, right: B)(implicit c: Convertible[B, Float]): Float =
@@ -68,7 +68,7 @@ trait NumericFloat extends Numeric[Float] with TfTypeFloat {
   override def compare(x: Float, y: Float): Int = x.compareTo(y)
 }
 
-trait NumericDouble extends Numeric[Double] with TfTypeDouble {
+trait NumericDouble extends Numeric[Double] with TensorTypeDouble {
   override def one: Double = 1.0d
   override def zero: Double = 0.0d
   override def plus[B](left: Double, right: B)(implicit c: Convertible[B, Double]): Double =
@@ -83,7 +83,7 @@ trait NumericDouble extends Numeric[Double] with TfTypeDouble {
   override def compare(x: Double, y: Double): Int = x.compareTo(y)
 }
 
-trait NumericLong extends Numeric[Long] with TfTypeLong {
+trait NumericLong extends Numeric[Long] with TensorTypeLong {
   override def one: Long = 1L
   override def zero: Long = 0L
   override def plus[B](left: Long, right: B)(implicit c: Convertible[B, Long]): Long =
@@ -98,7 +98,7 @@ trait NumericLong extends Numeric[Long] with TfTypeLong {
   override def compare(x: Long, y: Long): Int = x.compareTo(y)
 }
 
-trait NumericInt extends Numeric[Int] with TfTypeInt {
+trait NumericInt extends Numeric[Int] with TensorTypeInt {
   override def one: Int = 1
   override def zero: Int = 0
   override def plus[B](left: Int, right: B)(implicit c: Convertible[B, Int]): Int =
@@ -113,7 +113,7 @@ trait NumericInt extends Numeric[Int] with TfTypeInt {
   override def compare(x: Int, y: Int): Int = x.compareTo(y)
 }
 
-trait NumericByte extends Numeric[Byte] with TfTypeByte {
+trait NumericByte extends Numeric[Byte] with TensorTypeByte {
   override def one: Byte = 1
   override def zero: Byte = 0
   override def plus[B](left: Byte, right: B)(implicit c: Convertible[B, Byte]): Byte =
