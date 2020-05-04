@@ -155,9 +155,7 @@ object CoreOp {
       }
 
       override def dependsOn[A: TensorType](op: Output[A], dep: Output[_]): Output[A] = {
-        Output.name[A]("Identity")
-          .shape(op.shape)
-          .inputs(op)
+        identity(op)
           .controlInputs(dep)
           .compileWithAllInputs
           .compileWithControlInputs
@@ -179,14 +177,10 @@ object CoreOp {
 
         // outputs are first wrapped into Identity ops to select input with proper index
         // TODO: this identity ops can be removed if we can set input index to prebuilt Output
-        val falseBranch = Output.name[A]("Identity")
-          .shape(op.shape)
-          .inputs(switch)
+        val falseBranch = identity(switch)
           .compileWithAllInputsAtIndex(0)
           .build
-        val trueBranch = Output.name[A]("Identity")
-          .shape(op.shape)
-          .inputs(switch)
+        val trueBranch = identity(switch)
           .compileWithAllInputsAtIndex(1)
           .build
 
@@ -200,6 +194,11 @@ object CoreOp {
 
       override def asVoid[A: TensorType](op: Output[A]): Output[Nothing] =
         op.asInstanceOf[Output[Nothing]]
+
+      private def identity[A: TensorType](op: Output[A]) =
+        Output.name[A]("Identity")
+          .shape(op.shape)
+          .inputs(op)
     }
   }
   trait Syntax extends Instances with CoreOp.ToCoreOpOps
