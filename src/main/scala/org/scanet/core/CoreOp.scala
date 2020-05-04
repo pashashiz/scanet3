@@ -63,6 +63,29 @@ import simulacrum.{op, typeclass}
   @op("<<", alias = true)
   def dependsOn[A: TensorType](op: F[A], dep: F[_]): F[A]
 
+  /** If operation - performs evaluates `trueCase` branch when given condition
+   * is `true` and `falseCase` otherwise
+   *
+   * {{{
+   * val a = 1.const
+   * val b = 0.const
+   * val c = 2.const
+   *
+   * a.when(_ gt b, _ plus c, _ minus c).eval should be(Tensor.scalar(3))
+   * }}}
+   *
+   * @param cond predicate
+   * @param trueCase function to build true branch
+   * @param falseCase function to build false branch
+   * @return output based on given condition
+   */
+  def when[A: TensorType, B: TensorType](
+                                          op: F[A],
+                                          cond: F[A] => F[Boolean],
+                                          trueCase: F[A] => F[B],
+                                          falseCase: F[A] => F[B]
+                                        ): F[B]
+
   /** Cast elements of given tensor form type A into B.
    * Returns given input if A is already equal to B.
    *
@@ -138,6 +161,40 @@ object CoreOp {
           .controlInputs(dep)
           .compileWithAllInputs
           .compileWithControlInputs
+          .build
+      }
+
+      override def when[A: TensorType, B: TensorType](
+                                                       op: Output[A],
+                                                       cond: Output[A] => Output[Boolean],
+                                                       trueCase: Output[A] => Output[B],
+                                                       falseCase: Output[A] => Output[B]
+                                                     ): Output[B] = {
+        // perform switch op that sends input to 0 output when condition is false and to 1 for true
+        val switch = Output.name[A]("Switch")
+          .shape(op.shape)
+          .inputs(op, cond(op))
+          .compileWithAllInputs
+          .build
+
+        // outputs are first wrapped into Identity ops to select input with proper index
+        // TODO: this identity ops can be removed if we can set input index to prebuilt Output
+        val falseBranch = Output.name[A]("Identity")
+          .shape(op.shape)
+          .inputs(switch)
+          .compileWithAllInputsAtIndex(0)
+          .build
+        val trueBranch = Output.name[A]("Identity")
+          .shape(op.shape)
+          .inputs(switch)
+          .compileWithAllInputsAtIndex(1)
+          .build
+
+        // merge branches into single output (it selects first available output)
+        Output.name[B]("Merge")
+          .shape(op.shape)
+          .inputs(trueCase(trueBranch), falseCase(falseBranch))
+          .compileWithInputList
           .build
       }
 

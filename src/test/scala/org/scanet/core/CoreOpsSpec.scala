@@ -2,7 +2,7 @@ package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.syntax._
+import org.scanet.syntax._
 
 class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
@@ -59,5 +59,21 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
   "vector of Floats" should "be casted into Ints" in {
     Tensor.vector(1.2f, 2.2f, 3.3f).const.cast[Int].eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  it should "calculate output based on true condition" in {
+    val a = 1.const
+    val b = 0.const
+    val c = 2.const
+
+    a.when(_ gt b, _ plus c, _ minus c).eval should be(Tensor.scalar(3))
+  }
+
+  it should "calculate output based on false condition" in {
+    val a = (-1).const
+    val b = 0.const
+    val c = 2.const
+
+    a.when(_ gt b, _ plus c, _ minus c).eval should be(Tensor.scalar(-3))
   }
 }
