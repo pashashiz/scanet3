@@ -66,7 +66,8 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     val b = 0.const
     val c = 2.const
 
-    a.when(_ gt b, _ plus c, _ minus c).eval should be(Tensor.scalar(3))
+    val ternary = when(a gt b) thenDo (a plus c) elseDo (a minus c)
+    ternary.eval should be(Tensor.scalar(3))
   }
 
   it should "calculate output based on false condition" in {
@@ -74,6 +75,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     val b = 0.const
     val c = 2.const
 
-    a.when(_ gt b, _ plus c, _ minus c).eval should be(Tensor.scalar(-3))
+    val ternary = when(a gt b) thenDo (a plus c) elseDo (a minus c)
+    ternary.eval should be(Tensor.scalar(-3))
   }
 }

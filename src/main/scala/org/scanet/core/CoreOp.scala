@@ -63,29 +63,6 @@ import simulacrum.{op, typeclass}
   @op("<<", alias = true)
   def dependsOn[A: TensorType](op: F[A], dep: F[_]): F[A]
 
-  /** If operation - performs evaluates `trueCase` branch when given condition
-   * is `true` and `falseCase` otherwise
-   *
-   * {{{
-   * val a = 1.const
-   * val b = 0.const
-   * val c = 2.const
-   *
-   * a.when(_ gt b, _ plus c, _ minus c).eval should be(Tensor.scalar(3))
-   * }}}
-   *
-   * @param cond predicate
-   * @param trueCase function to build true branch
-   * @param falseCase function to build false branch
-   * @return output based on given condition
-   */
-  def when[A: TensorType, B: TensorType](
-                                          op: F[A],
-                                          cond: F[A] => F[Boolean],
-                                          trueCase: F[A] => F[B],
-                                          falseCase: F[A] => F[B]
-                                        ): F[B]
-
   /** Cast elements of given tensor form type A into B.
    * Returns given input if A is already equal to B.
    *
@@ -106,7 +83,7 @@ object CoreOp {
 
   trait Instances {
 
-    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] {
+    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with ControlFlowOps {
 
       override def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
@@ -154,53 +131,110 @@ object CoreOp {
         }
       }
 
-      override def dependsOn[A: TensorType](op: Output[A], dep: Output[_]): Output[A] = {
-        identity(op)
-          .controlInputs(dep)
-          .compileWithAllInputs
-          .compileWithControlInputs
-          .build
-      }
+      override def asVoid[A: TensorType](op: Output[A]): Output[Nothing] =
+        op.asInstanceOf[Output[Nothing]]
+    }
+  }
 
-      override def when[A: TensorType, B: TensorType](
-                                                       op: Output[A],
-                                                       cond: Output[A] => Output[Boolean],
-                                                       trueCase: Output[A] => Output[B],
-                                                       falseCase: Output[A] => Output[B]
-                                                     ): Output[B] = {
+  trait ControlFlowOps {
+
+    /** Add operation which will be executed right after current operation and
+     * return current operation as output to continue chaining.
+     *
+     * Can be used to add logging or assert operations.
+     *
+     * {{{
+     * val a = 1.const
+     * val b = 2.const
+     * val c = (a plus b) << print("a + b = {} + {}", a, b)
+     * c.eval should be(Tensor.scalar(3)) // and prints `a + b = 1 + 2` before performing plus op
+     * }}}
+     *
+     * @param dep dependant leaf operation
+     * @return current output
+     */
+    def dependsOn[A: TensorType](op: Output[A], dep: Output[_]): Output[A] = {
+      Output.name[A]("Identity")
+        .shape(op.shape)
+        .inputs(op)
+        .controlInputs(dep)
+        .compileWithAllInputs
+        .compileWithControlInputs
+        .build
+    }
+
+    /** Start build conditional operator by specifying boolean condition based on which
+     * one of the specified outputs will be returned.
+     *
+     * Can be used to build ternary operators.
+     *
+     * {{{
+     * val a = 1.const
+     * val b = 0.const
+     * val c = 2.const
+     *
+     * val ternary = when(a gt b) thenDo (a plus c) elseDo (a minus c)
+     * ternary.eval should be(Tensor.scalar(3))
+     * }}}
+     *
+     * @param cond if condition
+     * @return current output
+     */
+    def when(cond: Output[Boolean]): ThenStep = new ThenStep {
+      override def thenDo[A: TensorType](trueCase: Output[A]): ElseStep[A] = (falseCase: Output[A]) => {
+        require(falseCase.shape == trueCase.shape)
+
         // perform switch op that sends input to 0 output when condition is false and to 1 for true
         val switch = Output.name[A]("Switch")
-          .shape(op.shape)
-          .inputs(op, cond(op))
+          .shape(Shape())
+          .inputs(cond, cond)
           .compileWithAllInputs
           .build
 
         // outputs are first wrapped into Identity ops to select input with proper index
         // TODO: this identity ops can be removed if we can set input index to prebuilt Output
-        val falseBranch = identity(switch)
+        val falseBranch = Output.name[A]("Identity")
+          .inputs(switch)
+          .shape(Shape())
           .compileWithAllInputsAtIndex(0)
           .build
-        val trueBranch = identity(switch)
+        val trueBranch = Output.name[A]("Identity")
+          .inputs(switch)
+          .shape(Shape())
           .compileWithAllInputsAtIndex(1)
           .build
 
-        // merge branches into single output (it selects first available output)
-        Output.name[B]("Merge")
-          .shape(op.shape)
-          .inputs(trueCase(trueBranch), falseCase(falseBranch))
+        // merge branches into single output (it selects first available input)
+        Output.name[A]("Merge")
+          .shape(trueCase.shape)
+          .inputs(dependsOn(trueCase, trueBranch), dependsOn(falseCase, falseBranch))
           .compileWithInputList
           .build
       }
-
-      override def asVoid[A: TensorType](op: Output[A]): Output[Nothing] =
-        op.asInstanceOf[Output[Nothing]]
-
-      private def identity[A: TensorType](op: Output[A]) =
-        Output.name[A]("Identity")
-          .shape(op.shape)
-          .inputs(op)
     }
   }
-  trait Syntax extends Instances with CoreOp.ToCoreOpOps
+
+  trait ThenStep {
+
+    /** Continue building conditional operator by specifying `true` branch output
+     *
+     * @param op Output to return when specified condition is true
+     * @tparam A type of conditional expression
+     * @return else branch specification
+     */
+    def thenDo[A: TensorType](op: Output[A]): ElseStep[A]
+  }
+
+  trait ElseStep[A] {
+
+    /** Finish building conditional operator by specifying `true` branch output
+     *
+     * @param op Output to return when specified condition is false
+     * @return conditional (ternary) operation
+     */
+    def elseDo(op: Output[A]): Output[A]
+  }
+
+  trait Syntax extends Instances with CoreOp.ToCoreOpOps with ControlFlowOps
   object syntax extends Syntax
 }
