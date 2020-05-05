@@ -2,7 +2,7 @@ package org.scanet.research
 
 import java.util.UUID
 
-object AutoDifferentiation {
+object ForwardAD {
 
   def main(args: Array[String]): Unit = {
     sample1()

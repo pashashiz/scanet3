@@ -1,7 +1,7 @@
 package org.scanet.math
 
-import org.scanet.core.CoreOp.syntax._
-import org.scanet.core.{Output, Shape, TensorType}
+import org.scanet.core.{Output, Shape, Tensor, TensorType}
+import org.scanet.core.syntax._
 import org.scanet.math.MathGradOp.syntax._
 import org.scanet.math.Numeric.syntax._
 import simulacrum.{op, typeclass}
@@ -123,6 +123,10 @@ import scala.Ordering.Implicits._
   @op(":*", alias = true)
   def multiplyElementWise[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
+  def sum[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]
+
+  def sum[A: TensorType: Numeric](out: F[A]): F[A]
+
 }
 
 object MathBaseOp {
@@ -163,6 +167,11 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(resultShape)
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
+      .grad(ctx => {
+        //  (a * x.grad + x * a.grad)
+
+        ???
+      })
       .build
     // we need to prune additional adjusted dimensions added for scalars and vectors
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
@@ -207,6 +216,23 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
+      .grad(ctx => {
+        plus(
+          multiplyElementWise(left, rightOut.grad(ctx.variable)),
+          multiplyElementWise(rightOut, left.grad(ctx.variable)))
+      })
       .build
   }
+
+  override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
+    require(axises.forall(_ < out.rank), s"tensor with rank ${out.rank} does not have (${axises.mkString(", ")}) axises")
+    Output.name[A]("Sum")
+      .shape(out.shape)
+      .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
+      .compileWithAllInputs
+      .build
+  }
+
+  override def sum[A: TensorType : Numeric](out: Output[A]): Output[A] = sum(out, 0 until out.rank)
+
 }

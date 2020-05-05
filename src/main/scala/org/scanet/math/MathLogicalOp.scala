@@ -314,7 +314,6 @@ class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
       .build
   }
 
-
   override def xor[A: TensorType : Logical, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Boolean] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),

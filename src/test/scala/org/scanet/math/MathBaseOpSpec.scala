@@ -13,7 +13,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     (a grad b).eval should be(Tensor.scalar(0))
   }
 
-  "const" should "have ones gradient if input is same const" in {
+  it should "have ones gradient if input is same const" in {
     val a = 2.const
     (a grad a).eval should be(Tensor.scalar(1))
   }
@@ -64,22 +64,22 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((a + x) grad x).eval should be(Tensor.scalar(1))
   }
 
-  it should "calculate a gradient equals to 2 if right and lest side is a differentiable variable" in {
+  it should "calculate a gradient equals to 2 if right and left side is a differentiable variable" in {
     val x = 2.const
     ((x + x) grad x).eval should be(Tensor.scalar(2))
   }
 
-  "multiply" should "produce dot product on 2 matrices" in {
+  "multiplication" should "produce dot product on 2 matrices" in {
     val a = Tensor.matrix(
       Array(1, 2, 3),
-      Array(1, 2, 3))
+      Array(4, 5, 6))
     val b = Tensor.matrix(
       Array(1, 2),
       Array(1, 2),
       Array(1, 2))
     val c = Tensor.matrix(
       Array(6, 12),
-      Array(6, 12))
+      Array(15, 30))
     (a.const * b.const).eval should be(c)
   }
 
@@ -111,6 +111,13 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       val tensor = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
       (tensor.const * tensor.const).eval
     } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes (2, 2, 2) * (2, 2, 2)"
+  }
+
+  it should "calculate zero gradient if both sides do not contain a differentiable variable" in {
+    val a = 2.const
+    val b = 3.const
+    val x = 4.const
+    ((a + b) grad x).eval should be(Tensor.scalar(0))
   }
 
   "minus" should "subtract 2 scalars" in {
@@ -169,5 +176,45 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :* Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) :* (3)"
+  }
+
+  it should "calculate zero gradient if both sides do not contain a differentiable variable" in {
+    val a = 2.const
+    val b = 3.const
+    val x = 4.const
+    ((a :* b) grad x).eval should be(Tensor.scalar(0))
+  }
+
+  it should "calculate a gradient equals to right side if left side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((x :* a) grad x).eval should be(Tensor.scalar(3))
+  }
+
+  it should "calculate a gradient equals to left side if right side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((a :* x) grad x).eval should be(Tensor.scalar(3))
+  }
+
+  it should "calculate a gradient equals to sum if right and left side is a differentiable variable" in {
+    val x = Tensor.vector(3, 5).const
+    ((x :* x) grad x).eval should be(Tensor.vector(6, 10))
+  }
+
+  "sum" should "calculate sum across all axises by default" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum.eval should be(Tensor.scalar(21))
+  }
+
+  it should "support reducing along matrix columns" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(0)).eval should be(Tensor.vector(5, 7, 9))
+  }
+
+  it should "support reducing along matrix rows" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(1)).eval should be(Tensor.vector(6, 15))
+  }
+
+  it should "support reducing D4 tensors" in {
+    println(Tensor(Array(1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4), Shape(2, 2, 2, 2)).const.sum(Seq(0, 1)).eval)
   }
 }

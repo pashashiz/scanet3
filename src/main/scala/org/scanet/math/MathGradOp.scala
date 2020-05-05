@@ -4,8 +4,6 @@ import org.scanet.core.Output.GradContext
 import org.scanet.core.{Output, TensorType}
 import simulacrum.typeclass
 
-import scala.language.higherKinds
-
 @typeclass trait MathGradOp[F[_]] {
   def grad[A: TensorType: Numeric](current: F[A], withRespectTo: Output[_]): F[A]
 }

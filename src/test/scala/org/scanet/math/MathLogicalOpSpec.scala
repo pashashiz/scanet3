@@ -163,12 +163,6 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: cannot compare tensors with shapes (3) <= (2)"
   }
 
-  "logical and" should "work" in {
-    println((Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval)
-    println((Tensor.vector(true, false).const || Tensor.vector(true, true).const).eval)
-    println(Tensor.vector(true, false).const.not.eval)
-  }
-
   "logical and" should "work on tensors with same dimensions" in {
     (Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval should be(Tensor.vector(true, false))
   }
