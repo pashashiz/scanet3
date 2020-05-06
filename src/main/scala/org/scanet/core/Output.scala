@@ -126,8 +126,11 @@ object Output {
       )
 
     def compileWithAllInputs: Builder[A, State with WithCompiler] =
+      compileWithAllInputsAtIndex(0)
+
+    def compileWithAllInputsAtIndex(idx: Int): Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) =>
-        ctx.inputs.foldLeft(builder)((acc, next) => acc.addInput(next.output(0))))
+        ctx.inputs.foldLeft(builder)((acc, next) => acc.addInput(next.output(idx))))
 
     def compileWithInputList: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => builder.addInputList(ctx.inputs.map(_.output(0)).toArray))
