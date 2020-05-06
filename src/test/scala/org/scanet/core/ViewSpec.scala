@@ -107,15 +107,20 @@ class ViewSpec extends AnyFlatSpec with Matchers {
     Shape(1, 2) broadcastableBy Shape(1, 2) should be(true)
   }
 
-  "shape" should "be broadcastable when given shape ends with second shape" in {
+  it should "be broadcastable when given shape ends with second shape" in {
     Shape(2, 3, 4) broadcastableBy Shape(3, 4) should be(true)
   }
 
-  "shape" should "be broadcastable when second shape has ones" in {
+  it should "be broadcastable when second shape has ones" in {
     Shape(2, 3, 4) broadcastableBy Shape(2, 1, 4) should be(true)
   }
 
-  "shape" should "not be broadcastable when no broadcasting rules is found" in {
+  it should "not be broadcastable when no broadcasting rules is found" in {
     Shape(2, 3, 4) broadcastableBy Shape(2, 2, 4) should be(false)
   }
+
+  it should "support permutation" in {
+    Shape(2, 3, 4).permute(2, 1, 0) should be(Shape(4, 3, 2))
+  }
+
 }

@@ -5,6 +5,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 
+import scala.Array.range
+
 class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   "const" should "have ones gradient if input is same const" in {
@@ -210,7 +212,27 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(1)).eval should be(Tensor.vector(6, 15))
   }
 
-  it should "support reducing D4 tensors" in {
-    println(Tensor(Array(1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4), Shape(2, 2, 2, 2)).const.sum(Seq(0, 1)).eval)
+  it should "support reducing 4D tensors" in {
+    val tensor = Tensor(Array(1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4), Shape(2, 2, 2, 2))
+    tensor.const.sum(Seq(0, 1)).eval should be(Tensor.matrix(Array(1, 2), Array(3, 4)))
+  }
+
+  "transpose" should "be identity op on a scalar" in {
+    Tensor.scalar(5).const.transpose.eval should be(Tensor.scalar(5))
+  }
+
+  "transpose" should "be identity op on a vector" in {
+    Tensor.vector(1, 2, 3).const.transpose.eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  "transpose" should "transpose a matrix" in {
+    Tensor.matrix(Array(1, 2), Array(3, 4)).const.transpose.eval should be(Tensor.matrix(Array(1, 3), Array(2, 4)))
+  }
+
+  "transpose" should "transpose 3D tensor with custom permutatios" in {
+    // todo: add a method to make 3D tensor
+    val before = Tensor(range(1, 13), Shape(2, 2, 3))
+    val after = Tensor(Array(1, 4, 2, 5, 3, 6, 7, 10, 8, 11, 9, 12), Shape(2, 3, 2))
+    before.const.transpose(Seq(0, 2, 1)).eval should be(after)
   }
 }

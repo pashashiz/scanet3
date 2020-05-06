@@ -21,6 +21,8 @@ case class Output[A: TensorType](
 
   def rank: Int = shape.rank
 
+  def isScalar: Boolean = shape.isScalar
+
   def broadcastableBy(smaller: Output[A]): Boolean = shape.broadcastableBy(smaller.shape)
 
   def broadcastableAny(other: Output[A]): Boolean = shape.broadcastableAny(other.shape)

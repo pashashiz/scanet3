@@ -89,6 +89,12 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def broadcastableAny(other: Shape): Boolean =
     broadcastableBy(other) || other.broadcastableBy(this)
 
+  def permute(indexes: Int*): Shape = {
+    require(rank == indexes.size, "the number of permutation indexes " +
+      s"should be equal to rank $rank, but was ${indexes.size}")
+    Shape(indexes.foldLeft(List[Int]())((permDims, index) => dims(index) :: permDims).reverse)
+  }
+
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
 
   override def toString: String = s"(${dims.mkString(", ")})"

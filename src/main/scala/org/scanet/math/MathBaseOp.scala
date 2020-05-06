@@ -126,6 +126,9 @@ import scala.Ordering.Implicits._
 
   def sum[A: TensorType: Numeric](out: F[A]): F[A]
 
+  def transpose[A: TensorType: Numeric](out: F[A], perm: Seq[Int]): F[A]
+
+  def transpose[A: TensorType: Numeric](out: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -242,6 +245,22 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def sum[A: TensorType : Numeric](out: Output[A]): Output[A] = sum(out, 0 until out.rank)
 
+  override def transpose[A: TensorType : Numeric](out: Output[A], perm: Seq[Int]): Output[A] = {
+    if (out.isScalar) {
+      out
+    } else {
+      Output.name[A]("Transpose")
+        .shape(out.shape.permute(perm: _*))
+        .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const)
+        .localGrad[A](ctx => ???)
+        .compileWithAllInputs
+        .build
+    }
+  }
+
+  override def transpose[A: TensorType : Numeric](out: Output[A]): Output[A] = {
+    transpose(out, (0 until out.rank).reverse)
+  }
 }
 
 trait MathBaseMultiOp {
