@@ -2,6 +2,8 @@ package org.scanet.research
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import org.scanet.core.{DirectedGraph, Node}
+
 object ReverseAD {
 
   val counter = new AtomicInteger(0)
@@ -14,22 +16,22 @@ object ReverseAD {
     def eval: Float
     def localGrads: Map[Expr, Float]
 
-    def toFullyConnectedGraph: Graph[Expr] = {
-      def fill(graph: Graph[Expr], current: Expr): Graph[Expr] = {
-        val graphWithCurrent = graph.addNode(Node(current.id, current))
-        current.inputs.foldLeft(graphWithCurrent)((acc, next) => fill(acc, next))
-          .addEdges(current.inputs.map(node => (node.id, current.id)))
+    def directedGraph: DirectedGraph[Expr] = {
+      def fill(graph: DirectedGraph[Expr], current: Expr): DirectedGraph[Expr] = {
+        val withCurrent = graph :+ Node(current.id, current)
+        val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
+        withAll.linkAll(current.inputs.map(node => (node.id, current.id)))
       }
-      fill(Graph[Expr](), this)
+      fill(DirectedGraph[Expr](), this)
     }
 
     def grad(input: Expr): Option[Float] = {
-      val graph = toFullyConnectedGraph
+      val graph = directedGraph
       def gradRec(node: Node[Expr]): Float = {
-        if (node.out.isEmpty) {
+        if (node.isRoot) {
           1.0f
         } else {
-          node.out.map(parent => {
+          node.outputs.map(parent => {
             val localGrad = parent.value.localGrads(node.value)
             val parentGrad = gradRec(parent)
             localGrad * parentGrad
@@ -87,6 +89,7 @@ object ReverseAD {
     val b = Const(5)
     val x = Const(3)
     val f = Plus(Plus(Multiply(x, x), Multiply(a, x)), b)
+    println(f.directedGraph)
     println(s"sample 2: ${f.eval}, ${f.grad(x)}") // 20.0, 8.0
   }
 

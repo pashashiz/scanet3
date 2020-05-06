@@ -9,13 +9,13 @@ import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{Operation, OperationBuilder}
 
 case class Output[A: TensorType](
-              name: String,
-              label: String,
-              shape: Shape,
-              inputs: List[Output[_]],
-              controls: List[Output[_]],
-              compiler: CompileContext[A] => Operation,
-              gradF: GradContext[A] => Option[Output[A]]) {
+      name: String,
+      label: String,
+      shape: Shape,
+      inputs: List[Output[_]],
+      controls: List[Output[_]],
+      compiler: CompileContext[A] => Operation,
+      localGradF: GradContext[A, _] => Map[String, Output[A]]) {
 
   val id: String = UUID.randomUUID().toString
 
@@ -56,6 +56,19 @@ case class Output[A: TensorType](
     inputs.flatMap(op => op.upstreamOptions)
   }
 
+  def grad(inputId: String, parentGrad: Output[_]): Output[A] = {
+    localGradF(GradContext(this, parentGrad))(inputId)
+  }
+
+  def asGraph: DirectedGraph[Output[_]] = {
+    def fill(graph: DirectedGraph[Output[_]], current: Output[_]): DirectedGraph[Output[_]] = {
+      val withCurrent = graph :+ Node(current.id, current)
+      val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
+      withAll.linkAll(current.inputs.map(node => (node.id, current.id)))
+    }
+    fill(DirectedGraph[Output[_]](), this)
+  }
+
   override def toString: String = {
     val args = if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
     val fullName = if (label == name) s"$name" else s"$label:$name"
@@ -79,7 +92,7 @@ object Output {
 
   type Compiled = (Label, Operation)
 
-  case class GradContext[A](current: Output[A], variable: Output[_])
+  case class GradContext[A, B](current: Output[A], parentGrad: Output[B])
 
   case class CompileContext[A: TensorType](
       global: Context,
@@ -112,7 +125,7 @@ object Output {
         inputs: List[Output[A]] = Nil,
         controls: List[Output[A]] = Nil,
         transformers: List[Transformer[A]] = Nil,
-        gradF: GradContext[A] => Option[Output[A]] = (_: GradContext[A]) => None) {
+        localGradF: GradContext[A, _] => Map[String, Output[A]] = (_: GradContext[A, _]) => error("local gradient is not implemented")) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
 
@@ -152,7 +165,7 @@ object Output {
       compileWithTransformer((_, builder) => Option(str).fold(builder)(builder.setAttr(name, _)))
 
     def compileWithAttrs(attrs: Map[String, String]): Builder[A, State with WithCompiler] =
-      compileWithTransformer((_, builder) => attrs.foldLeft(builder) {case (b, (k, v)) => b.setAttr(k, v)})
+      compileWithTransformer((_, builder) => attrs.foldLeft(builder) { case (b, (k, v)) => b.setAttr(k, v) })
 
     def compileWithAttr(name: String, l: Long): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, l))
@@ -160,9 +173,8 @@ object Output {
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
-    def grad(f: GradContext[A] => Output[A]): Builder[A, State] = copy(gradF = ctx => Some(f(ctx)))
-
-    def gradOpt(f: GradContext[A] => Option[Output[A]]): Builder[A, State] = copy(gradF = f)
+    def localGrad[B](f: GradContext[A, B] => Map[String, Output[A]]): Builder[A, State] =
+      copy(localGradF = f.asInstanceOf[GradContext[A, _] => Map[String, Output[A]]])
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](
@@ -176,7 +188,7 @@ object Output {
           val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
           transformed.build()
         },
-        gradF = gradF)
+        localGradF = localGradF)
     }
   }
 

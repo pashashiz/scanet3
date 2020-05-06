@@ -7,15 +7,18 @@ import org.scanet.math.syntax._
 
 class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
-  "const" should "have zeros gradient if input is other const" in {
-    val a = 2.const
-    val b = 3.const
-    (a grad b).eval should be(Tensor.scalar(0))
-  }
-
-  it should "have ones gradient if input is same const" in {
+  "const" should "have ones gradient if input is same const" in {
     val a = 2.const
     (a grad a).eval should be(Tensor.scalar(1))
+  }
+
+  it should "fail to find a gradient if input is not a part of the computation graph" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = 2.const
+      val b = 3.const
+      a grad b
+    } should have message "requirement failed: " +
+      "cannot find a gradient with respect to Const:() cause that input is not a part of the computation graph"
   }
 
   "plus" should "add 2 scalars" in {
@@ -45,13 +48,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       "requirement failed: cannot add tensors with shapes (2, 2) + (3)"
   }
 
-  it should "calculate zero gradient if both sides do not contain a differentiable variable" in {
-    val a = 2.const
-    val b = 3.const
-    val x = 4.const
-    ((a + b) grad x).eval should be(Tensor.scalar(0))
-  }
-
   it should "calculate a gradient equals to 1 if left side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
@@ -67,6 +63,20 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   it should "calculate a gradient equals to 2 if right and left side is a differentiable variable" in {
     val x = 2.const
     ((x + x) grad x).eval should be(Tensor.scalar(2))
+  }
+
+  // todo: matrix gradient
+  // todo: gradient with broadcasting
+
+  "plus N" should "add multiple tensors" in {
+    plus(1.const, 2.const, 3.const).eval should be(Tensor.scalar(6))
+  }
+
+  it should "fail when tensors have different shapes" in {
+    the [IllegalArgumentException] thrownBy {
+      plus(1.const, 2.const, Tensor.vector(3, 4).const).eval
+    } should have message
+      "requirement failed: shapes of all tensors should be the same, but was () + () + (2)"
   }
 
   "multiplication" should "produce dot product on 2 matrices" in {
@@ -111,13 +121,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       val tensor = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
       (tensor.const * tensor.const).eval
     } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes (2, 2, 2) * (2, 2, 2)"
-  }
-
-  it should "calculate zero gradient if both sides do not contain a differentiable variable" in {
-    val a = 2.const
-    val b = 3.const
-    val x = 4.const
-    ((a + b) grad x).eval should be(Tensor.scalar(0))
   }
 
   "minus" should "subtract 2 scalars" in {
@@ -178,13 +181,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) :* (3)"
   }
 
-  it should "calculate zero gradient if both sides do not contain a differentiable variable" in {
-    val a = 2.const
-    val b = 3.const
-    val x = 4.const
-    ((a :* b) grad x).eval should be(Tensor.scalar(0))
-  }
-
   it should "calculate a gradient equals to right side if left side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
@@ -198,8 +194,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "calculate a gradient equals to sum if right and left side is a differentiable variable" in {
-    val x = Tensor.vector(3, 5).const
-    ((x :* x) grad x).eval should be(Tensor.vector(6, 10))
+    val x = Tensor.scalar(3).const
+    ((x :* x) grad x).eval should be(Tensor.scalar(6))
   }
 
   "sum" should "calculate sum across all axises by default" in {

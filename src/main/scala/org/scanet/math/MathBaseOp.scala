@@ -2,7 +2,6 @@ package org.scanet.math
 
 import org.scanet.core.{Output, Shape, Tensor, TensorType}
 import org.scanet.core.syntax._
-import org.scanet.math.MathGradOp.syntax._
 import org.scanet.math.Numeric.syntax._
 import simulacrum.{op, typeclass}
 
@@ -135,7 +134,7 @@ object MathBaseOp {
     implicit def outputIsMathOp: MathBaseOp[Output] = new OutputIsMathBaseOp
   }
 
-  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps
+  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps with MathBaseMultiOp
 
   object syntax extends Syntax
 }
@@ -150,7 +149,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      .grad(ctx => plus(left.grad(ctx.variable), rightOut.grad(ctx.variable)))
+      .localGrad[A](ctx => Map(left.id -> ctx.parentGrad, rightOut.id -> ctx.parentGrad))
       .build
   }
 
@@ -167,9 +166,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(resultShape)
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
-      .grad(ctx => {
-        //  (a * x.grad + x * a.grad)
-
+      .localGrad[A](_ => {
+        // todo: need transpose op
         ???
       })
       .build
@@ -185,6 +183,9 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Sub")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
+      .localGrad[A](_ => {
+        ???
+      })
       .compileWithAllInputs
       .build
   }
@@ -193,6 +194,9 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Neg")
       .shape(out.shape)
       .inputs(out)
+      .localGrad[A](_ => {
+        ???
+      })
       .compileWithAllInputs
       .build
   }
@@ -204,6 +208,9 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Div")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
+      .localGrad[A](_ => {
+        ???
+      })
       .compileWithAllInputs
       .build
   }
@@ -216,11 +223,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      .grad(ctx => {
-        plus(
-          multiplyElementWise(left, rightOut.grad(ctx.variable)),
-          multiplyElementWise(rightOut, left.grad(ctx.variable)))
-      })
+      .localGrad[A](ctx => Map(
+          left.id -> multiplyElementWise(rightOut, ctx.parentGrad),
+          rightOut.id -> multiplyElementWise(left, ctx.parentGrad))
+      )
       .build
   }
 
@@ -229,10 +235,26 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Sum")
       .shape(out.shape)
       .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
+      .localGrad[A](ctx => Map(out.id -> multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
       .compileWithAllInputs
       .build
   }
 
   override def sum[A: TensorType : Numeric](out: Output[A]): Output[A] = sum(out, 0 until out.rank)
 
+}
+
+trait MathBaseMultiOp {
+  def plus[A: TensorType](ops: Output[A]*): Output[A] = {
+    val shapes = ops.map(_.shape)
+    require(shapes.distinct.size == 1, s"shapes of all tensors should be the same, but was ${shapes.mkString(" + ")}")
+    Output.name[A]("AddN")
+      .shape(shapes.head)
+      .inputs(ops: _*)
+      .compileWithInputList
+      .localGrad[A](ctx => {
+        ???
+      })
+      .build
+  }
 }
