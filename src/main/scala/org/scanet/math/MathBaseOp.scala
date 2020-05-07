@@ -152,6 +152,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
+      // todo: test grad with broadcasting
       .localGrad[A](ctx => Map(left.id -> ctx.parentGrad, rightOut.id -> ctx.parentGrad))
       .build
   }
@@ -169,11 +170,13 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(resultShape)
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
-      .localGrad[A](_ => {
-        // todo: need transpose op
-        ???
+      .localGrad[A](ctx => {
+        Map(
+          left.id -> multiply(ctx.parentGrad, transpose(rightOut)),
+          rightOut.id -> multiply(transpose(left), ctx.parentGrad))
       })
       .build
+    // todo: adjust back after transpose and test smaller dimensions
     // we need to prune additional adjusted dimensions added for scalars and vectors
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
     result.reshape(resultShape.prune(adjusted))
@@ -187,6 +190,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .localGrad[A](_ => {
+        // todo: Yura, try me out
         ???
       })
       .compileWithAllInputs
@@ -198,6 +202,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(out.shape)
       .inputs(out)
       .localGrad[A](_ => {
+        // todo: Yura, try me out
         ???
       })
       .compileWithAllInputs
@@ -212,6 +217,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .localGrad[A](_ => {
+        // todo: Yura, try me out
         ???
       })
       .compileWithAllInputs
@@ -234,9 +240,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
   }
 
   override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
-    require(axises.forall(_ < out.rank), s"tensor with rank ${out.rank} does not have (${axises.mkString(", ")}) axises")
     Output.name[A]("Sum")
-      .shape(out.shape)
+      .shape(out.shape.remove(axises: _*))
       .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
       .localGrad[A](ctx => Map(out.id -> multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
       .compileWithAllInputs
@@ -252,7 +257,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       Output.name[A]("Transpose")
         .shape(out.shape.permute(perm: _*))
         .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const)
-        .localGrad[A](ctx => ???)
+        .localGrad[A](ctx => {
+          // todo: Yura, try me out
+          ???
+        })
         .compileWithAllInputs
         .build
     }
@@ -272,6 +280,7 @@ trait MathBaseMultiOp {
       .inputs(ops: _*)
       .compileWithInputList
       .localGrad[A](ctx => {
+        // todo: Yura, try me out
         ???
       })
       .build

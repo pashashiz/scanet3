@@ -12,7 +12,9 @@ object Session {
 
   def run[@sp A1: TensorType](op: Output[A1]): Tensor[A1] = {
     val tensors = runN(List(op))
-    Tensor[A1](tensors.head.asInstanceOf[NativeTensor[A1]])
+    val tensor = Tensor[A1](tensors.head.asInstanceOf[NativeTensor[A1]])
+    require(op.shape == tensor.shape, s"op shape was ${op.shape} but resulted in a tensor ${tensor.shape}, looks like a defect")
+    tensor
   }
 
   def runN(ops: List[Output[_]]): Seq[NativeTensor[_]] = {

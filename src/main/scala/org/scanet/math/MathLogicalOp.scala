@@ -193,9 +193,8 @@ class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
   override def all[A: TensorType: Logical](out: Output[A]): Output[Boolean] = all(out, 0 until out.rank)
 
   override def all[A: TensorType: Logical](out: Output[A], axises: Seq[Int]): Output[Boolean] = {
-    require(axises.forall(_ < out.rank), s"tensor with rank ${out.rank} does not have (${axises.mkString(", ")}) axises")
     Output.name[Boolean]("All")
-      .shape(out.shape)
+      .shape(out.shape.remove(axises: _*))
       .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
       .compileWithAllInputs
       .build
@@ -204,9 +203,8 @@ class OutputIsMathLogicalOp extends MathLogicalOp[Output] {
   override def any[A: TensorType: Logical](out: Output[A]): Output[Boolean] = any(out, 0 until out.rank)
 
   override def any[A: TensorType: Logical](out: Output[A], axises: Seq[Int]): Output[Boolean] = {
-    require(axises.forall(_ < out.rank), s"tensor with rank ${out.rank} does not have (${axises.mkString(", ")}) axises")
     Output.name[Boolean]("Any")
-      .shape(out.shape)
+      .shape(out.shape.remove(axises: _*))
       .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
       .compileWithAllInputs
       .build

@@ -147,6 +147,39 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: cannot subtracted tensors with shapes (2, 2) - (3)"
   }
 
+  it should "support gradient when 2 matrices are given and right side is a differentiable variable" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6))
+      .const
+    val x = Tensor.matrix(
+      Array(5, 10),
+      Array(15, 20),
+      Array(25, 30))
+      .const
+    val grad = Tensor.matrix(
+      Array(5, 5),
+      Array(7, 7),
+      Array(9, 9))
+    ((a * x).sum grad x).eval should be(grad)
+  }
+
+  it should "support gradient when 2 matrices are given and left side is a differentiable variable" in {
+    val x = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6))
+      .const
+    val a = Tensor.matrix(
+      Array(5, 10),
+      Array(15, 20),
+      Array(25, 30))
+      .const
+    val grad = Tensor.matrix(
+      Array(15, 35, 55),
+      Array(15, 35, 55))
+    ((x * a).sum grad x).eval should be(grad)
+  }
+
   "negate" should "work on a scalar" in {
     3.const.negate.eval should be(Tensor.scalar(-3))
   }

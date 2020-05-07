@@ -123,4 +123,11 @@ class ViewSpec extends AnyFlatSpec with Matchers {
     Shape(2, 3, 4).permute(2, 1, 0) should be(Shape(4, 3, 2))
   }
 
+  it should "support selecting" in {
+    Shape(2, 3, 4).select(1, 2) should be(Shape(3, 4))
+  }
+
+  it should "support removing" in {
+    Shape(2, 3, 4).remove(1, 2) should be(Shape(2))
+  }
 }

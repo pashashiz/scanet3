@@ -82,7 +82,7 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   it should "fail when given axis is out of bound" in {
     the [IllegalArgumentException] thrownBy {
       Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(2)).eval
-    } should have message "requirement failed: tensor with rank 2 does not have (2) axises"
+    } should have message "requirement failed: the number of removed axises should be less or equal to rank 2, but was (2)"
   }
 
   "any" should "return true if at least one element is true" in {
@@ -104,7 +104,7 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   it should "fail when given axis is out of bound" in {
     the [IllegalArgumentException] thrownBy {
       Tensor.matrix(Array(true, false), Array(true, true)).const.any(Seq(2)).eval
-    } should have message "requirement failed: tensor with rank 2 does not have (2) axises"
+    } should have message "requirement failed: the number of removed axises should be less or equal to rank 2, but was (2)"
   }
 
   "greater comparison" should "work element wise" in {
