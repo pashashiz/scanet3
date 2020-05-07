@@ -24,10 +24,6 @@ class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) ext
     toArray(0)
   }
 
-  override def finalize(): Unit = {
-    println("final")
-  }
-
   def toArray: Array[A] = {
     val positions = view.positions
     Array.tabulate(positions.length)(i => buffer.read(positions(i)))(TensorType[A].classTag)

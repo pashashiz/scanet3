@@ -152,8 +152,14 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      // todo: test grad with broadcasting
-      .localGrad[A](ctx => Map(left.id -> ctx.parentGrad, rightOut.id -> ctx.parentGrad))
+      .localGrad[A](ctx => {
+        val parentShape = ctx.parentGrad.shape
+        val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
+        val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
+        Map(
+          left.id -> sum(ctx.parentGrad, shrinkLeftAxises),
+          rightOut.id -> sum(ctx.parentGrad, shrinkRightAxises))
+      })
       .build
   }
 
@@ -238,7 +244,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
   }
 
   override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
-    if (out.isScalar) {
+    if (out.isScalar || axises.isEmpty) {
       out
     } else {
       Output.name[A]("Sum")
