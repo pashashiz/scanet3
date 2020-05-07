@@ -67,9 +67,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((x + x) grad x).eval should be(Tensor.scalar(2))
   }
 
-  // todo: matrix gradient
-  // todo: gradient with broadcasting
-
   "plus N" should "add multiple tensors" in {
     plus(1.const, 2.const, 3.const).eval should be(Tensor.scalar(6))
   }
@@ -125,38 +122,14 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes (2, 2, 2) * (2, 2, 2)"
   }
 
-  "minus" should "subtract 2 scalars" in {
-    (5.const - 3.const).eval should be(Tensor.scalar(2))
-  }
-
-  it should "subtract 2 tensors with same shape" in {
-    (Tensor.vector(5, 10).const - Tensor.vector(1, 2).const).eval should be(Tensor.vector(4, 8))
-  }
-
-  it should "subtract 2 tensors when left includes shape of right" in {
-    (Tensor.vector(5, 10).const - 2.const).eval should be(Tensor.vector(3, 8))
-  }
-
-  it should "subtract 2 tensors when right includes shape of left" in {
-    (2.const - Tensor.vector(5, 10).const).eval should be(Tensor.vector(-3, -8))
-  }
-
-  it should "fail to subtract when 2 tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
-      (Tensor.matrix(Array(1, 2), Array(1, 2)).const - Tensor.vector(1, 2, 3).const).eval
-    } should have message "requirement failed: cannot subtracted tensors with shapes (2, 2) - (3)"
-  }
-
   it should "support gradient when 2 matrices are given and right side is a differentiable variable" in {
     val a = Tensor.matrix(
       Array(1, 2, 3),
-      Array(4, 5, 6))
-      .const
+      Array(4, 5, 6)).const
     val x = Tensor.matrix(
       Array(5, 10),
       Array(15, 20),
-      Array(25, 30))
-      .const
+      Array(25, 30)).const
     val grad = Tensor.matrix(
       Array(5, 5),
       Array(7, 7),
@@ -178,6 +151,73 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(15, 35, 55),
       Array(15, 35, 55))
     ((x * a).sum grad x).eval should be(grad)
+  }
+
+  it should "support gradient when vector and matrix are given and left side is a differentiable variable" in {
+    val x = Tensor.vector(1, 2, 3).const
+    val a = Tensor.matrix(
+      Array(5, 10),
+      Array(15, 20),
+      Array(25, 30)).const
+    (x * a).sum.grad(x).eval should be(Tensor.vector(15, 35, 55))
+  }
+
+  it should "support gradient when vector and matrix are given and right side is a differentiable variable" in {
+    val a = Tensor.vector(1, 2, 3).const
+    val x = Tensor.matrix(
+      Array(5, 10),
+      Array(15, 20),
+      Array(25, 30)).const
+    (a * x).sum.grad(x).eval should be(Tensor.matrix(
+      Array(1, 1),
+      Array(2, 2),
+      Array(3, 3)))
+  }
+
+  it should "support gradient when scalar and vector are given and left side is a differentiable variable" in {
+    val x = 2.const
+    val a = Tensor.vector(1, 2, 3).const
+    (x * a).sum.grad(x).eval should be(Tensor.scalar(6))
+  }
+
+  it should "support gradient when scalar and vector are given and right side is a differentiable variable" in {
+    val a = 2.const
+    val x = Tensor.vector(1, 2, 3).const
+    (a * x).sum.grad(x).eval should be(Tensor.vector(2, 2, 2))
+  }
+
+  it should "support gradient when 2 scalars are given and left side is a differentiable variable" in {
+    val x = 2.const
+    val a = 3.const
+    (x * a).grad(x).eval should be(Tensor.scalar(3))
+  }
+
+  it should "support gradient when 2 scalars are given and right side is a differentiable variable" in {
+    val a = 2.const
+    val x = 3.const
+    (a * x).grad(x).eval should be(Tensor.scalar(2))
+  }
+
+  "minus" should "subtract 2 scalars" in {
+    (5.const - 3.const).eval should be(Tensor.scalar(2))
+  }
+
+  it should "subtract 2 tensors with same shape" in {
+    (Tensor.vector(5, 10).const - Tensor.vector(1, 2).const).eval should be(Tensor.vector(4, 8))
+  }
+
+  it should "subtract 2 tensors when left includes shape of right" in {
+    (Tensor.vector(5, 10).const - 2.const).eval should be(Tensor.vector(3, 8))
+  }
+
+  it should "subtract 2 tensors when right includes shape of left" in {
+    (2.const - Tensor.vector(5, 10).const).eval should be(Tensor.vector(-3, -8))
+  }
+
+  it should "fail to subtract when 2 tensors have incompatible dimensions" in {
+    the [IllegalArgumentException] thrownBy {
+      (Tensor.matrix(Array(1, 2), Array(1, 2)).const - Tensor.vector(1, 2, 3).const).eval
+    } should have message "requirement failed: cannot subtracted tensors with shapes (2, 2) - (3)"
   }
 
   "negate" should "work on a scalar" in {

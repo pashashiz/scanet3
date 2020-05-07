@@ -127,7 +127,7 @@ object Output {
         inputs: List[Output[A]] = Nil,
         controls: List[Output[A]] = Nil,
         transformers: List[Transformer[A]] = Nil,
-        localGradF: GradContext[A, _] => Map[String, Output[A]] = (_: GradContext[A, _]) => error("local gradient is not implemented")) {
+        localGradF: GradContext[A, _] => Map[String, Output[A]] = null) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
 
@@ -190,7 +190,7 @@ object Output {
           val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
           transformed.build()
         },
-        localGradF = localGradF)
+        localGradF = Option(localGradF).getOrElse((_: GradContext[A, _]) => error(s"gradient is not implemented for '$name' operator")))
     }
   }
 

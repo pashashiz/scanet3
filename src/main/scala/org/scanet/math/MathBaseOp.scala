@@ -172,12 +172,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .compileWithAllInputs
       .localGrad[A](ctx => {
         Map(
-          left.id -> multiply(ctx.parentGrad, transpose(rightOut)),
-          rightOut.id -> multiply(transpose(left), ctx.parentGrad))
+          leftAdjusted.id -> multiply(ctx.parentGrad, transpose(rightAdjusted)),
+          rightAdjusted.id -> multiply(transpose(leftAdjusted), ctx.parentGrad))
       })
       .build
-    // todo: adjust back after transpose and test smaller dimensions
-    // we need to prune additional adjusted dimensions added for scalars and vectors
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
     result.reshape(resultShape.prune(adjusted))
   }
@@ -240,12 +238,16 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
   }
 
   override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
-    Output.name[A]("Sum")
-      .shape(out.shape.remove(axises: _*))
-      .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
-      .localGrad[A](ctx => Map(out.id -> multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
-      .compileWithAllInputs
-      .build
+    if (out.isScalar) {
+      out
+    } else {
+      Output.name[A]("Sum")
+        .shape(out.shape.remove(axises: _*))
+        .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
+        .localGrad[A](ctx => Map(out.id -> multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
+        .compileWithAllInputs
+        .build
+    }
   }
 
   override def sum[A: TensorType : Numeric](out: Output[A]): Output[A] = sum(out, 0 until out.rank)
