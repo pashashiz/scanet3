@@ -89,6 +89,27 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def broadcastableAny(other: Shape): Boolean =
     broadcastableBy(other) || other.broadcastableBy(this)
 
+  def permute(indexes: Int*): Shape = {
+    require(rank == indexes.size, "the number of permutation indexes " +
+      s"should be equal to rank $rank, but was (${indexes.mkString(", ")})")
+    Shape(indexes.foldLeft(List[Int]())((permDims, index) => dims(index) :: permDims).reverse)
+  }
+
+  def select(axises: Int*): Shape = {
+    require(axises.forall(_ < rank), s"the number of selected axises " +
+      s"should be less or equal to rank $rank, but was (${axises.mkString(", ")})")
+    Shape(axises.map(dims(_)).toList)
+  }
+
+  def remove(axises: Int*): Shape = {
+    require(axises.forall(_ < rank), s"the number of removed axises " +
+      s"should be less or equal to rank $rank, but was (${axises.mkString(", ")})")
+    val filteredDims = dims.zipWithIndex
+      .filter {case (_, i) => !axises.contains(i)}
+      .map { case (dim, _) => dim }
+    Shape(filteredDims)
+  }
+
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
 
   override def toString: String = s"(${dims.mkString(", ")})"

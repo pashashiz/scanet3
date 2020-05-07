@@ -3,7 +3,7 @@ package org.scanet.core
 import org.scanet.math.Generator.uniform
 import org.scanet.math.{Convertible, Dist, Generator, Numeric, Random}
 import org.scanet.native.{Disposable, NativeTensorOps}
-import org.scanet.math.NumericPrimitives.syntax._
+import org.scanet.math.Numeric.syntax._
 import org.scanet.core.syntax._
 import org.tensorflow.{Tensor => NativeTensor}
 

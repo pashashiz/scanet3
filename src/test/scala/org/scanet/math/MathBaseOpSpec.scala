@@ -5,7 +5,23 @@ import org.scalatest.matchers.should.Matchers
 import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 
+import scala.Array.range
+
 class MathBaseOpSpec extends AnyFlatSpec with Matchers {
+
+  "const" should "have ones gradient if input is same const" in {
+    val a = 2.const
+    (a grad a).eval should be(Tensor.scalar(1))
+  }
+
+  it should "fail to find a gradient if input is not a part of the computation graph" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = 2.const
+      val b = 3.const
+      a grad b
+    } should have message "requirement failed: " +
+      "cannot find a gradient with respect to Const:() cause that input is not a part of the computation graph"
+  }
 
   "plus" should "add 2 scalars" in {
     (2.0f.const plus 5.0f.const).eval should be(Tensor.scalar(7.0f))
@@ -34,17 +50,48 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       "requirement failed: cannot add tensors with shapes (2, 2) + (3)"
   }
 
-  "multiply" should "produce dot product on 2 matrices" in {
+  it should "calculate a gradient equals to 1 if left side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((x + a) grad x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate a gradient equals to 1 if right side is a differentiable variable" in {
+    val a = 2.const
+    val x = 3.const
+    ((a + x) grad x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate a gradient equals to 2 if right and left side is a differentiable variable" in {
+    val x = 2.const
+    ((x + x) grad x).eval should be(Tensor.scalar(2))
+  }
+
+  // todo: matrix gradient
+  // todo: gradient with broadcasting
+
+  "plus N" should "add multiple tensors" in {
+    plus(1.const, 2.const, 3.const).eval should be(Tensor.scalar(6))
+  }
+
+  it should "fail when tensors have different shapes" in {
+    the [IllegalArgumentException] thrownBy {
+      plus(1.const, 2.const, Tensor.vector(3, 4).const).eval
+    } should have message
+      "requirement failed: shapes of all tensors should be the same, but was () + () + (2)"
+  }
+
+  "multiplication" should "produce dot product on 2 matrices" in {
     val a = Tensor.matrix(
       Array(1, 2, 3),
-      Array(1, 2, 3))
+      Array(4, 5, 6))
     val b = Tensor.matrix(
       Array(1, 2),
       Array(1, 2),
       Array(1, 2))
     val c = Tensor.matrix(
       Array(6, 12),
-      Array(6, 12))
+      Array(15, 30))
     (a.const * b.const).eval should be(c)
   }
 
@@ -100,6 +147,39 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: cannot subtracted tensors with shapes (2, 2) - (3)"
   }
 
+  it should "support gradient when 2 matrices are given and right side is a differentiable variable" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6))
+      .const
+    val x = Tensor.matrix(
+      Array(5, 10),
+      Array(15, 20),
+      Array(25, 30))
+      .const
+    val grad = Tensor.matrix(
+      Array(5, 5),
+      Array(7, 7),
+      Array(9, 9))
+    ((a * x).sum grad x).eval should be(grad)
+  }
+
+  it should "support gradient when 2 matrices are given and left side is a differentiable variable" in {
+    val x = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6))
+      .const
+    val a = Tensor.matrix(
+      Array(5, 10),
+      Array(15, 20),
+      Array(25, 30))
+      .const
+    val grad = Tensor.matrix(
+      Array(15, 35, 55),
+      Array(15, 35, 55))
+    ((x * a).sum grad x).eval should be(grad)
+  }
+
   "negate" should "work on a scalar" in {
     3.const.negate.eval should be(Tensor.scalar(-3))
   }
@@ -134,5 +214,58 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :* Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) :* (3)"
+  }
+
+  it should "calculate a gradient equals to right side if left side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((x :* a) grad x).eval should be(Tensor.scalar(3))
+  }
+
+  it should "calculate a gradient equals to left side if right side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((a :* x) grad x).eval should be(Tensor.scalar(3))
+  }
+
+  it should "calculate a gradient equals to sum if right and left side is a differentiable variable" in {
+    val x = Tensor.scalar(3).const
+    ((x :* x) grad x).eval should be(Tensor.scalar(6))
+  }
+
+  "sum" should "calculate sum across all axises by default" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum.eval should be(Tensor.scalar(21))
+  }
+
+  it should "support reducing along matrix columns" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(0)).eval should be(Tensor.vector(5, 7, 9))
+  }
+
+  it should "support reducing along matrix rows" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(1)).eval should be(Tensor.vector(6, 15))
+  }
+
+  it should "support reducing 4D tensors" in {
+    val tensor = Tensor(Array(1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4), Shape(2, 2, 2, 2))
+    tensor.const.sum(Seq(0, 1)).eval should be(Tensor.matrix(Array(1, 2), Array(3, 4)))
+  }
+
+  "transpose" should "be identity op on a scalar" in {
+    Tensor.scalar(5).const.transpose.eval should be(Tensor.scalar(5))
+  }
+
+  "transpose" should "be identity op on a vector" in {
+    Tensor.vector(1, 2, 3).const.transpose.eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  "transpose" should "transpose a matrix" in {
+    Tensor.matrix(Array(1, 2), Array(3, 4)).const.transpose.eval should be(Tensor.matrix(Array(1, 3), Array(2, 4)))
+  }
+
+  "transpose" should "transpose 3D tensor with custom permutatios" in {
+    // todo: add a method to make 3D tensor
+    val before = Tensor(range(1, 13), Shape(2, 2, 3))
+    val after = Tensor(Array(1, 4, 2, 5, 3, 6, 7, 10, 8, 11, 9, 12), Shape(2, 3, 2))
+    before.const.transpose(Seq(0, 2, 1)).eval should be(after)
   }
 }

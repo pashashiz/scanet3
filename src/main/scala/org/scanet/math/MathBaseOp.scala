@@ -1,7 +1,8 @@
 package org.scanet.math
 
-import org.scanet.core.CoreOp.syntax._
-import org.scanet.core.{Output, Shape, TensorType}
+import org.scanet.core.{Output, Shape, Tensor, TensorType}
+import org.scanet.core.syntax._
+import org.scanet.math.Numeric.syntax._
 import simulacrum.{op, typeclass}
 
 import scala.Ordering.Implicits._
@@ -121,6 +122,13 @@ import scala.Ordering.Implicits._
   @op(":*", alias = true)
   def multiplyElementWise[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
+  def sum[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]
+
+  def sum[A: TensorType: Numeric](out: F[A]): F[A]
+
+  def transpose[A: TensorType: Numeric](out: F[A], perm: Seq[Int]): F[A]
+
+  def transpose[A: TensorType: Numeric](out: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -129,7 +137,7 @@ object MathBaseOp {
     implicit def outputIsMathOp: MathBaseOp[Output] = new OutputIsMathBaseOp
   }
 
-  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps
+  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps with MathBaseMultiOp
 
   object syntax extends Syntax
 }
@@ -144,6 +152,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
+      // todo: test grad with broadcasting
+      .localGrad[A](ctx => Map(left.id -> ctx.parentGrad, rightOut.id -> ctx.parentGrad))
       .build
   }
 
@@ -160,7 +170,13 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(resultShape)
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
+      .localGrad[A](ctx => {
+        Map(
+          left.id -> multiply(ctx.parentGrad, transpose(rightOut)),
+          rightOut.id -> multiply(transpose(left), ctx.parentGrad))
+      })
       .build
+    // todo: adjust back after transpose and test smaller dimensions
     // we need to prune additional adjusted dimensions added for scalars and vectors
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
     result.reshape(resultShape.prune(adjusted))
@@ -173,6 +189,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Sub")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
+      .localGrad[A](_ => {
+        // todo: Yura, try me out
+        ???
+      })
       .compileWithAllInputs
       .build
   }
@@ -181,6 +201,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Neg")
       .shape(out.shape)
       .inputs(out)
+      .localGrad[A](_ => {
+        // todo: Yura, try me out
+        ???
+      })
       .compileWithAllInputs
       .build
   }
@@ -192,6 +216,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Div")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
+      .localGrad[A](_ => {
+        // todo: Yura, try me out
+        ???
+      })
       .compileWithAllInputs
       .build
   }
@@ -204,6 +232,57 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
+      .localGrad[A](ctx => Map(
+          left.id -> multiplyElementWise(rightOut, ctx.parentGrad),
+          rightOut.id -> multiplyElementWise(left, ctx.parentGrad))
+      )
+      .build
+  }
+
+  override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
+    Output.name[A]("Sum")
+      .shape(out.shape.remove(axises: _*))
+      .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
+      .localGrad[A](ctx => Map(out.id -> multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
+      .compileWithAllInputs
+      .build
+  }
+
+  override def sum[A: TensorType : Numeric](out: Output[A]): Output[A] = sum(out, 0 until out.rank)
+
+  override def transpose[A: TensorType : Numeric](out: Output[A], perm: Seq[Int]): Output[A] = {
+    if (out.isScalar) {
+      out
+    } else {
+      Output.name[A]("Transpose")
+        .shape(out.shape.permute(perm: _*))
+        .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const)
+        .localGrad[A](ctx => {
+          // todo: Yura, try me out
+          ???
+        })
+        .compileWithAllInputs
+        .build
+    }
+  }
+
+  override def transpose[A: TensorType : Numeric](out: Output[A]): Output[A] = {
+    transpose(out, (0 until out.rank).reverse)
+  }
+}
+
+trait MathBaseMultiOp {
+  def plus[A: TensorType](ops: Output[A]*): Output[A] = {
+    val shapes = ops.map(_.shape)
+    require(shapes.distinct.size == 1, s"shapes of all tensors should be the same, but was ${shapes.mkString(" + ")}")
+    Output.name[A]("AddN")
+      .shape(shapes.head)
+      .inputs(ops: _*)
+      .compileWithInputList
+      .localGrad[A](ctx => {
+        // todo: Yura, try me out
+        ???
+      })
       .build
   }
 }
