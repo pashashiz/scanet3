@@ -99,7 +99,7 @@ object CoreOp {
             Output.name[A]("Reshape")
               .shape(shape)
               .inputs(op, Tensor.vector(shape.dims: _*).const)
-              .localGrad[A](ctx => Map(op.id -> reshape(ctx.parentGrad, op.shape)))
+              .localGrad[A](ctx => List(reshape(ctx.parentGrad, op.shape)))
               .compileWithAllInputs
               .build
           }
@@ -114,7 +114,7 @@ object CoreOp {
           Output.name[A]("Squeeze")
             .shape(squeezed)
             .inputs(op)
-            .localGrad[A](ctx => Map(op.id -> reshape(ctx.parentGrad, op.shape)))
+            .localGrad[A](ctx => List(reshape(ctx.parentGrad, op.shape)))
             .compileWithAllInputs
             .build
         } else {

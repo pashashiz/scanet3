@@ -16,16 +16,17 @@ case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
     this
   }
 
-  def link(from: String, to: String): DirectedGraph[A] = {
+  def link(index: Int, from: String, to: String): DirectedGraph[A] = {
     val fromNode = nodes(from)
     val toNode = nodes(to)
-    fromNode.output(toNode)
-    toNode.input(fromNode)
+    val edge = Edge(index, fromNode, toNode)
+    fromNode.output(edge)
+    toNode.input(edge)
     this
   }
 
   def linkAll(edges: Seq[(String, String)]): DirectedGraph[A] = {
-    edges.foreach {case (from, to) => link(from, to)}
+    edges.zipWithIndex.foreach {case ((from, to), index) => link(index, from, to)}
     this
   }
 
@@ -38,17 +39,17 @@ object DirectedGraph {
   def apply[A](): DirectedGraph[A] = new DirectedGraph(mutable.Map())
 }
 
-case class Node[A](id: String, value: A, inputs: mutable.Buffer[Node[A]], outputs: mutable.Buffer[Node[A]]) {
+case class Node[A](id: String, value: A, inputs: mutable.Buffer[Edge[A]], outputs: mutable.Buffer[Edge[A]]) {
 
   def isLeaf: Boolean = inputs.isEmpty
   def isRoot: Boolean = outputs.isEmpty
 
-  def input(node: Node[A]): Node[A] = {
-    inputs += node
+  def input(edge: Edge[A]): Node[A] = {
+    inputs += edge
     this
   }
-  def output(node: Node[A]): Node[A] = {
-    outputs += node
+  def output(edge: Edge[A]): Node[A] = {
+    outputs += edge
     this
   }
 
@@ -58,8 +59,10 @@ case class Node[A](id: String, value: A, inputs: mutable.Buffer[Node[A]], output
     case _ => false
   }
 
-  override def toString: String = s"Node(id=$id, value=$value, in=${inputs.map(_.id)}, out=${outputs.map(_.id)})"
+  override def toString: String = s"Node(id=$id, value=$value, in=${inputs.map(_.from.id)}, out=${outputs.map(_.to.id)})"
 }
+
+case class Edge[A](index: Int, from: Node[A], to: Node[A])
 
 object Node {
   def apply[A](id: String, value: A): Node[A] = new Node(id, value, mutable.Buffer(), mutable.Buffer())

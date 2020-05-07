@@ -62,9 +62,26 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((a + x) grad x).eval should be(Tensor.scalar(1))
   }
 
+  it should "calculate a gradient equals to 1 for minus if left side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((x - a) grad x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate a gradient equals to -1 for minus if right side is a differentiable variable" in {
+    val a = 2.const
+    val x = 3.const
+    ((a - x) grad x).eval should be(Tensor.scalar(-1))
+  }
+
   it should "calculate a gradient equals to 2 if right and left side is a differentiable variable" in {
     val x = 2.const
     ((x + x) grad x).eval should be(Tensor.scalar(2))
+  }
+
+  it should "calculate a gradient equals to 0 for minus if right and left side is a differentiable variable" in {
+    val x = 2.const
+    ((x - x) grad x).eval should be(Tensor.scalar(0))
   }
 
   "plus N" should "add multiple tensors" in {

@@ -32,9 +32,9 @@ class OutputIsMathGradOp extends MathGradOp[Output] {
       if (node.isRoot) {
         Tensor.ones[A](Shape()).const
       } else {
-        val grads = node.outputs.map(parent => {
-          val parentGrad = gradRec(parent)
-          parent.value.grad(node.value.id, parentGrad).asInstanceOf[Output[A]]
+        val grads = node.outputs.map(parentEdge => {
+          val parentGrad = gradRec(parentEdge.to)
+          parentEdge.to.value.grad(parentEdge.index, parentGrad).asInstanceOf[Output[A]]
         })
         plus(grads.toList: _*)
       }

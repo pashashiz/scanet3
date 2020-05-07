@@ -14,7 +14,7 @@ object ConstOp {
     Output.name[A]("Const")
       .shape(tensor.shape)
       .compileWithValue(tensor)
-      .localGrad[A](_ => Map())
+      .localGrad[A](_ => List())
       .build
 
   trait Syntax {

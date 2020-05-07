@@ -153,7 +153,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .inputs(left, rightOut)
       .compileWithAllInputs
       // todo: test grad with broadcasting
-      .localGrad[A](ctx => Map(left.id -> ctx.parentGrad, rightOut.id -> ctx.parentGrad))
+      .localGrad[A](ctx => List(ctx.parentGrad, ctx.parentGrad))
       .build
   }
 
@@ -171,9 +171,9 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
       .localGrad[A](ctx => {
-        Map(
-          leftAdjusted.id -> multiply(ctx.parentGrad, transpose(rightAdjusted)),
-          rightAdjusted.id -> multiply(transpose(leftAdjusted), ctx.parentGrad))
+        List(
+          multiply(ctx.parentGrad, transpose(rightAdjusted)),
+          multiply(transpose(leftAdjusted), ctx.parentGrad))
       })
       .build
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
@@ -187,10 +187,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Sub")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
-      .localGrad[A](_ => {
-        // todo: Yura, try me out
-        ???
-      })
+      .localGrad[A](ctx => List(ctx.parentGrad, negate(ctx.parentGrad)))
       .compileWithAllInputs
       .build
   }
@@ -199,10 +196,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Neg")
       .shape(out.shape)
       .inputs(out)
-      .localGrad[A](_ => {
-        // todo: Yura, try me out
-        ???
-      })
+      .localGrad[A](ctx => List(negate(ctx.parentGrad)))
       .compileWithAllInputs
       .build
   }
@@ -230,9 +224,9 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      .localGrad[A](ctx => Map(
-          left.id -> multiplyElementWise(rightOut, ctx.parentGrad),
-          rightOut.id -> multiplyElementWise(left, ctx.parentGrad))
+      .localGrad[A](ctx => List(
+          multiplyElementWise(rightOut, ctx.parentGrad),
+          multiplyElementWise(left, ctx.parentGrad))
       )
       .build
   }
@@ -244,7 +238,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       Output.name[A]("Sum")
         .shape(out.shape.remove(axises: _*))
         .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
-        .localGrad[A](ctx => Map(out.id -> multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
+        .localGrad[A](ctx => List(multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
         .compileWithAllInputs
         .build
     }
@@ -259,10 +253,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       Output.name[A]("Transpose")
         .shape(out.shape.permute(perm: _*))
         .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const)
-        .localGrad[A](ctx => {
-          // todo: Yura, try me out
-          ???
-        })
+        .localGrad[A](ctx => List(transpose(ctx.parentGrad)))
         .compileWithAllInputs
         .build
     }
@@ -281,10 +272,7 @@ trait MathBaseMultiOp {
       .shape(shapes.head)
       .inputs(ops: _*)
       .compileWithInputList
-      .localGrad[A](ctx => {
-        // todo: Yura, try me out
-        ???
-      })
+      .localGrad[A](ctx => ops.map(_ => ctx.parentGrad).toList)
       .build
   }
 }
