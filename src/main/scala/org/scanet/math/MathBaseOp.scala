@@ -171,14 +171,11 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
       .localGrad[A](ctx => {
-//        val parentGradAdjusted = ctx.parentGrad.reshape(left.shape.alignLeft(2, using = 1))
         Map(
           leftAdjusted.id -> multiply(ctx.parentGrad, transpose(rightAdjusted)),
           rightAdjusted.id -> multiply(transpose(leftAdjusted), ctx.parentGrad))
       })
       .build
-    // todo: adjust back after transpose and test smaller dimensions
-    // we need to prune additional adjusted dimensions added for scalars and vectors
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
     result.reshape(resultShape.prune(adjusted))
   }
