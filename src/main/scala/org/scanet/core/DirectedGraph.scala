@@ -16,17 +16,17 @@ case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
     this
   }
 
-  def link(index: Int, from: String, to: String): DirectedGraph[A] = {
+  def link(from: String, to: String): DirectedGraph[A] = {
     val fromNode = nodes(from)
     val toNode = nodes(to)
-    val edge = Edge(index, fromNode, toNode)
+    val edge = Edge(toNode.inputs.size, fromNode, toNode)
     fromNode.output(edge)
     toNode.input(edge)
     this
   }
 
   def linkAll(edges: Seq[(String, String)]): DirectedGraph[A] = {
-    edges.zipWithIndex.foreach {case ((from, to), index) => link(index, from, to)}
+    edges.foreach {case (from, to) => link(from, to)}
     this
   }
 
