@@ -28,40 +28,43 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     (1.const, 2.const, 3.const).eval should be((Tensor.scalar(1), Tensor.scalar(2), Tensor.scalar(3)))
   }
 
-  "vector" should "be reshaped into matrix" in {
+  "reshape" should "transform vector into matrix" in {
     Tensor.vector(1, 2, 3, 4).const.reshape(2, 2).eval should be(Tensor.matrix(Array(1, 2), Array(3, 4)))
   }
 
-  "matrix" should "be reshaped into vector" in {
+  it should "transform matrix into vector" in {
     Tensor.matrix(Array(1, 2), Array(3, 4)).const.reshape(4).eval should be(Tensor.vector(1, 2, 3, 4))
   }
 
-  "matrix" should "be reshaped into other matrix" in {
-    val a = Tensor.matrix(
-      Array(1, 2, 3),
-      Array(4, 5, 6))
-    val b = Tensor.matrix(
-      Array(1, 2),
-      Array(3, 4),
-      Array(5, 6))
-    a.const.reshape(3, 2).eval should be(b)
+  it should "transform matrix into another matrix" in {
+    Tensor.matrix(Array(1, 2), Array(3, 4)).const.reshape(4).eval should be(Tensor.vector(1, 2, 3, 4))
   }
 
-  "matrix" should "fail to reshape when power does not match" in {
+  it should "fail when power does not match" in {
     the [IllegalArgumentException] thrownBy {
       Tensor.range(0 until 7).const.reshape(4, 4)
     } should have message "requirement failed: shape (7) cannot be reshaped into (4, 4)"
   }
 
-  "matrix" should "be squeezed into vector when first dimension is 1" in {
+  it should "support gradient" in {
+    val x = Tensor.vector(1, 2, 3, 4).const
+    x.reshape(2, 2).sum.grad(x).eval should be(Tensor.vector(1, 1, 1, 1))
+  }
+
+  "squeeze" should "convert matrix into a vector when first dimension is 1" in {
     Tensor.matrix(Array(1, 2, 3)).const.squeeze.eval should be(Tensor.vector(1, 2, 3))
   }
 
-  "vector of Floats" should "be casted into Ints" in {
+  it should "support gradient" in {
+    val x = Tensor.matrix(Array(1, 2, 3)).const
+    x.squeeze.sum.grad(x).eval should be(Tensor.matrix(Array(1, 1, 1)))
+  }
+
+  "cast" should "convert vector of Floats into Ints" in {
     Tensor.vector(1.2f, 2.2f, 3.3f).const.cast[Int].eval should be(Tensor.vector(1, 2, 3))
   }
 
-  it should "calculate output based on true condition" in {
+  "when" should "calculate output based on true condition" in {
     val a = 1.const
     val b = 0.const
     val c = 2.const
