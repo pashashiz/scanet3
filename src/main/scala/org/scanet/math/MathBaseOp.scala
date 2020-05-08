@@ -193,7 +193,12 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Sub")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
-      .localGrad[A](ctx => List(ctx.parentGrad, negate(ctx.parentGrad)))
+      .localGrad[A](ctx => {
+        val parentShape = ctx.parentGrad.shape
+        val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
+        val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
+        List(sum(ctx.parentGrad, shrinkLeftAxises), sum(negate(ctx.parentGrad), shrinkRightAxises))
+      })
       .compileWithAllInputs
       .build
   }

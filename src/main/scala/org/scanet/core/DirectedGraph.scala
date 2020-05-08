@@ -55,7 +55,7 @@ case class Node[A](id: String, value: A, inputs: mutable.Buffer[Edge[A]], output
 
   override def hashCode(): Int = id.hashCode
   override def equals(obj: Any): Boolean = obj match {
-    case other: Node[Expr] => other.id == id
+    case other: Node[_] => other.id == id
     case _ => false
   }
 

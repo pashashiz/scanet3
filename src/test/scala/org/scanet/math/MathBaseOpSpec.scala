@@ -67,6 +67,23 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((x + x) grad x).eval should be(Tensor.scalar(2))
   }
 
+  it should "calculate a gradient for minus op if left side is a differentiable variable" in {
+    val a = 3.const
+    val x = 2.const
+    ((x - a) grad x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate a gradient for minus op if right side is a differentiable variable" in {
+    val a = 2.const
+    val x = 3.const
+    ((a - x) grad x).eval should be(Tensor.scalar(-1))
+  }
+
+  it should "calculate a gradient for minus op if right and left side is a differentiable variable" in {
+    val x = 2.const
+    ((x - x) grad x).eval should be(Tensor.scalar(0))
+  }
+
   it should "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
     val a = Tensor.matrix(
       Array(5, 10, 15),
@@ -87,6 +104,24 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(1, 1, 1))
     ((x + a).sum grad x).eval should be(grad)
     ((a + x).sum grad x).eval should be(grad)
+  }
+
+  it should "calculate a gradient for minus op with broadcasting when smaller tensor is a differentiable variable" in {
+    val a = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val x = Tensor.vector(1, 2, 3).const
+    ((a - x).sum grad x).eval should be(Tensor.vector(-2, -2, -2))
+    ((x - a).sum grad x).eval should be(Tensor.vector(2, 2, 2))
+  }
+
+  it should "calculate a gradient for minus op with broadcasting when bigger tensor is a differentiable variable" in {
+    val x = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val a = Tensor.vector(1, 2, 3).const
+    ((x - a).sum grad x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
+    ((a - x).sum grad x).eval should be(Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
   }
 
   "plus N" should "add multiple tensors" in {
@@ -246,8 +281,18 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     3.const.negate.eval should be(Tensor.scalar(-3))
   }
 
+  it should "support gradient negation for scalars" in {
+    val x = 3.const
+    x.negate.grad(x).eval should be(Tensor.scalar(-1))
+  }
+
   "negate" should "work on a tensor" in {
     Tensor.vector(1, 2, 3).const.negate.eval should be(Tensor.vector(-1, -2, -3))
+  }
+
+  it should "support gradient of negation for vectors" in {
+    val x = Tensor.vector(1, 2, 3).const
+    x.negate.sum.grad(x).eval should be(Tensor.vector(-1, -1, -1))
   }
 
   "element-wise division" should "work on tensors with same dimensions" in {
@@ -329,5 +374,15 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val before = Tensor(range(1, 13), Shape(2, 2, 3))
     val after = Tensor(Array(1, 4, 2, 5, 3, 6, 7, 10, 8, 11, 9, 12), Shape(2, 3, 2))
     before.const.transpose(Seq(0, 2, 1)).eval should be(after)
+  }
+
+  "transpose" should "support grad on a vector" in {
+    val x = Tensor.vector(1, 2, 3).const
+    x.transpose.sum.grad(x).eval should be(Tensor.vector(1, 1, 1))
+  }
+
+  "transpose" should "support grad on a matrix" in {
+    val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
+    x.transpose.sum.grad(x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
   }
 }
