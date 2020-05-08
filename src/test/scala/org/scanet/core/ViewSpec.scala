@@ -130,4 +130,48 @@ class ViewSpec extends AnyFlatSpec with Matchers {
   it should "support removing" in {
     Shape(2, 3, 4).remove(1, 2) should be(Shape(2))
   }
+
+  "minus" should "leave higher dimensions from first shape if it is bigger" in {
+    Shape(2, 3, 4) - Shape(3, 4) should be(Shape(2))
+  }
+
+  it should "return empty shape if both are equal" in {
+    Shape(2, 3, 4) - Shape(2, 3, 4) should be(Shape())
+  }
+
+  it should "return empty shape if other dimension is bigger" in {
+    Shape(2, 3, 4) - Shape(1, 2, 3, 4) should be(Shape())
+  }
+
+  it should "same shape if other dimension is empty" in {
+    Shape(2, 3, 4) - Shape() should be(Shape(2, 3, 4))
+  }
+
+  it should "fail if shapes are incompatible" in {
+    the [IllegalArgumentException] thrownBy {
+      Shape(2, 3, 4) - Shape(2, 5, 4)
+    } should have message "requirement failed: cannot (2, 3, 4) - (2, 5, 4)"
+  }
+
+  "broadcastable axises" should "leave higher dimensions from first shape if it is bigger" in {
+    Shape(2, 3, 4) broadcastableAxises Shape(3, 4) should be(Seq(0))
+  }
+
+  it should "return empty shape if both are equal" in {
+    Shape(2, 3, 4) broadcastableAxises Shape(2, 3, 4) should be(Seq())
+  }
+
+  it should "return empty shape if other dimension is bigger" in {
+    Shape(2, 3, 4) broadcastableAxises Shape(1, 2, 3, 4) should be(Seq())
+  }
+
+  it should "same shape if other dimension is empty" in {
+    Shape(2, 3, 4) broadcastableAxises Shape() should be(Seq(0, 1, 2))
+  }
+
+  it should "fail if shapes are incompatible" in {
+    the [IllegalArgumentException] thrownBy {
+      Shape(2, 3, 4) broadcastableAxises Shape(2, 5, 4)
+    } should have message "requirement failed: cannot find broadcastable axises for (2, 3, 4) and (2, 5, 4)"
+  }
 }
