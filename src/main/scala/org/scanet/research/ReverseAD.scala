@@ -32,8 +32,8 @@ object ReverseAD {
           1.0f
         } else {
           node.outputs.map(parent => {
-            val localGrad = parent.value.localGrads(node.value)
-            val parentGrad = gradRec(parent)
+            val localGrad = parent.to.value.localGrads(node.value)
+            val parentGrad = gradRec(parent.to)
             localGrad * parentGrad
           }).sum
         }

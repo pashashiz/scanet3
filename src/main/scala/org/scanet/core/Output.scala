@@ -15,7 +15,7 @@ case class Output[A: TensorType](
       inputs: List[Output[_]],
       controls: List[Output[_]],
       compiler: CompileContext[A] => Operation,
-      localGradF: GradContext[A, _] => Map[String, Output[A]]) {
+      localGradF: GradContext[A, _] => List[Output[A]]) {
 
   val id: String = UUID.randomUUID().toString
 
@@ -58,8 +58,8 @@ case class Output[A: TensorType](
     inputs.flatMap(op => op.upstreamOptions)
   }
 
-  def grad(inputId: String, parentGrad: Output[_]): Output[A] = {
-    localGradF(GradContext(this, parentGrad))(inputId)
+  def grad(index: Int, parentGrad: Output[_]): Output[A] = {
+    localGradF(GradContext(this, parentGrad))(index)
   }
 
   def asGraph: DirectedGraph[Output[_]] = {
@@ -127,7 +127,7 @@ object Output {
         inputs: List[Output[A]] = Nil,
         controls: List[Output[A]] = Nil,
         transformers: List[Transformer[A]] = Nil,
-        localGradF: GradContext[A, _] => Map[String, Output[A]] = null) {
+        localGradF: GradContext[A, _] => List[Output[A]] = null) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
 
@@ -175,8 +175,8 @@ object Output {
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
-    def localGrad[B](f: GradContext[A, B] => Map[String, Output[A]]): Builder[A, State] =
-      copy(localGradF = f.asInstanceOf[GradContext[A, _] => Map[String, Output[A]]])
+    def localGrad[B](f: GradContext[A, B] => List[Output[A]]): Builder[A, State] =
+      copy(localGradF = f.asInstanceOf[GradContext[A, _] => List[Output[A]]])
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](
