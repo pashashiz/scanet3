@@ -235,10 +235,15 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      .localGrad[A](ctx => List(
-          multiplyElementWise(rightOut, ctx.parentGrad),
-          multiplyElementWise(left, ctx.parentGrad)
-      ))
+      .localGrad[A](ctx => {
+        val parentShape = ctx.parentGrad.shape
+        val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
+        val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
+        List(
+          sum(multiplyElementWise(rightOut, ctx.parentGrad), shrinkLeftAxises),
+          sum(multiplyElementWise(left, ctx.parentGrad), shrinkRightAxises)
+        )
+      })
       .build
   }
 
