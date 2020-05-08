@@ -15,7 +15,7 @@ case class Output[A: TensorType](
       inputs: List[Output[_]],
       controls: List[Output[_]],
       compiler: CompileContext[A] => Operation,
-      localGradF: GradContext[A, _] => List[Output[A]]) {
+      localGradF: GradContext[A, _] => List[Output[_]]) {
 
   val id: String = UUID.randomUUID().toString
 
@@ -58,7 +58,7 @@ case class Output[A: TensorType](
     inputs.flatMap(op => op.upstreamOptions)
   }
 
-  def grad(index: Int, parentGrad: Output[_]): Output[A] = {
+  def localGrad(index: Int, parentGrad: Output[_]): Output[_] = {
     localGradF(GradContext(this, parentGrad))(index)
   }
 
@@ -74,7 +74,7 @@ case class Output[A: TensorType](
   override def toString: String = {
     val args = if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
     val fullName = if (label == name) s"$name" else s"$label:$name"
-    s"$fullName$args:$shape"
+    s"$fullName$args[${TensorType[A].show}]:$shape"
   }
 
   override def hashCode(): Int = id.hashCode
@@ -127,7 +127,7 @@ object Output {
         inputs: List[Output[A]] = Nil,
         controls: List[Output[A]] = Nil,
         transformers: List[Transformer[A]] = Nil,
-        localGradF: GradContext[A, _] => List[Output[A]] = null) {
+        localGradF: GradContext[A, _] => List[Output[_]] = null) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
 
@@ -175,8 +175,8 @@ object Output {
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
-    def localGrad[B](f: GradContext[A, B] => List[Output[A]]): Builder[A, State] =
-      copy(localGradF = f.asInstanceOf[GradContext[A, _] => List[Output[A]]])
+    def localGrad[B](f: GradContext[A, B] => List[Output[_]]): Builder[A, State] =
+      copy(localGradF = f.asInstanceOf[GradContext[A, _] => List[Output[_]]])
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](

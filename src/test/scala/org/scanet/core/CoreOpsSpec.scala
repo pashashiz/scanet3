@@ -64,6 +64,12 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     Tensor.vector(1.2f, 2.2f, 3.3f).const.cast[Int].eval should be(Tensor.vector(1, 2, 3))
   }
 
+  "cast" should "support gradient" in {
+    val a = Tensor.vector(1, 2, 3).const
+    val x = Tensor.vector(5.2f, 10.2f, 15.3f).const
+    ((x.cast[Int] + a).sum grad x).eval should be(Tensor.vector(1.0f, 1.0f, 1.0f))
+  }
+
   "when" should "calculate output based on true condition" in {
     val a = 1.const
     val b = 0.const
