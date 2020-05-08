@@ -106,24 +106,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((a + x).sum grad x).eval should be(grad)
   }
 
-  it should "calculate a gradient for minus op with broadcasting when smaller tensor is a differentiable variable" in {
-    val a = Tensor.matrix(
-      Array(5, 10, 15),
-      Array(20, 25, 30)).const
-    val x = Tensor.vector(1, 2, 3).const
-    ((a - x).sum grad x).eval should be(Tensor.vector(-2, -2, -2))
-    ((x - a).sum grad x).eval should be(Tensor.vector(2, 2, 2))
-  }
-
-  it should "calculate a gradient for minus op with broadcasting when bigger tensor is a differentiable variable" in {
-    val x = Tensor.matrix(
-      Array(5, 10, 15),
-      Array(20, 25, 30)).const
-    val a = Tensor.vector(1, 2, 3).const
-    ((x - a).sum grad x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
-    ((a - x).sum grad x).eval should be(Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
-  }
-
   "plus N" should "add multiple tensors" in {
     plus(1.const, 2.const, 3.const).eval should be(Tensor.scalar(6))
   }
@@ -179,7 +161,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes (2, 2, 2) * (2, 2, 2)"
   }
 
-  it should "support gradient when 2 matrices are given and right side is a differentiable variable" in {
+  it should "calculate gradient when 2 matrices are given and right side is a differentiable variable" in {
     val a = Tensor.matrix(
       Array(1, 2, 3),
       Array(4, 5, 6)).const
@@ -194,7 +176,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((a * x).sum grad x).eval should be(grad)
   }
 
-  it should "support gradient when 2 matrices are given and left side is a differentiable variable" in {
+  it should "calculate gradient when 2 matrices are given and left side is a differentiable variable" in {
     val x = Tensor.matrix(
       Array(1, 2, 3),
       Array(4, 5, 6))
@@ -210,7 +192,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((x * a).sum grad x).eval should be(grad)
   }
 
-  it should "support gradient when vector and matrix are given and left side is a differentiable variable" in {
+  it should "calculate gradient when vector and matrix are given and left side is a differentiable variable" in {
     val x = Tensor.vector(1, 2, 3).const
     val a = Tensor.matrix(
       Array(5, 10),
@@ -219,7 +201,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     (x * a).sum.grad(x).eval should be(Tensor.vector(15, 35, 55))
   }
 
-  it should "support gradient when vector and matrix are given and right side is a differentiable variable" in {
+  it should "calculate gradient when vector and matrix are given and right side is a differentiable variable" in {
     val a = Tensor.vector(1, 2, 3).const
     val x = Tensor.matrix(
       Array(5, 10),
@@ -231,25 +213,25 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(3, 3)))
   }
 
-  it should "support gradient when scalar and vector are given and left side is a differentiable variable" in {
+  it should "calculate gradient when scalar and vector are given and left side is a differentiable variable" in {
     val x = 2.const
     val a = Tensor.vector(1, 2, 3).const
     (x * a).sum.grad(x).eval should be(Tensor.scalar(6))
   }
 
-  it should "support gradient when scalar and vector are given and right side is a differentiable variable" in {
+  it should "calculate gradient when scalar and vector are given and right side is a differentiable variable" in {
     val a = 2.const
     val x = Tensor.vector(1, 2, 3).const
     (a * x).sum.grad(x).eval should be(Tensor.vector(2, 2, 2))
   }
 
-  it should "support gradient when 2 scalars are given and left side is a differentiable variable" in {
+  it should "calculate gradient when 2 scalars are given and left side is a differentiable variable" in {
     val x = 2.const
     val a = 3.const
     (x * a).grad(x).eval should be(Tensor.scalar(3))
   }
 
-  it should "support gradient when 2 scalars are given and right side is a differentiable variable" in {
+  it should "calculate gradient when 2 scalars are given and right side is a differentiable variable" in {
     val a = 2.const
     val x = 3.const
     (a * x).grad(x).eval should be(Tensor.scalar(2))
@@ -275,6 +257,24 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const - Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot subtracted tensors with shapes (2, 2) - (3)"
+  }
+
+  it should "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
+    val a = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val x = Tensor.vector(1, 2, 3).const
+    ((a - x).sum grad x).eval should be(Tensor.vector(-2, -2, -2))
+    ((x - a).sum grad x).eval should be(Tensor.vector(2, 2, 2))
+  }
+
+  it should "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
+    val x = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val a = Tensor.vector(1, 2, 3).const
+    ((x - a).sum grad x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
+    ((a - x).sum grad x).eval should be(Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
   }
 
   "negate" should "work on a scalar" in {
@@ -338,6 +338,28 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   it should "calculate a gradient equals to sum if right and left side is a differentiable variable" in {
     val x = Tensor.scalar(3).const
     ((x :* x) grad x).eval should be(Tensor.scalar(6))
+  }
+
+  it should "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
+    val a = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val x = Tensor.vector(1, 2, 3).const
+    val grad = Tensor.vector(25, 35, 45)
+    ((a :* x).sum grad x).eval should be(grad)
+    ((x :* a).sum grad x).eval should be(grad)
+  }
+
+  it should "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
+    val x = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val a = Tensor.vector(1, 2, 3).const
+    val grad = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(1, 2, 3))
+    ((x :* a).sum grad x).eval should be(grad)
+    ((a :* x).sum grad x).eval should be(grad)
   }
 
   "sum" should "calculate sum across all axises by default" in {
