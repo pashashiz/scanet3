@@ -50,21 +50,43 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       "requirement failed: cannot add tensors with shapes (2, 2) + (3)"
   }
 
-  it should "calculate a gradient equals to 1 if left side is a differentiable variable" in {
+  it should "calculate a gradient if left side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
     ((x + a) grad x).eval should be(Tensor.scalar(1))
   }
 
-  it should "calculate a gradient equals to 1 if right side is a differentiable variable" in {
+  it should "calculate a gradient if right side is a differentiable variable" in {
     val a = 2.const
     val x = 3.const
     ((a + x) grad x).eval should be(Tensor.scalar(1))
   }
 
-  it should "calculate a gradient equals to 2 if right and left side is a differentiable variable" in {
+  it should "calculate a gradient if right and left side is a differentiable variable" in {
     val x = 2.const
     ((x + x) grad x).eval should be(Tensor.scalar(2))
+  }
+
+  it should "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
+    val a = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val x = Tensor.vector(1, 2, 3).const
+    val grad = Tensor.vector(2, 2, 2)
+    ((a + x).sum grad x).eval should be(grad)
+    ((x + a).sum grad x).eval should be(grad)
+  }
+
+  it should "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
+    val x = Tensor.matrix(
+      Array(5, 10, 15),
+      Array(20, 25, 30)).const
+    val a = Tensor.vector(1, 2, 3).const
+    val grad = Tensor.matrix(
+      Array(1, 1, 1),
+      Array(1, 1, 1))
+    ((x + a).sum grad x).eval should be(grad)
+    ((a + x).sum grad x).eval should be(grad)
   }
 
   "plus N" should "add multiple tensors" in {

@@ -89,6 +89,15 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def broadcastableAny(other: Shape): Boolean =
     broadcastableBy(other) || other.broadcastableBy(this)
 
+  def broadcastableAxises(other: Shape): Seq[Int] = {
+    require(broadcastableAny(other), s"cannot find broadcastable axises for $this and $other")
+    if (rank <= other.rank) {
+      Seq()
+    } else {
+      0 until rank - other.rank
+    }
+  }
+
   def permute(indexes: Int*): Shape = {
     require(rank == indexes.size, "the number of permutation indexes " +
       s"should be equal to rank $rank, but was (${indexes.mkString(", ")})")
@@ -109,6 +118,17 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
       .map { case (dim, _) => dim }
     Shape(filteredDims)
   }
+
+  def minus(other: Shape): Shape = {
+    require(broadcastableAny(other), s"cannot $this - $other")
+    if (endsWith(other)) {
+      Shape(dims.take(rank - other.rank))
+    } else {
+      Shape()
+    }
+  }
+
+  def -(other: Shape): Shape = minus(other)
 
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
 
