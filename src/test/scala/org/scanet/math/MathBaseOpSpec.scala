@@ -20,7 +20,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       val b = 3.const
       a grad b
     } should have message "requirement failed: " +
-      "cannot find a gradient with respect to Const:() cause that input is not a part of the computation graph"
+      "cannot find a gradient with respect to Const[Int]:() cause that input is not a part of the computation graph"
   }
 
   "plus" should "add 2 scalars" in {
@@ -383,27 +383,27 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     Tensor.scalar(5).const.transpose.eval should be(Tensor.scalar(5))
   }
 
-  "transpose" should "be identity op on a vector" in {
+  it should "be identity op on a vector" in {
     Tensor.vector(1, 2, 3).const.transpose.eval should be(Tensor.vector(1, 2, 3))
   }
 
-  "transpose" should "transpose a matrix" in {
+  it should "transpose a matrix" in {
     Tensor.matrix(Array(1, 2), Array(3, 4)).const.transpose.eval should be(Tensor.matrix(Array(1, 3), Array(2, 4)))
   }
 
-  "transpose" should "transpose 3D tensor with custom permutatios" in {
+  it should "transpose 3D tensor with custom permutatios" in {
     // todo: add a method to make 3D tensor
     val before = Tensor(range(1, 13), Shape(2, 2, 3))
     val after = Tensor(Array(1, 4, 2, 5, 3, 6, 7, 10, 8, 11, 9, 12), Shape(2, 3, 2))
     before.const.transpose(Seq(0, 2, 1)).eval should be(after)
   }
 
-  "transpose" should "support grad on a vector" in {
+  it should "support grad on a vector" in {
     val x = Tensor.vector(1, 2, 3).const
     x.transpose.sum.grad(x).eval should be(Tensor.vector(1, 1, 1))
   }
 
-  "transpose" should "support grad on a matrix" in {
+  it should "support grad on a matrix" in {
     val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
     x.transpose.sum.grad(x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
   }

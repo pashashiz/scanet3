@@ -6,7 +6,7 @@ import org.scanet.math.MathBaseOp.syntax._
 import simulacrum.typeclass
 
 @typeclass trait MathGradOp[F[_]] {
-  def grad[A: TensorType: Numeric](current: F[A], withRespectTo: Output[_]): F[A]
+  def grad[A: TensorType: Numeric, B: TensorType : Numeric](current: F[A], withRespectTo: Output[B]): F[B]
 }
 
 object MathGradOp {
@@ -21,7 +21,7 @@ object MathGradOp {
 }
 
 class OutputIsMathGradOp extends MathGradOp[Output] {
-  override def grad[A: TensorType : Numeric](out: Output[A], withRespectTo: Output[_]): Output[A] = {
+  override def grad[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A], withRespectTo: Output[B]): Output[B] = {
     require(out.shape.isScalar, "gradient is supported on scalars only, " +
       "reduce the output with sum() or other operation")
     val graph = out.asGraph
@@ -35,11 +35,11 @@ class OutputIsMathGradOp extends MathGradOp[Output] {
         val grads = node.outputs.map(edge => {
           val parent = edge.to
           val parentGrad = gradRec(parent)
-          parent.value.grad(edge.index, parentGrad).asInstanceOf[Output[A]]
+          parent.value.localGrad(edge.index, parentGrad).asInstanceOf[Output[A]]
         })
         plus(grads.toList: _*)
       }
     }
-    leaf.map(gradRec).get.asInstanceOf[Output[A]]
+    leaf.map(gradRec).get.asInstanceOf[Output[B]]
   }
 }

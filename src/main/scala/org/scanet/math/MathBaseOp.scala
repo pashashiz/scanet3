@@ -282,13 +282,17 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
 trait MathBaseMultiOp {
   def plus[A: TensorType](ops: Output[A]*): Output[A] = {
-    val shapes = ops.map(_.shape)
-    require(shapes.distinct.size == 1, s"shapes of all tensors should be the same, but was ${shapes.mkString(" + ")}")
-    Output.name[A]("AddN")
-      .shape(shapes.head)
-      .inputs(ops: _*)
-      .compileWithInputList
-      .localGrad[A](ctx => List.fill(ops.size)(ctx.parentGrad))
-      .build
+    if (ops.size == 1) {
+      ops.head
+    } else {
+      val shapes = ops.map(_.shape)
+      require(shapes.distinct.size == 1, s"shapes of all tensors should be the same, but was ${shapes.mkString(" + ")}")
+      Output.name[A]("AddN")
+        .shape(shapes.head)
+        .inputs(ops: _*)
+        .compileWithInputList
+        .localGrad[A](ctx => List.fill(ops.size)(ctx.parentGrad))
+        .build
+    }
   }
 }
