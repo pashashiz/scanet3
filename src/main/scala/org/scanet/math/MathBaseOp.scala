@@ -208,10 +208,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Div")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
-      .localGrad[A](_ => {
-        // todo: Yura, try me out
-        ???
-      })
+      .localGrad[A](ctx => List(
+          div(ctx.parentGrad, transpose(rightOut)),
+          div(transpose(left), ctx.parentGrad)
+      ))
       .compileWithAllInputs
       .build
   }
@@ -226,8 +226,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .compileWithAllInputs
       .localGrad[A](ctx => List(
           multiplyElementWise(rightOut, ctx.parentGrad),
-          multiplyElementWise(left, ctx.parentGrad))
-      )
+          multiplyElementWise(left, ctx.parentGrad)
+      ))
       .build
   }
 
@@ -272,7 +272,7 @@ trait MathBaseMultiOp {
       .shape(shapes.head)
       .inputs(ops: _*)
       .compileWithInputList
-      .localGrad[A](ctx => ops.map(_ => ctx.parentGrad).toList)
+      .localGrad[A](ctx => List.fill(ops.size)(ctx.parentGrad))
       .build
   }
 }
