@@ -1,7 +1,7 @@
 package org.scanet.math
 
-import org.scanet.core.{Output, Shape, Tensor, TensorType}
 import org.scanet.core.syntax._
+import org.scanet.core.{Output, Shape, Tensor, TensorType}
 import org.scanet.math.Numeric.syntax._
 import simulacrum.{op, typeclass}
 
@@ -109,7 +109,7 @@ import scala.Ordering.Implicits._
    * @return a result of division
    */
   @op("/", alias = true)
-  def div[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  def div[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Double]
 
   /** Element-wise multiplication. Supports broadcasting.
    *
@@ -212,17 +212,28 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def div[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  override def div[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Double] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
       s"cannot divide tensors with shapes ${left.shape} / ${rightOut.shape}")
-    Output.name[A]("Div")
+    Output.name[Double]("Div")
       .shape(left.shape max rightOut.shape)
-      .inputs(left, rightOut)
-      .localGrad[A](ctx => List(
-          div(ctx.parentGrad, transpose(rightOut)),
-          div(transpose(left), ctx.parentGrad)
-      ))
+      .inputs(left.cast[Double], rightOut.cast[Double])
+      .localGrad[A](ctx => {
+        val parentShape = ctx.parentGrad.shape
+        val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
+        val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
+        List(
+          sum(div(ctx.parentGrad, rightOut), shrinkLeftAxises),
+          sum(
+            negate(div(
+                multiplyElementWise(left.cast[Double].asInstanceOf[Output[A]], ctx.parentGrad),
+                multiplyElementWise(rightOut, rightOut)
+            )),
+            shrinkRightAxises
+          )
+        )
+      })
       .compileWithAllInputs
       .build
   }

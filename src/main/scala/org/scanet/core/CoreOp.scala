@@ -128,9 +128,7 @@ object CoreOp {
           Output.name[B]("Cast")
             .shape(op.shape)
             .inputs(op)
-            .localGrad[B](ctx => {
-              List(cast[B, A](ctx.parentGrad))
-            })
+            .localGrad[B](ctx => List(ctx.parentGrad))
             .compileWithAttr("DstT", TensorType[B])
             .compileWithAllInputs
             .build
