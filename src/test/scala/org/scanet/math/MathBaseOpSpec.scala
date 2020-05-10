@@ -315,7 +315,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "work for floating point numbers" in {
-    (Tensor.vector(2, 4, 6).const / Tensor.vector(10, 10, 10).const).eval should be(Tensor.vector(0.2, 0.4, 0.6))
+    (Tensor.vector(2.0f, 4.0f, 6.0f).const / Tensor.vector(10.0f, 10.0f, 10.0f).const).eval should be(Tensor.vector(0.2f, 0.4f, 0.6f))
   }
 
   it should "support broadcasting" in {
@@ -340,8 +340,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val a = Tensor.vector(5, 10, 15).const
     val x = Tensor.vector(5, 5, 5).const
 
-    (a div x).sum.grad(x).eval should be(Tensor.vector(-0.2, -0.4, -0.6))
-    (a div x).sum.grad(a).eval should be(Tensor.vector(0.2, 0.2, 0.2))
+    (a div x).sum.grad(x).eval should be(Tensor.vector(-0.2f, -0.4f, -0.6f))
+    (a div x).sum.grad(a).eval should be(Tensor.vector(0.2f, 0.2f, 0.2f))
   }
 
   it should "calculate gradient for matrices with broadcasting when smaller tensor is differentiable value" in {
@@ -350,8 +350,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(24, 28, 32)).const
     val x = Tensor.vector(2, 4, 8).const
 
-    (a div x).sum.grad(x).eval should be(Tensor.vector(-9, -2.75, -0.8125))
-    (x div a).sum.grad(x).eval should be(Tensor.vector(0.125, 0.09821428571428571, 0.08125))
+    (a div x).sum.grad(x).eval should be(Tensor.vector(-9f, -2.75f, -0.8125f))
+    (x div a).sum.grad(x).eval should be(Tensor.vector(0.125f, 0.09821428f, 0.08125f))
   }
 
   it should "calculate gradient for matrices with broadcasting when bigger tensor is differentiable value" in {
@@ -360,10 +360,10 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(24, 28, 32)).const
     val x = Tensor.vector(2, 4, 8).const
 
-    (a div x).sum.grad(a).eval should be(Tensor.matrix(Array(0.5, 0.25, 0.125), Array(0.5, 0.25, 0.125)))
+    (a div x).sum.grad(a).eval should be(Tensor.matrix(Array(0.5f, 0.25f, 0.125f), Array(0.5f, 0.25f, 0.125f)))
     val grad = Tensor.matrix(
-      Array(-0.013888888888888888, -0.015625, -0.02),
-      Array(-0.003472222222222222, -0.00510204081632653, -0.0078125))
+      Array(-0.013888889f, -0.015625f, -0.02f),
+      Array(-0.0034722222f, -0.0051020407f, -0.0078125f))
     (x div a).sum.grad(a).eval should be(grad)
   }
 

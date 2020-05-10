@@ -109,7 +109,7 @@ import scala.Ordering.Implicits._
    * @return a result of division
    */
   @op("/", alias = true)
-  def div[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[Double]
+  def div[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Element-wise multiplication. Supports broadcasting.
    *
@@ -152,7 +152,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      .localGrad[A](ctx => {
+      .localGrad(ctx => {
         val parentShape = ctx.parentGrad.shape
         val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
         val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
@@ -176,10 +176,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(resultShape)
       .inputs(leftAdjusted, rightAdjusted)
       .compileWithAllInputs
-      .localGrad[A](ctx => {
+      .localGrad(ctx => {
         List(
-          multiply(ctx.parentGrad, transpose(rightAdjusted)),
-          multiply(transpose(leftAdjusted), ctx.parentGrad))
+          multiply(ctx.parentGrad, transpose(rightAdjusted).cast[Float]),
+          multiply(transpose(leftAdjusted).cast[Float], ctx.parentGrad))
       })
       .build
     val adjusted = 2 - math.min(left.shape.rank, rightOut.shape.rank)
@@ -193,7 +193,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Sub")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
-      .localGrad[A](ctx => {
+      .localGrad(ctx => {
         val parentShape = ctx.parentGrad.shape
         val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
         val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
@@ -207,29 +207,28 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     Output.name[A]("Neg")
       .shape(out.shape)
       .inputs(out)
-      .localGrad[A](ctx => List(negate(ctx.parentGrad)))
+      .localGrad(ctx => List(negate(ctx.parentGrad)))
       .compileWithAllInputs
       .build
   }
 
-  override def div[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Double] = {
-    val leftOut: Output[Double] = left.cast[Double]
-    val rightOut: Output[Double] = c.convert(right).cast[Double]
-    require(leftOut.broadcastableAny(rightOut),
+  override def div[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+    val rightOut: Output[A] = c.convert(right)
+    require(left.broadcastableAny(rightOut),
       s"cannot divide tensors with shapes ${left.shape} / ${rightOut.shape}")
-    Output.name[Double]("Div")
+    Output.name[A]("Div")
       .shape(left.shape max rightOut.shape)
-      .inputs(leftOut, rightOut)
-      .localGrad[Double](ctx => {
+      .inputs(left, rightOut)
+      .localGrad(ctx => {
         val parentShape = ctx.parentGrad.shape
         val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
         val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
         List(
-          sum(div(ctx.parentGrad, rightOut), shrinkLeftAxises),
+          sum(div(ctx.parentGrad, rightOut.cast[Float]), shrinkLeftAxises),
           sum(
             negate(div(
-                multiplyElementWise(leftOut, ctx.parentGrad),
-                multiplyElementWise(rightOut, rightOut)
+              multiplyElementWise(left.cast[Float], ctx.parentGrad),
+              multiplyElementWise(rightOut, rightOut).cast[Float]
             )),
             shrinkRightAxises
           )
@@ -247,13 +246,13 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
       .compileWithAllInputs
-      .localGrad[A](ctx => {
+      .localGrad(ctx => {
         val parentShape = ctx.parentGrad.shape
         val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
         val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
         List(
-          sum(multiplyElementWise(rightOut, ctx.parentGrad), shrinkLeftAxises),
-          sum(multiplyElementWise(left, ctx.parentGrad), shrinkRightAxises)
+          sum(multiplyElementWise(rightOut.cast[Float], ctx.parentGrad), shrinkLeftAxises),
+          sum(multiplyElementWise(left.cast[Float], ctx.parentGrad), shrinkRightAxises)
         )
       })
       .build
@@ -266,7 +265,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       Output.name[A]("Sum")
         .shape(out.shape.remove(axises: _*))
         .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
-        .localGrad[A](ctx => List(multiplyElementWise(Tensor.ones[A](out.shape).const, ctx.parentGrad)))
+        .localGrad(ctx => List(multiplyElementWise(Tensor.ones[Float](out.shape).const, ctx.parentGrad)))
         .compileWithAllInputs
         .build
     }
@@ -281,7 +280,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       Output.name[A]("Transpose")
         .shape(out.shape.permute(perm: _*))
         .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const)
-        .localGrad[A](ctx => List(transpose(ctx.parentGrad)))
+        .localGrad(ctx => List(transpose(ctx.parentGrad)))
         .compileWithAllInputs
         .build
     }
@@ -303,7 +302,7 @@ trait MathBaseMultiOp {
         .shape(shapes.head)
         .inputs(ops: _*)
         .compileWithInputList
-        .localGrad[A](ctx => List.fill(ops.size)(ctx.parentGrad))
+        .localGrad(ctx => List.fill(ops.size)(ctx.parentGrad))
         .build
     }
   }
