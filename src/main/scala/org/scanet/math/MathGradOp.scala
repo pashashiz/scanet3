@@ -42,6 +42,5 @@ class OutputIsMathGradOp extends MathGradOp[Output] {
       }
     }
     leaf.map(gradRec).get
-
   }
 }
