@@ -15,7 +15,7 @@ case class Output[A: TensorType](
       inputs: List[Output[_]],
       controls: List[Output[_]],
       compiler: CompileContext[A] => Operation,
-      localGradF: GradContext[A, _] => List[Output[_]]) {
+      localGradF: GradContext[A] => List[Output[Float]]) {
 
   val id: String = UUID.randomUUID().toString
 
@@ -58,7 +58,7 @@ case class Output[A: TensorType](
     inputs.flatMap(op => op.upstreamOptions)
   }
 
-  def localGrad(index: Int, parentGrad: Output[_]): Output[_] = {
+  def localGrad(index: Int, parentGrad: Output[Float]): Output[Float] = {
     localGradF(GradContext(this, parentGrad))(index)
   }
 
@@ -94,7 +94,7 @@ object Output {
 
   type Compiled = (Label, Operation)
 
-  case class GradContext[A, B](current: Output[A], parentGrad: Output[B])
+  case class GradContext[A](current: Output[A], parentGrad: Output[Float])
 
   case class CompileContext[A: TensorType](
       global: Context,
@@ -127,7 +127,7 @@ object Output {
         inputs: List[Output[A]] = Nil,
         controls: List[Output[A]] = Nil,
         transformers: List[Transformer[A]] = Nil,
-        localGradF: GradContext[A, _] => List[Output[_]] = null) {
+        localGradF: GradContext[A] => List[Output[Float]] = null) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
 
@@ -175,8 +175,8 @@ object Output {
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
-    def localGrad[B](f: GradContext[A, B] => List[Output[_]]): Builder[A, State] =
-      copy(localGradF = f.asInstanceOf[GradContext[A, _] => List[Output[_]]])
+    def localGrad(f: GradContext[A] => List[Output[Float]]): Builder[A, State] =
+      copy(localGradF = f)
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](
@@ -190,7 +190,7 @@ object Output {
           val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
           transformed.build()
         },
-        localGradF = Option(localGradF).getOrElse((_: GradContext[A, _]) => error(s"gradient is not implemented for '$name' operator")))
+        localGradF = Option(localGradF).getOrElse((_: GradContext[A]) => error(s"gradient is not implemented for '$name' operator")))
     }
   }
 

@@ -117,6 +117,21 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       "requirement failed: shapes of all tensors should be the same, but was () + () + (2)"
   }
 
+  it should "calculate gradient for plus N" in {
+    val a = 1.const
+    val b = 2.const
+    val x = 3.const
+
+    plus(a, b, x).sum.grad(x).eval should be(Tensor.scalar(1))
+  }
+
+  it should "calculate gradient for plus N when diff variable is used more than once" in {
+    val a = Tensor.vector(1, 2).const
+    val x = Tensor.vector(5, 6).const
+
+    plus(a, x, x).sum.grad(x).eval should be(Tensor.vector(2, 2))
+  }
+
   "multiplication" should "produce dot product on 2 matrices" in {
     val a = Tensor.matrix(
       Array(1, 2, 3),
@@ -299,6 +314,10 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     (Tensor.vector(5, 10, 15).const / Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(1, 2, 3))
   }
 
+  it should "work for floating point numbers" in {
+    (Tensor.vector(2.0f, 4.0f, 6.0f).const / Tensor.vector(10.0f, 10.0f, 10.0f).const).eval should be(Tensor.vector(0.2f, 0.4f, 0.6f))
+  }
+
   it should "support broadcasting" in {
     (Tensor.vector(5, 10, 15).const / 5.const).eval should be(Tensor.vector(1, 2, 3))
   }
@@ -307,6 +326,45 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const / Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot divide tensors with shapes (2, 2) / (3)"
+  }
+
+  it should "calculate gradient for constants" in {
+    val a = 4.const
+    val x = 2.const
+
+    (a div x).sum.grad(x).eval should be(Tensor.scalar(-1.0))
+    (a div x).sum.grad(a).eval should be(Tensor.scalar(0.5))
+  }
+
+  it should "calculate gradient for vectors" in {
+    val a = Tensor.vector(5, 10, 15).const
+    val x = Tensor.vector(5, 5, 5).const
+
+    (a div x).sum.grad(x).eval should be(Tensor.vector(-0.2f, -0.4f, -0.6f))
+    (a div x).sum.grad(a).eval should be(Tensor.vector(0.2f, 0.2f, 0.2f))
+  }
+
+  it should "calculate gradient for matrices with broadcasting when smaller tensor is differentiable value" in {
+    val a = Tensor.matrix(
+      Array(12, 16, 20),
+      Array(24, 28, 32)).const
+    val x = Tensor.vector(2, 4, 8).const
+
+    (a div x).sum.grad(x).eval should be(Tensor.vector(-9f, -2.75f, -0.8125f))
+    (x div a).sum.grad(x).eval should be(Tensor.vector(0.125f, 0.09821428f, 0.08125f))
+  }
+
+  it should "calculate gradient for matrices with broadcasting when bigger tensor is differentiable value" in {
+    val a = Tensor.matrix(
+      Array(12, 16, 20),
+      Array(24, 28, 32)).const
+    val x = Tensor.vector(2, 4, 8).const
+
+    (a div x).sum.grad(a).eval should be(Tensor.matrix(Array(0.5f, 0.25f, 0.125f), Array(0.5f, 0.25f, 0.125f)))
+    val grad = Tensor.matrix(
+      Array(-0.013888889f, -0.015625f, -0.02f),
+      Array(-0.0034722222f, -0.0051020407f, -0.0078125f))
+    (x div a).sum.grad(a).eval should be(grad)
   }
 
   "element-wise multiplication" should "work on tensors with same dimensions" in {
