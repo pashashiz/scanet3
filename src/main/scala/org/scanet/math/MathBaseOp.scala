@@ -213,13 +213,14 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
   }
 
   override def div[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[Double] = {
-    val rightOut: Output[A] = c.convert(right)
-    require(left.broadcastableAny(rightOut),
+    val leftOut: Output[Double] = left.cast[Double]
+    val rightOut: Output[Double] = c.convert(right).cast[Double]
+    require(leftOut.broadcastableAny(rightOut),
       s"cannot divide tensors with shapes ${left.shape} / ${rightOut.shape}")
     Output.name[Double]("Div")
       .shape(left.shape max rightOut.shape)
-      .inputs(left.cast[Double], rightOut.cast[Double])
-      .localGrad[A](ctx => {
+      .inputs(leftOut, rightOut)
+      .localGrad[Double](ctx => {
         val parentShape = ctx.parentGrad.shape
         val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
         val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
@@ -227,7 +228,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
           sum(div(ctx.parentGrad, rightOut), shrinkLeftAxises),
           sum(
             negate(div(
-                multiplyElementWise(left.cast[Double].asInstanceOf[Output[A]], ctx.parentGrad),
+                multiplyElementWise(leftOut, ctx.parentGrad),
                 multiplyElementWise(rightOut, rightOut)
             )),
             shrinkRightAxises
