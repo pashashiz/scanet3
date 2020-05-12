@@ -27,7 +27,7 @@ case class TensorDataset[A: TensorType: Numeric](src: Tensor[A]) extends Dataset
   }
 }
 
-case class NoopDataset[A: TensorType: Numeric]() extends Dataset[A] {
+case class EmptyDataset[A: TensorType: Numeric]() extends Dataset[A] {
   override def iterator: Iterator[A] = new Iterator[A] {
     var completed = false
     override def hasNext: Boolean = !completed

@@ -9,6 +9,6 @@ class SDGSpec extends AnyFlatSpec with Matchers {
 
   "SDG" should "calculate optimization step" in {
     val x2 = TensorFunction[Float, Float](x => x * x)
-    println(SDG(rate = 0.1).step(x2, 50.0f.const).eval)
+    println(SDG(rate = 0.1).delta(x2, 50.0f.const).eval)
   }
 }
