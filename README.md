@@ -24,6 +24,7 @@ todo
 That is done for now
 
 ## Optimizers
+0. Random weight by default
 1. Add SGD, AdaGrad + AdaDelta, RMSProp, Adam + Nadam
 2. Minimize basic math functions
 3. Add logging

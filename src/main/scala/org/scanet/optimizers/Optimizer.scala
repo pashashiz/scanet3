@@ -13,14 +13,14 @@ case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
 }
 
 case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](
-            alg: Algorithm,
-            funcBuilder: TensorFunctionBuilder[X, W, R],
-            initArgs: Tensor[W],
-            dataset: Dataset[X],
-            batch: Int,
-            minimizing: Boolean,
-            stopCondition: Step[W, R] => Boolean,
-            doOnEach: Step[W, R] => Unit) {
+      alg: Algorithm,
+      model: Model[X, W, R],
+      initArgs: Tensor[W],
+      dataset: Dataset[X],
+      batch: Int,
+      minimizing: Boolean,
+      stopCondition: Step[W, R] => Boolean,
+      doOnEach: Step[W, R] => Unit) {
 
   def run(): Tensor[W] = {
     var step = Step[W, R]()
@@ -28,7 +28,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
     var it = dataset.iterator
     while (step.isFirst || !stopCondition(step)) {
       if (it.hasNext) {
-        val func = funcBuilder(it.next(batch).const)
+        val func = model(it.next(batch).const)
         val delta = alg.delta(func, arg.const).cast[W]
         arg = (if (minimizing) arg.const - delta else arg.const + delta).eval
         step = step.nextIter
@@ -60,12 +60,6 @@ object Optimizer {
     def using(alg: Algorithm): Builder[X, W, R, State with WithAlg] =
       copy(optimizer = optimizer.copy(alg = alg))
 
-    def minimize(func: TensorFunctionBuilder[X, W, R]): Builder[X, W, R, State with WithFunc] =
-      copy(optimizer = optimizer.copy(minimizing = true, funcBuilder = func))
-
-    def maximize(func: TensorFunctionBuilder[X, W, R]): Builder[X, W, R, State with WithFunc] =
-      copy(optimizer = optimizer.copy(minimizing = false, funcBuilder = func))
-
     def initWith(args: Tensor[W]): Builder[X, W, R, State] =
       copy(optimizer = optimizer.copy(initArgs = args))
 
@@ -90,9 +84,9 @@ object Optimizer {
     def build(implicit ev: State =:= Complete): Optimizer[X, W, R] = optimizer
   }
 
-  def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](func: TensorFunctionBuilder[X, W, R]): Builder[X, W, R, WithFunc] =
-    Builder(Optimizer(null, func, null, null, Int.MaxValue, minimizing = true, null, _ => ()))
+  def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
+    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, null, _ => ()))
 
-  def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](func: TensorFunctionBuilder[X, W, R]): Builder[X, W, R, WithFunc] =
-    Builder(Optimizer(null, func, null, null, Int.MaxValue, minimizing = false, null, _ => ()))
+  def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
+    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, null, _ => ()))
 }

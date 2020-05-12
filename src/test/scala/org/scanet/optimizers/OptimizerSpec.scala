@@ -8,7 +8,7 @@ import org.scanet.math.syntax._
 class OptimizerSpec extends AnyFlatSpec with Matchers {
 
   "SDG" should "minimize x^2" in {
-    val `x^2` = TensorFunctionBuilder[Float, Float, Float](_ => TensorFunction(x => x * x))
+    val `x^2` = Model[Float, Float, Float](_ => TensorFunction(x => x * x))
     val opt = Optimizer
       .minimize(`x^2`)
       .using(SDG(rate = 0.1))
@@ -17,6 +17,7 @@ class OptimizerSpec extends AnyFlatSpec with Matchers {
       .epochs(20)
       .doOnEach(step => println(s"result: ${step.result.eval}"))
       .build
-    println(opt.run())
+    val x = opt.run()
+    println(`x^2`(0.0f.const)(x.const).eval)
   }
 }
