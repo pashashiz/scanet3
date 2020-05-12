@@ -12,8 +12,8 @@ case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
   def nextEpoch: Step[W, R] = copy(epoch = epoch + 1)
 }
 
-case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](
-      alg: Algorithm,
+case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType, S](
+      alg: Algorithm[S],
       model: Model[X, W, R],
       initArgs: Tensor[W],
       dataset: Dataset[X],
@@ -26,13 +26,15 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
     var step = Step[W, R]()
     var arg = initArgs
     var it = dataset.iterator
+    var state = alg.initState(arg)
     while (step.isFirst || !stopCondition(step)) {
       if (it.hasNext) {
         val func = model(it.next(batch).const)
-        val delta = alg.delta(func, arg.const).cast[W]
-        arg = (if (minimizing) arg.const - delta else arg.const + delta).eval
+        val (delta, nextState) = alg.delta(func, arg.const, state)
+        state = nextState
+        arg = (if (minimizing) arg.const - delta.cast[W] else arg.const + delta.cast[W]).eval
         step = step.nextIter
-          .copy(delta = delta, result = func(arg.const))
+          .copy(delta = delta.cast[W], result = func(arg.const))
         doOnEach(step)
       } else {
         it = dataset.iterator
@@ -55,38 +57,38 @@ object Optimizer {
     type Complete = WithAlg with WithFunc with WithDataset with WithStopCondition
   }
 
-  case class Builder[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType, State <: BuilderState](optimizer: Optimizer[X, W, R]) {
+  case class Builder[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType, S, State <: BuilderState](optimizer: Optimizer[X, W, R, S]) {
 
-    def using(alg: Algorithm): Builder[X, W, R, State with WithAlg] =
+    def using[SS](alg: Algorithm[SS]): Builder[X, W, R, SS, State with WithAlg] =
       copy(optimizer = optimizer.copy(alg = alg))
 
-    def initWith(args: Tensor[W]): Builder[X, W, R, State] =
+    def initWith(args: Tensor[W]): Builder[X, W, R, S, State] =
       copy(optimizer = optimizer.copy(initArgs = args))
 
-    def on(dataset: Dataset[X]): Builder[X, W, R, State with WithDataset] =
+    def on(dataset: Dataset[X]): Builder[X, W, R, S, State with WithDataset] =
       copy(optimizer = optimizer.copy(dataset = dataset))
 
-    def stopWhen(condition: Step[W, R] => Boolean): Builder[X, W, R, State with WithStopCondition] =
+    def stopWhen(condition: Step[W, R] => Boolean): Builder[X, W, R, S, State with WithStopCondition] =
       copy(optimizer = optimizer.copy(stopCondition = condition))
 
-    def epochs(number: Int): Builder[X, W, R, State with WithStopCondition] =
+    def epochs(number: Int): Builder[X, W, R, S, State with WithStopCondition] =
       stopWhen(step => step.epoch == number)
 
-    def iterations(number: Int): Builder[X, W, R, State with WithStopCondition] =
+    def iterations(number: Int): Builder[X, W, R, S, State with WithStopCondition] =
       stopWhen(step => step.iter == number)
 
-    def batch(size: Int): Builder[X, W, R, State] =
+    def batch(size: Int): Builder[X, W, R, S, State] =
       copy(optimizer = optimizer.copy(batch = size))
 
-    def doOnEach(effect: Step[W, R] => Unit): Builder[X, W, R, State] =
+    def doOnEach(effect: Step[W, R] => Unit): Builder[X, W, R, S, State] =
       copy(optimizer = optimizer.copy(doOnEach = effect))
 
-    def build(implicit ev: State =:= Complete): Optimizer[X, W, R] = optimizer
+    def build(implicit ev: State =:= Complete): Optimizer[X, W, R, S] = optimizer
   }
 
-  def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
+  def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, _, WithFunc] =
     Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, null, _ => ()))
 
-  def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
+  def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, _, WithFunc] =
     Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, null, _ => ()))
 }
