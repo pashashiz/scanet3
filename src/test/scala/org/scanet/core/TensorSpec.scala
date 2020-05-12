@@ -144,6 +144,10 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
     Tensor.vector(0, 1, 2, 3).get(1 until -1) should be(Tensor.vector(1, 2, 3))
   }
 
+  it should "be sliced with one-element range and not be collapsed" in {
+    Tensor.vector(0, 1, 2, 3).get(1 until 2) should be(Tensor.vector(1))
+  }
+
   it should "remain identical when sliced with unbound range" in {
     Tensor.vector(0, 1, 2, 3).get(::) should be(Tensor.vector(0, 1, 2, 3))
   }
@@ -212,7 +216,7 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   "sliced reshaped into matrix vector" should "be sliced again" in {
     val vector = Tensor.range(0 until 7).get(0 until 4).reshape(2, 2).get(0)
     vector should be(Tensor.vector(0, 1))
-    vector.view.toString should be("(7) x (:4) = (4) -> (2, 2) x (`0, :2) = (2)")
+    vector.view.toString should be("(7) x (:4) = (4) -> (2, 2) x (0, :2) = (2)")
   }
 
   "non sliced tensor" should "fail to slice when power does not match" in {
