@@ -2,13 +2,13 @@ package org.scanet.core
 
 import simulacrum.typeclass
 
-case class Slice(from: Int = 0, until: Int = -1) {
+case class Slice(from: Int = 0, until: Int = -1, isRange: Boolean) {
   require(from < until || until == -1,
     s"from $from should be less than until: $until")
   def isOpenedBoth: Boolean = isOpenedLeft && isOpenedRight
   def isOpenedLeft: Boolean = from == 0
   def isOpenedRight: Boolean = until == -1
-  def isSingle: Boolean = until - from == 1
+  def isSingle: Boolean = !isRange
   def size: Int = until - from
   def elements: Seq[Int] = from until until
   // (4-10) narrow (1-2) -> (5, 6)
@@ -21,7 +21,7 @@ case class Slice(from: Int = 0, until: Int = -1) {
     } else {
       math.min(from + other.until, until)
     }
-    Slice(start, end)
+    Slice(start, end, isRange && other.isRange)
   }
   override def toString: String = {
     if (isSingle) {
@@ -43,17 +43,19 @@ case class Slice(from: Int = 0, until: Int = -1) {
 }
 
 trait SingleSlice extends CanBuildSliceFrom[Int] {
-  override def build(a: Int): Slice = Slice(a, a + 1)
+  override def build(a: Int): Slice = {
+    Slice(a, a + 1, isRange = false)
+  }
 }
 
 trait RangeSlice extends CanBuildSliceFrom[Range] {
-  override def build(a: Range): Slice = Slice(a.start, a.end)
+  override def build(a: Range): Slice = Slice(a.start, a.end, isRange = true)
 }
 
 case class Unbound()
 
 trait UnboundSlice extends CanBuildSliceFrom[Unbound] {
-  override def build(a: Unbound): Slice = Slice(0, -1)
+  override def build(a: Unbound): Slice = Slice(0, -1, isRange = true)
 }
 
 

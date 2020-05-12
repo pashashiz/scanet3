@@ -16,27 +16,23 @@ class ViewSpec extends AnyFlatSpec with Matchers {
       be(Projection(0 until 5, 1))
   }
 
-  it should "be pruned when left side contains ones and allowed" in {
-    Projection(1, 0 until 5).prune(1).shapePruned should be(Shape(5))
-  }
-
-  it should "not be pruned when left side contains ones but not allowed" in {
-    Projection(1, 0 until 5).shapePruned should be(Shape(1, 5))
+  it should "be pruned when left side contains index slice" in {
+    Projection(1, 0 until 5).shapePruned should be(Shape(5))
   }
 
   "view" should "produce right projection when same size" in {
     View(Shape(5, 5, 5), Projection(1, 2 until 4, ::))
-      .shape should be(Shape(1, 2, 5))
+      .shape should be(Shape(2, 5))
   }
 
   it should "produce right projection when smaller size" in {
     View(Shape(5, 5, 5), Projection(1))
-      .shape should be(Shape(1, 5, 5))
+      .shape should be(Shape(5, 5))
   }
 
   it should "produce right projection when index" in {
     View(Shape(5, 5, 5), Projection(1, 1, 1))
-      .shape should be(Shape(1, 1, 1))
+      .shape should be(Shape())
   }
 
   it should "produce right projection when unbound right" in {

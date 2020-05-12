@@ -19,7 +19,7 @@ case class View(src: IndexesSource, originalShape: Shape, projection: Projection
     val adjusted = adjustedRight.alignLeft(originalShape.rank, 0.build)
     require(shapeFull.isInBound(adjusted),
       s"projection $other is out of bound, should fit shape $shape")
-    copy(projection = projection.narrow(adjusted).prune(adjustedRight.canPrune))
+    copy(projection = projection.narrow(adjusted))
   }
 
   def reshape(into: Shape): View = {
