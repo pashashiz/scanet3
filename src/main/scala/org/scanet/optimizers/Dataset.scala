@@ -1,6 +1,6 @@
 package org.scanet.optimizers
 
-import org.scanet.core.{Output, Tensor, TensorType}
+import org.scanet.core.{Shape, Tensor, TensorType}
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
 
@@ -23,6 +23,17 @@ case class TensorDataset[A: TensorType: Numeric](src: Tensor[A]) extends Dataset
       val slice: Tensor[A] = src(pos until math.min(pos + batch, size))
       pos = pos + slice.shape.dims.head
       slice
+    }
+  }
+}
+
+case class NoopDataset[A: TensorType: Numeric]() extends Dataset[A] {
+  override def iterator: Iterator[A] = new Iterator[A] {
+    var completed = false
+    override def hasNext: Boolean = !completed
+    override def next(batch: Int): Tensor[A] = {
+      completed = true
+      Tensor.zeros[A](Shape())
     }
   }
 }
