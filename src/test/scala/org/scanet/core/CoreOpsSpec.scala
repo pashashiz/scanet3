@@ -2,22 +2,13 @@ package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scanet.core.Session.using
 import org.scanet.syntax._
 
 class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
   "const" should "be evaluated" in {
     5.0f.const.eval should be(Tensor.scalar(5.0f))
-  }
-
-  "evaluated tensor" should "be specialized" in {
-    // todo: make const(5.0f)).eval specialized
-    // this works: println(OpEval(const(5.0f)).eval.getClass)
-    // this does not: println(const(5.0f).eval.getClass)
-    // might need to specialize Op, but that is too much overhead, try to avoid that
-    // however, we only really care about Tensor.toArray() to return primitive array which works anyway
-    val tensor: Tensor[Float] = Session.run(5.0f.const)
-    tensor.getClass.getName should endWith("Tensor$mcF$sp")
   }
 
   "product of 2 ops" should "be evaluated" in {
@@ -88,10 +79,14 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     ternary.eval should be(Tensor.scalar(-3))
   }
 
-  "placeholder" should "work" in {
-    // that throws
-    // You must feed a value for placeholder tensor 'Placeholder_0' with dtype int32 and shape [2,2]
-    // which is expected, now we need to add session support
-    // placeholder[Int](2, 2).eval
+  "placeholder" should "be substituted with a session" in {
+    using(session => {
+      val a = placeholder[Int]()
+      val b = 10.const
+      val c = a + b
+      session.runner
+        .feed(a -> Tensor.scalar(5))
+        .eval(c) should be(Tensor.scalar(15))
+    })
   }
 }

@@ -13,7 +13,7 @@ import scala.reflect.io.Path._
 object TensorBoard {
 
   def write[A](ops: List[Output[_]], dir: String): Unit = {
-    val (graph, _) = Session.compileN(ops)
+    val graph = Session.using(_.toGraph(ops))
     val version = Event.newBuilder()
       .setFileVersion("brain.Event:2")
       .build()

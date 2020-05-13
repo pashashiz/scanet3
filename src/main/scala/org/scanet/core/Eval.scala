@@ -1,5 +1,6 @@
 package org.scanet.core
 
+import org.scanet.core.Session.using
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.{specialized => sp}
@@ -11,33 +12,21 @@ import scala.{specialized => sp}
 // todo: see how shapeless handles that, for now use simple way without typeclasses
 
 case class OutputEval[@sp A: TensorType](out: Output[A]) {
-  def eval: Tensor[A] = {
-    Session.run(out)
-  }
+  def eval: Tensor[A] = using(_.runner.eval(out))
   def display(dir: String = ""): Unit = {
     TensorBoard.write(List(out), dir)
   }
 }
 
 case class Tuple2Eval[@sp A1: TensorType, @sp A2: TensorType](tuple: (Output[A1], Output[A2])) {
-  def eval: (Tensor[A1], Tensor[A2]) = {
-    val tensors = Session.runN(List(tuple._1, tuple._2))
-    (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
-      Tensor[A2](tensors(1).asInstanceOf[NativeTensor[A2]]))
-  }
+  def eval: (Tensor[A1], Tensor[A2]) = using(_.runner.eval(tuple._1, tuple._2))
   def display(dir: String = ""): Unit = {
     TensorBoard.write(List(tuple._1, tuple._2), dir)
   }
 }
 
 case class Tuple3Eval[A1: TensorType, A2: TensorType, A3: TensorType](tuple: (Output[A1], Output[A2], Output[A3])) {
-  def eval: (Tensor[A1], Tensor[A2], Tensor[A3]) = {
-    val tensors = Session.runN(List(tuple._1, tuple._2, tuple._3))
-    (Tensor[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
-      Tensor[A2](tensors(1).asInstanceOf[NativeTensor[A2]]),
-      Tensor[A3](tensors(2).asInstanceOf[NativeTensor[A3]])
-    )
-  }
+  def eval: (Tensor[A1], Tensor[A2], Tensor[A3]) = using(_.runner.eval(tuple._1, tuple._2, tuple._3))
   def display(dir: String = ""): Unit = {
     TensorBoard.write(List(tuple._1, tuple._2, tuple._3), dir)
   }
