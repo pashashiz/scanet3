@@ -87,4 +87,11 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     val ternary = when(a gt b) thenDo (a plus c) elseDo (a minus c)
     ternary.eval should be(Tensor.scalar(-3))
   }
+
+  "placeholder" should "work" in {
+    // that throws
+    // You must feed a value for placeholder tensor 'Placeholder_0' with dtype int32 and shape [2,2]
+    // which is expected, now we need to add session support
+    // placeholder[Int](2, 2).eval
+  }
 }

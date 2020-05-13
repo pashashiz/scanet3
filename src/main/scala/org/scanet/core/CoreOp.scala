@@ -84,7 +84,7 @@ object CoreOp {
 
   trait Instances {
 
-    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with ControlFlowOps {
+    implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with CoreStandaloneOps {
 
       override def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
@@ -140,7 +140,17 @@ object CoreOp {
     }
   }
 
-  trait ControlFlowOps {
+  trait CoreStandaloneOps {
+
+    def placeholder[A: TensorType](shape: Shape): Output[A] = {
+      Output.name[A]("Placeholder")
+        .shape(shape)
+        .compileWithAttr("dtype", TensorType[A])
+        .compileWithAttr("shape", shape)
+        .build
+    }
+
+    def placeholder[A: TensorType](shape: Int*): Output[A] = placeholder(Shape(shape: _*))
 
     /** Add operation which will be executed right after current operation and
      * return current operation as output to continue chaining.
@@ -239,6 +249,6 @@ object CoreOp {
     def elseDo(op: Output[A]): Output[A]
   }
 
-  trait Syntax extends Instances with CoreOp.ToCoreOpOps with ControlFlowOps
+  trait Syntax extends Instances with CoreOp.ToCoreOpOps with CoreStandaloneOps
   object syntax extends Syntax
 }

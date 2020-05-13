@@ -5,8 +5,10 @@ import java.util.UUID
 import org.scanet.core
 import org.scanet.core.Output.BuilderState._
 import org.scanet.core.Output._
+import org.tensorflow.{Shape => NativeShape}
 import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{Operation, OperationBuilder}
+import org.scanet.native.NativeTensorOps._
 
 case class Output[A: TensorType](
       name: String,
@@ -171,6 +173,9 @@ object Output {
 
     def compileWithAttr(name: String, l: Long): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, l))
+
+    def compileWithAttr(name: String, shape: Shape): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder.setAttr(name, shape))
 
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))

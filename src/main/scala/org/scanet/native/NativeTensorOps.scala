@@ -2,8 +2,8 @@ package org.scanet.native
 
 import java.nio.ByteBuffer
 
-import org.scanet.core.TensorType
-import org.tensorflow.{DataType, Tensor => NativeTensor}
+import org.scanet.core.{Shape, TensorType}
+import org.tensorflow.{DataType, Tensor => NativeTensor, Shape => NativeShape}
 
 object NativeTensorOps {
 
@@ -26,5 +26,13 @@ object NativeTensorOps {
       shape,
       size.asInstanceOf[AnyRef]
     ).asInstanceOf[NativeTensor[A]]
+  }
+
+  implicit def toNativeShape(shape: Shape): NativeShape = {
+    if (shape.isScalar) {
+      NativeShape.scalar()
+    } else {
+      NativeShape.make(shape.dims.head, shape.dims.tail.map(_.toLong): _*)
+    }
   }
 }
