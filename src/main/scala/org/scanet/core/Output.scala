@@ -5,7 +5,7 @@ import java.util.UUID
 import org.scanet.core
 import org.scanet.core.Output.BuilderState._
 import org.scanet.core.Output._
-import org.tensorflow.op.{Scope => NativeScope}
+import org.scanet.native.NativeTensorOps._
 import org.tensorflow.{Operation, OperationBuilder}
 
 case class Output[A: TensorType](
@@ -27,18 +27,18 @@ case class Output[A: TensorType](
 
   def broadcastableAny(other: Output[A]): Boolean = shape.broadcastableAny(other.shape)
 
-  def compile(context: Context): (Context, Compiled) = {
+  def compile(context: SessionState): (SessionState, Compiled) = {
     val (contextAfterInput, outputs) = compileInputs(inputs, context)
     val (contextAfterControls, controlOuts) = compileInputs(controls, contextAfterInput)
     val uniqueLabel = Label(label, contextAfterControls.maxLabelIndex(label) + 1)
     val output = compiler(CompileContext(contextAfterControls, this, uniqueLabel, outputs.reverse, controlOuts))
     val compiled = (uniqueLabel, output)
-    val newCache = contextAfterControls.outputs + (id -> compiled)
-    val contextAfterOutput = contextAfterControls.copy(outputs = newCache)
+    val newCache = contextAfterControls.cache + (id -> compiled)
+    val contextAfterOutput = contextAfterControls.copy(cache = newCache)
     (contextAfterOutput, compiled)
   }
 
-  private def compileInputs(in: List[Output[_]], context: Context): (Context, List[Operation]) = {
+  private def compileInputs(in: List[Output[_]], context: SessionState): (SessionState, List[Operation]) = {
     val (contextAfterInput, outputs) = in.foldLeft((context, List[Operation]()))(
       (acc, op) => {
         val (currentContext, outs) = acc
@@ -48,8 +48,8 @@ case class Output[A: TensorType](
     (contextAfterInput, outputs)
   }
 
-  def findOrCompile(context: Context): (Context, Compiled) = {
-    context.outputs.get(id)
+  def findOrCompile(context: SessionState): (SessionState, Compiled) = {
+    context.cache.get(id)
       .map(compiled => (context, compiled))
       .getOrElse {compile(context)}
   }
@@ -97,19 +97,11 @@ object Output {
   case class GradContext[A](current: Output[A], parentGrad: Output[Float])
 
   case class CompileContext[A: TensorType](
-      global: Context,
-      op: Output[A],
-      label: Label,
-      inputs: List[Operation],
-      controls: List[Operation])
-
-  case class Context(scope: NativeScope, outputs: Map[String, Compiled]) {
-    def maxLabelIndex(name: String): Int = {
-      // NOTE: in the future think about prebuilt index
-      val names = outputs.values.map(_._1).groupBy(_.value)
-      names.get(name).map(n => n.map(_.index).max).getOrElse(-1)
-    }
-  }
+        state: SessionState,
+        op: Output[A],
+        label: Label,
+        inputs: List[Operation],
+        controls: List[Operation])
 
   sealed trait BuilderState
   object BuilderState {
@@ -172,6 +164,9 @@ object Output {
     def compileWithAttr(name: String, l: Long): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, l))
 
+    def compileWithAttr(name: String, shape: Shape): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder.setAttr(name, shape))
+
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
@@ -186,7 +181,7 @@ object Output {
         inputs = inputs,
         controls = controls,
         compiler = (context: CompileContext[A]) => {
-          val init = context.global.scope.env.opBuilder(context.op.name, context.label.toString)
+          val init = context.state.scope.env.opBuilder(context.op.name, context.label.toString)
           val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
           transformed.build()
         },
