@@ -3,6 +3,7 @@ package org.scanet.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Session.using
+import org.scanet.core.Slice.syntax.::
 import org.scanet.syntax._
 
 class CoreOpsSpec extends AnyFlatSpec with Matchers {
@@ -88,5 +89,26 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
         .feed(a -> Tensor.scalar(5))
         .eval(c) should be(Tensor.scalar(15))
     })
+  }
+
+  "slice" should "index a matrix to a row" in {
+    val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
+    x.slice(0).eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  it should "index a matrix to an element" in {
+    val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
+    x.slice(0, 0).eval should be(Tensor.scalar(1))
+  }
+
+  it should "slice a matrix" in {
+    val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
+    x.slice(::, 0 until 2).eval should be(Tensor.matrix(Array(1, 2), Array(4, 5)))
+  }
+
+  it should "fail when out of bounds" in {
+    the [IllegalArgumentException] thrownBy {
+      Tensor.eye[Int](3).const.slice(1, 1, 1)
+    } should have message "requirement failed: projection (1, 1, 1) is out of bound, should fit shape (3, 3)"
   }
 }

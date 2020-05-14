@@ -3,6 +3,7 @@ package org.scanet.optimizers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
+import org.scanet.datasets.TensorDataset
 import org.scanet.math.syntax._
 
 class DatasetSpec extends AnyFlatSpec with Matchers {

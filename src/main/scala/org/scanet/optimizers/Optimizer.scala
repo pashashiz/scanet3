@@ -1,8 +1,10 @@
 package org.scanet.optimizers
 
 import org.scanet.core.{Output, Tensor, TensorType}
+import org.scanet.datasets.Dataset
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
+import org.scanet.models.Model
 import org.scanet.optimizers.Optimizer.BuilderState._
 
 case class Step[W: Numeric: TensorType, R: Numeric: TensorType](

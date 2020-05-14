@@ -34,22 +34,22 @@ class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) ext
       case Nil => f(zero, this)
       case head::_ =>
         (0 until head).foldLeft(zero)((acc, dim) => {
-          f(acc, get(dim))
+          f(acc, slice(dim))
         })
     }
   }
 
-  def apply[S1: CanBuildSliceFrom](s1: S1): Tensor[A] = get(s1)
-  def apply[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom](s1: S1, s2: S2): Tensor[A] = get(s1, s2)
-  def apply[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3): Tensor[A] = get(s1, s2, s3)
-  def apply[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom, S4: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3, s4: S4): Tensor[A] = get(s1, s2, s3, s4)
+  def apply[S1: CanBuildSliceFrom](s1: S1): Tensor[A] = slice(s1)
+  def apply[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom](s1: S1, s2: S2): Tensor[A] = slice(s1, s2)
+  def apply[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3): Tensor[A] = slice(s1, s2, s3)
+  def apply[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom, S4: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3, s4: S4): Tensor[A] = slice(s1, s2, s3, s4)
 
-  def get[S1: CanBuildSliceFrom](s1: S1): Tensor[A] = get(Projection(s1))
-  def get[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom](s1: S1, s2: S2): Tensor[A] = get(Projection(s1, s2))
-  def get[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3): Tensor[A] = get(Projection(s1, s2, s3))
-  def get[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom, S4: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3, s4: S4): Tensor[A] = get(Projection(s1, s2, s3, s4))
+  def slice[S1: CanBuildSliceFrom](s1: S1): Tensor[A] = slice(Projection(s1))
+  def slice[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom](s1: S1, s2: S2): Tensor[A] = slice(Projection(s1, s2))
+  def slice[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3): Tensor[A] = slice(Projection(s1, s2, s3))
+  def slice[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom, S4: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3, s4: S4): Tensor[A] = slice(Projection(s1, s2, s3, s4))
 
-  def get(projection: Projection): Tensor[A] = new Tensor(native, view narrow projection)
+  def slice(projection: Projection): Tensor[A] = new Tensor(native, view narrow projection)
 
   def reshape(dims: Int*): Tensor[A] = reshape(Shape(dims: _*))
   def reshape(shape: Shape): Tensor[A] = new Tensor(native, view reshape shape)
@@ -76,7 +76,7 @@ class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) ext
     } else {
       val projection = Projection.of(shape) narrow
         Projection(limits.map(max => (0 until max).build))
-      get(projection).showAll()
+      slice(projection).showAll()
     }
   }
 
