@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
+import org.scanet.models.TensorFunction
 
 class SGDSpec extends AnyFlatSpec with Matchers {
 

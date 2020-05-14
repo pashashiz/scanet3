@@ -2,6 +2,7 @@ package org.scanet.optimizers
 
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Numeric
+import org.scanet.models.TensorFunction
 
 trait Algorithm[S] {
 

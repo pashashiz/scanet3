@@ -54,6 +54,10 @@ case class Projection(slices: List[Slice]) {
       .map { case (sliceThis: Slice, sliceOther: Slice) => sliceThis narrow sliceOther}
     copy(slices = narrowedSlices)
   }
+
+  def asOffsetAndLength: (Array[Int], Array[Int]) =
+    (slices.map(_.from).toArray, slices.map(_.size).toArray)
+
   override def toString: String = {
     s"(${slices.map(_.toString).mkString(", ")})"
   }

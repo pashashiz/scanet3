@@ -3,6 +3,7 @@ package org.scanet.optimizers
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
+import org.scanet.models.TensorFunction
 
 case class SGD(rate: Double = 0.01, momentum: Double = 0.0, nesterov: Boolean = false) extends Algorithm[Tensor[Float]] {
 

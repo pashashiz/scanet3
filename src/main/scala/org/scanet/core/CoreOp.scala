@@ -14,6 +14,12 @@ import simulacrum.{op, typeclass}
    */
   def as[A: TensorType](out: F[A], label: String): F[A]
 
+  def slice[A: TensorType](out: F[A], projection: Projection): F[A]
+
+  def slice[A: TensorType, S1: CanBuildSliceFrom](out: F[A], s1: S1): F[A] = slice(out, Projection(s1))
+  def slice[A: TensorType, S1: CanBuildSliceFrom, S2: CanBuildSliceFrom](out: F[A], s1: S1, s2: S2): F[A] = slice(out, Projection(s1, s2))
+  def slice[A: TensorType, S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom](out: F[A], s1: S1, s2: S2, s3: S3): F[A] = slice(out, Projection(s1, s2, s3))
+
   /** Reshapes an output tensor.
     *
     * Requirements:
@@ -87,6 +93,26 @@ object CoreOp {
     implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with CoreStandaloneOps {
 
       override def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
+
+      override def slice[A: TensorType](out: Output[A], projection: Projection): Output[A] = {
+        val adjusted = projection.adjustTo(out.shape)
+        val (offsets, lengths) = adjusted.asOffsetAndLength
+        val sliced = Output.name[A]("Slice")
+          .shape(adjusted.shapeFull)
+          .inputs(
+            out,
+            as(Tensor.vector(offsets).const, "offsets"),
+            as(Tensor.vector(lengths).const, "lengths"))
+          .compileWithAllInputs
+          .build
+        // in case there is indexing and not really a slicing, like tensor.slice(1)
+        // we would need to prune first dimensions
+        if (adjusted.canPrune > 0) {
+          reshape(sliced, adjusted.shapePruned)
+        } else {
+          sliced
+        }
+      }
 
       override def reshape[A: TensorType](op: Output[A], shape: Shape): Output[A] = {
         require(op.shape.power == shape.power ,
