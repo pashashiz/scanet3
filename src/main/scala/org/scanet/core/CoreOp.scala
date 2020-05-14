@@ -52,6 +52,10 @@ import simulacrum.{op, typeclass}
     */
   def squeeze[A: TensorType](op: F[A]): F[A]
 
+  def joinAlong[A: TensorType](op: F[A], other: F[A], dim: Int): F[A]
+
+  def join[A: TensorType](op: F[A], other: F[A]): F[A]
+
   /** Add operation which will be executed right after current operation and
    * return current operation as output to continue chaining.
    *
@@ -147,6 +151,10 @@ object CoreOp {
           op
         }
       }
+
+      override def joinAlong[A: TensorType](op: Output[A], other: Output[A], dim: Int): Output[A] = joinAlong(Seq(op, other), dim)
+
+      override def join[A: TensorType](op: Output[A], other: Output[A]): Output[A] = joinAlong(Seq(op, other), 0)
 
       override def cast[A: TensorType, B: TensorType](op: Output[A]): Output[B] = {
         if (TensorType[A] == TensorType[B]) op.asInstanceOf[Output[B]]
@@ -251,6 +259,26 @@ object CoreOp {
           .compileWithInputList
           .build
       }
+    }
+
+    def joinAlong[A: TensorType](outputs: Seq[Output[A]], axis: Int): Output[A] = {
+      val shapes = outputs.map(_.shape)
+      require(shapes.map(_.rank).distinct.size == 1,
+        s"all inputs should have same rank, but was ${shapes.mkString(", ")}")
+      require(shapes.map(_.remove(axis)).distinct.size == 1,
+        s"all inputs should have same dimensions except the axis, but was ${shapes.mkString(", ")}")
+      val newDimSize = shapes.map(_.dims(axis)).sum
+      val shape = Shape(shapes.head.dims.updated(axis, newDimSize))
+      Output.name[A]("ConcatV2")
+        .shape(shape)
+        .inputs(outputs :+ Tensor.scalar(axis.toLong).const: _*)
+        .compileWithTransformer((ctx, builder) => {
+          val compiledInputs = ctx.inputs.map(_.output(0))
+          builder
+            .addInputList(compiledInputs.take(outputs.size).toArray)
+            .addInput(compiledInputs.last)
+        })
+        .build
     }
   }
 
