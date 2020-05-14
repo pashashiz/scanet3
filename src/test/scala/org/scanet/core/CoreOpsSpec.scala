@@ -111,4 +111,51 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
       Tensor.eye[Int](3).const.slice(1, 1, 1)
     } should have message "requirement failed: projection (1, 1, 1) is out of bound, should fit shape (3, 3)"
   }
+
+  "join" should "concat 2 vectors" in {
+    val a = Tensor.vector(1, 2).const
+    val b = Tensor.vector(3, 4).const
+    (a join b).eval should be(Tensor.vector(1, 2, 3, 4))
+  }
+
+  it should "concat 2 matrices rows" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6)).const
+    val b = Tensor.matrix(
+      Array(7, 8, 9),
+      Array(10, 11, 12)).const
+    val ab = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6),
+      Array(7, 8, 9),
+      Array(10, 11, 12))
+    (a join b).eval should be(ab)
+  }
+
+  it should "concat 2 matrices columns" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6)).const
+    val b = Tensor.matrix(
+      Array(7, 8, 9),
+      Array(10, 11, 12)).const
+    val ab = Tensor.matrix(
+      Array(1, 2, 3, 7, 8, 9),
+      Array(4, 5, 6, 10, 11, 12))
+    a.joinAlong(b, 1).eval should be(ab)
+  }
+
+  it should "fail when dimensions do not match" in {
+    the [IllegalArgumentException] thrownBy {
+      val a = Tensor.matrix(
+        Array(1, 2, 3),
+        Array(4, 5, 6)).const
+      val b = Tensor.matrix(
+        Array(7, 8),
+        Array(9, 10)).const
+      a join b
+    } should have message "requirement failed: " +
+      "all inputs should have same dimensions except the axis, but was (2, 3), (2, 2)"
+  }
 }
