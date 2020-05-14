@@ -420,8 +420,16 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((a :* x).sum grad x).eval should be(grad)
   }
 
-  "pow" should "compute the power of the tensor" in {
+  "pow" should "compute the power of the tensor with high exponent" in {
     Tensor.vector(1.0f, 2.0f, 3.0f).const.pow(2).eval should be(Tensor.vector(1.0f, 4.0f, 9.0f))
+  }
+
+  it should "return same tensor if exponent is 1" in {
+    Tensor.vector(1.0f, 2.0f, 3.0f).const.pow(1).eval should be(Tensor.vector(1.0f, 2.0f, 3.0f))
+  }
+
+  it should "return ones tensor if exponent is 0" in {
+    Tensor.vector(1.0f, 2.0f, 3.0f).const.pow(0).eval should be(Tensor.vector(1.0f, 1.0f, 1.0f))
   }
 
   it should "calculate a gradient" in {
