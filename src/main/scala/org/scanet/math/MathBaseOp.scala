@@ -113,7 +113,7 @@ import scala.Ordering.Implicits._
 
   /** Element-wise multiplication. Supports broadcasting.
    *
-   * {{{(Tensor.vector(1, 2, 3).const *:* 5.const).eval should be(Tensor.vector(5, 10, 15))}}}
+   * {{{Tensor.vector(1, 2, 3).const *:* 5.const).eval should be(Tensor.vector(5, 10, 15))}}}
    *
    * @param left side
    * @param right side
@@ -121,6 +121,15 @@ import scala.Ordering.Implicits._
    */
   @op(":*", alias = true)
   def multiplyElementWise[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+
+  /** Raises the tensor to the power of the exponent
+   *
+   * {{{Tensor.vector(1.0f, 2.0f, 3.0f).const.pow(2).eval should be(Tensor.vector(1.0f, 4.0f, 9.0f))}}}
+   *
+   * @param out tensor
+   * @return tensor `^` exponent
+   */
+  def pow[A: TensorType: Numeric](out: F[A], exponent: Int): F[A]
 
   def sum[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]
 
@@ -258,13 +267,25 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
+  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Int): Output[A] = {
+    Output.name[A]("Pow")
+      .shape(out.shape)
+      .inputs(out, Tensor.scalar(exponent).const.as("exponent").cast[A])
+      .localGrad(ctx => {
+        val local = multiplyElementWise(pow(out.cast[Float], exponent - 1), exponent.toFloat.const)
+        List(multiplyElementWise(local, ctx.parentGrad))
+      })
+      .compileWithAllInputs
+      .build
+  }
+
   override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
     if (out.isScalar || axises.isEmpty) {
       out
     } else {
       Output.name[A]("Sum")
         .shape(out.shape.remove(axises: _*))
-        .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const)
+        .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const.as("axises"))
         .localGrad(ctx => List(multiplyElementWise(Tensor.ones[Float](out.shape).const, ctx.parentGrad)))
         .compileWithAllInputs
         .build
@@ -279,7 +300,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     } else {
       Output.name[A]("Transpose")
         .shape(out.shape.permute(perm: _*))
-        .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const)
+        .inputs(out, Tensor.vector(perm.map(_.toLong) :_*).const.as("perm"))
         .localGrad(ctx => List(transpose(ctx.parentGrad)))
         .compileWithAllInputs
         .build

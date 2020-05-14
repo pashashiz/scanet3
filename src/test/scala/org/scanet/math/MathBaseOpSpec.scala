@@ -420,6 +420,15 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     ((a :* x).sum grad x).eval should be(grad)
   }
 
+  "pow" should "compute the power of the tensor" in {
+    Tensor.vector(1.0f, 2.0f, 3.0f).const.pow(2).eval should be(Tensor.vector(1.0f, 4.0f, 9.0f))
+  }
+
+  it should "calculate a gradient" in {
+    val x = Tensor.vector(5, 10, 15).const
+    x.pow(3).sum.grad(x).eval should be(Tensor.vector(75.0f, 300.0f, 675.0f))
+  }
+
   "sum" should "calculate sum across all axises by default" in {
     Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum.eval should be(Tensor.scalar(21))
   }
