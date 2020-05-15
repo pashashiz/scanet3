@@ -24,6 +24,7 @@ case class TensorDataset[X: TensorType: Numeric](src: Tensor[X]) extends Dataset
     override def hasNext: Boolean = src.shape.dims.head > pos
     override def next(batch: Int): Tensor[X] = {
       require(hasNext, "dataset has no elements left")
+      // TODO: ensure constant shape
       val slice: Tensor[X] = src(pos until math.min(pos + batch, size.get))
       pos = pos + slice.shape.dims.head
       slice
@@ -66,6 +67,7 @@ case class CSVDataset(path: String) extends Dataset[Float] {
     override def hasNext: Boolean = size.get > pos
     override def next(batch: Int): Tensor[Float] = {
       require(hasNext, "dataset has no elements left")
+      // TODO: ensure constant shape
       val slice = data.slice(pos, math.min(pos + batch, size.get))
       pos = pos + slice.size
       val x = slice.flatten.toArray
