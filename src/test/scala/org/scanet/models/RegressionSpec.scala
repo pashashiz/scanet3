@@ -18,7 +18,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     reg(x, weights).eval should be(Tensor.scalar(8.5f))
   }
 
-  ignore should "be minimized" in {
+  it should "be minimized" in {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
@@ -28,7 +28,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
       .on(ds)
       .epochs(1500)
       .doOnEach(step => {
-        println(s"${step.iter}: ${step.result.eval.toScalar}")
+        println(s"${step.iter}")
       })
       .build
       .run()

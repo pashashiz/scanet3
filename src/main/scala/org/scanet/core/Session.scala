@@ -64,7 +64,7 @@ class Session {
   def runner: Runner = Runner(this)
 
   private def compile(out: Output[_]): NativeOutput[_] = {
-    val (updatedState, (_, compiledOp)) = out.compile(state)
+    val (updatedState, (_, compiledOp)) = out.findOrCompile(state)
     state = updatedState
     compiledOp.output(0)
   }
