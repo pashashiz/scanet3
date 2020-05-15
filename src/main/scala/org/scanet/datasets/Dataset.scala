@@ -23,7 +23,7 @@ private[datasets] trait DataSource[X] {
   def shape(batch: Int): Shape
 }
 
-private[datasets] abstract class IndexedDataset[X](private var ds: DataSource[X]) extends Dataset[X] {
+private[datasets] abstract class IndexedDataset[X](val ds: DataSource[X]) extends Dataset[X] {
   override def iterator: Iterator[X] = new Iterator[X] {
     private var index: Int = 0
 
