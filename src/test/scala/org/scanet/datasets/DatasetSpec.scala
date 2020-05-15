@@ -12,7 +12,7 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
     it.hasNext should be(true)
     it.next(2) should be(Tensor.vector(1, 2))
     it.hasNext should be(true)
-    it.next(2) should be(Tensor.vector(3, 0))
+    it.next(2) should be(Tensor.vector(2, 3))
   }
 
   it should "fail when requested batch is out of bound" in {
@@ -26,15 +26,15 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "produce correct shapes" in {
-    val ds = TensorDataset(Tensor.vector(1, 2, 3))
-    ds.shape(2) should be(Shape(2))
-    ds.shape(4) should be(Shape(3))
+    val it = TensorDataset(Tensor.vector(1, 2, 3)).iterator
+    it.shape(2) should be(Shape(2))
+    it.shape(4) should be(Shape(3))
   }
 
   "CSV dataset" should "read records" in {
     val ds = CSVDataset("linear_function_1.scv")
-    ds.size should be(97)
     val it = ds.iterator
+    it.size should be(97)
     it.next(2) should be(Tensor.matrix(
       Array(6.1101f, 17.592f),
       Array(5.5277f, 9.1302f)))
@@ -47,17 +47,17 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
       it.next(5)
     }
     it.next(5) should be(Tensor.matrix(
+      Array(5.8707f, 7.2029f),
+      Array(5.3054f, 1.9869f),
+      Array(8.2934f, 0.14454f),
       Array(13.394f, 9.0551f),
-      Array(5.4369f, 0.61705f),
-      Array(0f, 0f),
-      Array(0f, 0f),
-      Array(0f, 0f)
+      Array(5.4369f, 0.61705f)
     ))
   }
 
   it should "produce correct shapes" in {
-    val ds = CSVDataset("linear_function_1.scv")
-    ds.shape(50) should be(Shape(50, 2))
-    ds.shape(100) should be(Shape(97, 2))
+    val it = CSVDataset("linear_function_1.scv").iterator
+    it.shape(50) should be(Shape(50, 2))
+    it.shape(100) should be(Shape(97, 2))
   }
 }
