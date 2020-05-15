@@ -9,11 +9,10 @@ object Math {
   // after all those records will be summed
   // usually to test a simple polynomial we need to have one row in a detaset
   def polynomial(exponent: Int): Model[Float, Float, Float] = {
-    Model[Float, Float, Float](x =>
-      TensorFunction(w => {
-        // todo: need slice and concat operations
-        ???
-      }))
+    Model[Float, Float, Float]((x, w) => {
+      // todo: need slice and concat operations
+      ???
+    })
   }
 
 }

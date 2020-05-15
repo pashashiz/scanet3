@@ -1,5 +1,6 @@
 package org.scanet.optimizers
 
+import org.scanet.core.Session.using
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.datasets.Dataset
 import org.scanet.math.Numeric
@@ -8,43 +9,51 @@ import org.scanet.models.Model
 import org.scanet.optimizers.Optimizer.BuilderState._
 
 case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
-      iter: Int = 0, epoch: Int = 0, delta: Output[W] = null, result: Output[R] = null) {
+      iter: Int = 0, epoch: Int = 0, result: Output[R] = null) {
   def isFirst: Boolean = iter == 0
   def nextIter: Step[W, R] = copy(iter = iter + 1)
   def nextEpoch: Step[W, R] = copy(epoch = epoch + 1)
 }
 
 case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType, S](
-      alg: Algorithm[S],
+      alg: Algorithm,
       model: Model[X, W, R],
       initArgs: Tensor[W],
       dataset: Dataset[X],
-      batch: Int,
+      batchSize: Int,
       minimizing: Boolean,
       stopCondition: Step[W, R] => Boolean,
       doOnEach: Step[W, R] => Unit) {
 
-  def run(): Tensor[W] = {
+  def run(): Tensor[W] = using(session => {
     var step = Step[W, R]()
-    var arg = initArgs
     var it = dataset.iterator
-    var state = alg.initState(arg)
+    var weights = initArgs
+    // input placeholders
+    val batchPl = placeholder[X](dataset.shape(batchSize))
+    val weightPl = placeholder[W](initArgs.shape)
+    // graph of compiled and optimized model
+    val compiled = model(batchPl, weightPl)
+    val grad = compiled.grad(weightPl)
+    val delta = alg.delta(grad).cast[W]
+    val optimizedWeights = if (minimizing) weightPl - delta else weightPl + delta
+    // iterate model in session
     while (step.isFirst || !stopCondition(step)) {
       if (it.hasNext) {
-        val func = model(it.next(batch).const)
-        val (delta, nextState) = alg.delta(func, arg.const, state)
-        state = nextState
-        arg = (if (minimizing) arg.const - delta.cast[W] else arg.const + delta.cast[W]).eval
-        step = step.nextIter
-          .copy(delta = delta.cast[W], result = func(arg.const))
+        val batch = it.next(batchSize)
+        weights = session.runner
+          .feed(batchPl -> batch, weightPl -> weights)
+          .eval(optimizedWeights)
+
+        step = step.nextIter.copy(result = model(batch.const, weights.const))
         doOnEach(step)
       } else {
         it = dataset.iterator
         step = step.nextEpoch
       }
     }
-    arg
-  }
+    weights
+  })
 }
 
 object Optimizer {
@@ -61,7 +70,7 @@ object Optimizer {
 
   case class Builder[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType, S, State <: BuilderState](optimizer: Optimizer[X, W, R, S]) {
 
-    def using[SS](alg: Algorithm[SS]): Builder[X, W, R, SS, State with WithAlg] =
+    def using[SS](alg: Algorithm): Builder[X, W, R, SS, State with WithAlg] =
       copy(optimizer = optimizer.copy(alg = alg))
 
     def initWith(args: Tensor[W]): Builder[X, W, R, S, State] =
@@ -80,7 +89,7 @@ object Optimizer {
       stopWhen(step => step.iter == number)
 
     def batch(size: Int): Builder[X, W, R, S, State] =
-      copy(optimizer = optimizer.copy(batch = size))
+      copy(optimizer = optimizer.copy(batchSize = size))
 
     def doOnEach(effect: Step[W, R] => Unit): Builder[X, W, R, S, State] =
       copy(optimizer = optimizer.copy(doOnEach = effect))
