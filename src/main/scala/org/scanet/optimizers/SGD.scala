@@ -11,6 +11,6 @@ case class SGD(rate: Double = 0.01, momentum: Double = 0.0, nesterov: Boolean = 
 //    val v = r * grad - m * prevState.const
 //    val delta = if (nesterov) r * g - m * v else v
 //    (delta, v.eval)
-    grad * rate.toFloat.const
+    rate.toFloat.const * grad
   }
 }
