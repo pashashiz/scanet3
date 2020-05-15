@@ -1,6 +1,6 @@
 package org.scanet.datasets
 
-import org.scanet.core.{Shape, Tensor, TensorType}
+import org.scanet.core.{Projection, Shape, Tensor, TensorType}
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
 
@@ -8,6 +8,7 @@ import scala.io.Source
 
 trait Dataset[X] {
   def iterator: Iterator[X]
+  def shape(batch: Int): Shape
 }
 
 trait Iterator[X] {
@@ -28,6 +29,8 @@ case class TensorDataset[X: TensorType: Numeric](src: Tensor[X]) extends Dataset
       slice
     }
   }
+
+  override def shape(batch: Int): Shape = src.view.narrow(Projection(0 until batch)).shape
 }
 
 case class EmptyDataset[X: TensorType: Numeric]() extends Dataset[X] {
@@ -40,20 +43,25 @@ case class EmptyDataset[X: TensorType: Numeric]() extends Dataset[X] {
       Tensor.zeros[X](Shape())
     }
   }
+
+  override def shape(batch: Int): Shape = Shape()
 }
 
 case class CSVDataset(path: String) extends Dataset[Float] {
 
+  private lazy val data: Vector[Array[Float]] = {
+    Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(path))
+      .getLines()
+      .map(_.split(",").map(_.toFloat))
+      .toVector
+  }
+
+  private lazy val columns: Int = data(0).length
+
   override def iterator: Iterator[Float] = new Iterator[Float] {
     private var pos: Int = 0
-    private val data: Vector[Array[Float]] = {
-      Source.fromInputStream(getClass.getClassLoader.getResourceAsStream(path))
-        .getLines()
-        .map(_.split(",").map(_.toFloat))
-        .toVector
-    }
-    var columns: Int = data(0).length
-    var size: Option[Int] = Some(data.size)
+
+    val size: Option[Int] = Some(data.size)
 
     override def hasNext: Boolean = size.get > pos
     override def next(batch: Int): Tensor[Float] = {
@@ -64,4 +72,6 @@ case class CSVDataset(path: String) extends Dataset[Float] {
       Tensor(x, Shape(slice.size, columns))
     }
   }
+
+  override def shape(batch: Int): Shape = Shape(batch, columns)
 }

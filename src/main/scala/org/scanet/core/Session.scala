@@ -79,9 +79,13 @@ class Session {
     val nativeOutputs = outs.map(out => compile(out))
     val fed = feed.foldLeft(nSession.runner)((runner, entry) => {
       val (output, tensor) = entry
-      val nativeOutput = state.cache(output.id)._2.output(0)
-      val nativeTensor = tensor.native.asInstanceOf[NativeTensor[_]]
-      runner.feed(nativeOutput, nativeTensor)
+      state.cache.get(output.id) match {
+        case Some((_, output)) =>
+          val nativeOutput = output.output(0)
+          val nativeTensor = tensor.native.asInstanceOf[NativeTensor[_]]
+          runner.feed(nativeOutput, nativeTensor)
+        case None => runner
+      }
     })
     val fetched = nativeOutputs.foldLeft(fed)((runner, output) => runner.fetch(output))
     fetched.run().asScala.toList

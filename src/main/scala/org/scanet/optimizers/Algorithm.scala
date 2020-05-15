@@ -1,12 +1,8 @@
 package org.scanet.optimizers
 
-import org.scanet.core.{Output, Tensor, TensorType}
-import org.scanet.math.Numeric
-import org.scanet.models.TensorFunction
+import org.scanet.core.Output
 
-trait Algorithm[S] {
+trait Algorithm {
 
-  def delta[A: Numeric : TensorType, B: Numeric : TensorType](f: TensorFunction[A, B], initArg: Output[A], prevState: S): (Output[Float], S)
-
-  def initState[A: Numeric : TensorType](initArg: Tensor[A]): S
+  def delta(grad: Output[Float]): Output[Float]
 }

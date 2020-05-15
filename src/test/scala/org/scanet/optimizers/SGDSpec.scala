@@ -4,12 +4,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
-import org.scanet.models.TensorFunction
+import org.scanet.models.Model
 
 class SGDSpec extends AnyFlatSpec with Matchers {
 
   "SDG" should "calculate optimization step" in {
-    val x2 = TensorFunction[Float, Float](x => x * x)
-    println(SGD(rate = 0.1).delta(x2, 50.0f.const, Tensor.scalar(50.0f))._1.eval)
+    val model = Model[Float, Float, Float]((_, x) => x * x)
+    val x = Tensor.scalar(50.0f).const
+    val compiled = model(50.0f.const, x)
+    println(SGD(rate = 0.1).delta(compiled.grad(x)).eval)
   }
 }
