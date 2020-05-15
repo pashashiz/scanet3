@@ -2,17 +2,21 @@ package org.scanet.models
 
 import org.scanet.math.syntax._
 import org.scanet.core.Slice.syntax.::
+import org.scanet.core.Tensor
 
-class Regression {
+object Regression {
 
-  def linear(): Model[Float, Float, Float] = {
+  def linear: Model[Float, Float, Float] = {
     Model[Float, Float, Float](batch =>
       TensorFunction(weights => {
-        // weights = (k)
-        // batch = (n, k + 1)
-        // batch.slice(::, 0 until )
-        // todo: need slice and concat
-        ???
+        // batch: (n, m - 1), weights: (m)
+        val rows = batch.shape.dims(0)
+        val columns = batch.shape.dims(1) - 1
+        val x = batch.slice(::, 0 until columns)
+        val y = batch.slice(::, columns)
+        val bx = Tensor.ones[Float](rows, 1).const.joinAlong(x, 1)
+        val wt = weights.reshape(1, columns + 1).transpose
+        (0.5f/rows).const :* (bx * wt - y).pow(2).sum
       }))
   }
 }
