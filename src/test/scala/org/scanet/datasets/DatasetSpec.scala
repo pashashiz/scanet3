@@ -2,7 +2,7 @@ package org.scanet.datasets
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.Tensor
+import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 
 class DatasetSpec extends AnyFlatSpec with Matchers {
@@ -23,6 +23,12 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       it.next(3)
     } should have message "requirement failed: dataset has no elements left"
+  }
+
+  it should "produce correct shapes" in {
+    val ds = TensorDataset(Tensor.vector(1, 2, 3))
+    ds.shape(2) should be(Shape(2))
+    ds.shape(4) should be(Shape(3))
   }
 
   "CSV dataset" should "read records" in {
@@ -47,5 +53,11 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
       Array(0f, 0f),
       Array(0f, 0f)
     ))
+  }
+
+  it should "produce correct shapes" in {
+    val ds = CSVDataset("linear_function_1.scv")
+    ds.shape(50) should be(Shape(50, 2))
+    ds.shape(100) should be(Shape(97, 2))
   }
 }

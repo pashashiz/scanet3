@@ -38,7 +38,10 @@ case class TensorDataset[X: TensorType: Numeric: ClassTag](src: Tensor[X]) exten
     }
   }
   val size: Int = src.shape.dims.head
-  override def shape(batch: Int): Shape = src.view.narrow(Projection(0 until batch)).shape
+  override def shape(batch: Int): Shape = {
+    val maxSize = if (batch < size) batch else size
+    src.view.narrow(Projection(0 until maxSize)).shape
+  }
 }
 
 case class EmptyDataset[X: TensorType: Numeric]() extends Dataset[X] {
