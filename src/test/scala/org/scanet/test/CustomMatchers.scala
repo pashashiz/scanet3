@@ -16,4 +16,7 @@ trait CustomMatchers extends Matchers {
       val existing = tensor.toArray
       MatchResult(existing sameElements data, s"data ${existing.mkString(", ")} was not equal to data ${data.mkString(", ")}", "", Vector(existing, data))
     }
+
+  def beWithinTolerance(mean: Float, tolerance: Float): Matcher[Float] =
+    be >= (mean - tolerance) and be <= (mean + tolerance)
 }
