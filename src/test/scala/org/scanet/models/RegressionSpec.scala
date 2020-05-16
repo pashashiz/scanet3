@@ -23,16 +23,13 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD())
-      .batch(97)
       .initWith(Tensor.zeros(2))
       .on(ds)
       .epochs(1500)
-      .doOnEach(step => {
-        println(s"${step.iter}")
-      })
+      .doOnEach(step => println(s"${step.iter}"))
       .build
       .run()
-    val result = Regression.linear(ds.iterator.next(97).const, weights.const).eval
+    val result = Regression.linear(ds.iterator.next(100).const, weights.const).eval
     result.toScalar should be(4.48f +- 0.01f)
   }
 }
