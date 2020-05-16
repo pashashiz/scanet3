@@ -1,5 +1,6 @@
 package org.scanet.optimizers
 
+import org.scanet.core.syntax._
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Numeric
 
