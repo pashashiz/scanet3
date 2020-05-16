@@ -33,10 +33,8 @@ private[datasets] abstract class IndexedDataset[X](val ds: DataSource[X]) extend
       require(hasNext, "dataset has no elements left")
       val pos = index
       index = index + batchSize
-      if (batchSize > size) {
-        ds.slice(pos, size) // whole source fits into batch
-      } else if (pos + batchSize > size) {
-        ds.slice(size - batchSize, size) // last batch is smaller than requested size
+      if (pos + batchSize > size) {
+        ds.slice(math.max(size - batchSize, 0), size)
       } else {
         ds.slice(pos, pos + batchSize)
       }
