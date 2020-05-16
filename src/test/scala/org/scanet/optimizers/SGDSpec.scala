@@ -11,7 +11,7 @@ class SGDSpec extends AnyFlatSpec with Matchers {
   "SGD" should "calculate optimization step" in {
     val model = Model[Float, Float, Float]((_, x) => x * x)
     val x = Tensor.scalar(50.0f).const
-    val delta = SGD(rate = 0.1).delta(model(50.0f.const, x), x).delta.eval
+    val delta = SGD(rate = 0.1).delta(model(50.0f.const, x), x).eval
     delta should be(Tensor.scalar(10f))
   }
 }

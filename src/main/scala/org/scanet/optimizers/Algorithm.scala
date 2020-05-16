@@ -1,5 +1,6 @@
 package org.scanet.optimizers
 
+import org.scanet.core.Session._
 import org.scanet.core.syntax._
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Numeric
@@ -9,7 +10,10 @@ trait Algorithm {
   def delta[W: TensorType : Numeric, R: TensorType : Numeric](model: Output[R], arg: Output[W]): Delta
 }
 
-case class Delta(delta: Output[Float], metadata: Metadata)
+case class Delta(delta: Output[Float], metadata: Metadata) {
+
+  def eval: Tensor[Float] = using(s => s.runner.feed(metadata.feed).eval(delta))
+}
 object Delta {
   def apply(delta: Output[Float], metaVars: Variable[Float]*): Delta = {
     Delta(delta, Metadata(metaVars))
