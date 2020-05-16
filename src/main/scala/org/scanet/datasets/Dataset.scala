@@ -42,7 +42,7 @@ private[datasets] abstract class IndexedDataset[X](val ds: DataSource[X]) extend
 
     override def size: Int = ds.size
 
-    def shape(batch: Int): Shape = ds.shape(if (batch < size) batch else size)
+    def shape(batch: Int): Shape = ds.shape(math.min(batch, size))
   }
 }
 
