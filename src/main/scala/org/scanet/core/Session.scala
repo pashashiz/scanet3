@@ -9,7 +9,9 @@ import scala.language.existentials
 
 case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
 
-  def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = Map(elems: _*))
+  def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = feed ++ Map(elems: _*))
+
+  def feed(elems: Map[Output[_], Tensor[_]]): Runner = copy(feed = feed ++ elems)
 
   def eval[A: TensorType](a: Output[A]): Tensor[A] = {
     val nTensor = session.eval(Seq(a), feed).head.asInstanceOf[NativeTensor[A]]
@@ -27,6 +29,15 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
     (Tensor.apply[A](tensors(0).asInstanceOf[NativeTensor[A]]),
       Tensor.apply[B](tensors(1).asInstanceOf[NativeTensor[B]]),
       Tensor.apply[C](tensors(2).asInstanceOf[NativeTensor[C]]))
+  }
+
+  def eval[A: TensorType, B: TensorType](a: Output[A], bs: Seq[Output[B]]): (Tensor[A], Seq[Tensor[B]]) = {
+    val tensors = session.eval(a :: bs.toList, feed)
+    (asTensor[A](tensors.head), tensors.tail.map(asTensor[B](_)))
+  }
+
+  private def asTensor[A: TensorType](nt: NativeTensor[_]): Tensor[A] = {
+    Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]])
   }
 }
 

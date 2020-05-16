@@ -8,10 +8,10 @@ import org.scanet.models.Model
 
 class SGDSpec extends AnyFlatSpec with Matchers {
 
-  "SDG" should "calculate optimization step" in {
+  "SGD" should "calculate optimization step" in {
     val model = Model[Float, Float, Float]((_, x) => x * x)
     val x = Tensor.scalar(50.0f).const
-    val compiled = model(50.0f.const, x)
-    println(SGD(rate = 0.1).delta(compiled.grad(x)).eval)
+    val delta = SGD(rate = 0.1).delta(model(50.0f.const, x), x).delta.eval
+    delta should be(Tensor.scalar(10f))
   }
 }
