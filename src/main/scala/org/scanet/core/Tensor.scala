@@ -49,7 +49,9 @@ class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) ext
   def slice[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3): Tensor[A] = slice(Projection(s1, s2, s3))
   def slice[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom, S4: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3, s4: S4): Tensor[A] = slice(Projection(s1, s2, s3, s4))
 
-  def slice(projection: Projection): Tensor[A] = new Tensor(native, view narrow projection)
+  def slice(projection: Projection): Tensor[A] = {
+    if (projection != view.projection) new Tensor(native, view narrow projection) else this
+  }
 
   def reshape(dims: Int*): Tensor[A] = reshape(Shape(dims: _*))
   def reshape(shape: Shape): Tensor[A] = new Tensor(native, view reshape shape)

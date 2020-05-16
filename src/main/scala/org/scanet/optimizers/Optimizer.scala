@@ -30,7 +30,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
     var it = dataset.iterator
     var weights = initArgs
     // input placeholders
-    val batchPl = placeholder[X](dataset.shape(batchSize))
+    val batchPl = placeholder[X](it.shape(batchSize))
     val weightPl = placeholder[W](initArgs.shape)
     // graph of compiled and optimized model
     val compiled = model(batchPl, weightPl)
