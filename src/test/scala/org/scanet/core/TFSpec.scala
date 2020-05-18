@@ -9,16 +9,16 @@ import org.scanet.math.syntax._
 class TFSpec extends AnyFlatSpec with CustomMatchers {
 
   "tensor function composition" should "work" in {
-    val sqr: TF1[Int, Int] = TF1 {
-      val arg = placeholder[Int]()
+    val sqr: TF1[Int, Int] = TF1(shape => {
+      val arg = placeholder[Int](shape)
       val result = arg * arg
       (arg, result)
-    }
-    val identity: TF1[Int, Int] = TF1 {
-      val arg = placeholder[Int]()
+    })
+    val identity: TF1[Int, Int] = TF1(shape => {
+      val arg = placeholder[Int](shape)
       val result = arg
       (arg, result)
-    }
+    })
     val leftPlusRightSqr = identity.compose(sqr)(_ + _)
     using(session => {
       val func = leftPlusRightSqr.compile(session)
