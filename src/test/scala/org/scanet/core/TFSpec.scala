@@ -33,10 +33,14 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
       val arg = placeholder[Int](shape)
       val result = arg
       (arg, result)
+      // (arg, Result(result, Output[Int] -> Seq[Output[_]], Seq[NativeTensor[_]] -> Tensor[Int]))
+      // for tuple 2:
+      // (arg, Result(result, (Output[R1], Output[R2]) -> Seq[Output[_]], Seq[NativeTensor[_]] -> (Tensor[R1], Tensor[R2]))
+      //
     })
     val leftPlusRightSqr = identity.compose(sqr)(_ + _)
     using(session => {
-      val func = leftPlusRightSqr.compile(session)
+      val func: (Tensor[Int], Tensor[Int]) => Tensor[Int] = leftPlusRightSqr.compile(session)
       // we can call the function multiple times now
       // that is compiled and same session will be reused
       func(scalar(5), scalar(3)) should be(scalar(11))

@@ -3,6 +3,7 @@ package org.scanet.core
 import org.scanet.core.Output.Compiled
 import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{Graph, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
+import simulacrum.typeclass
 
 import scala.jdk.CollectionConverters._
 import scala.language.existentials
@@ -10,6 +11,10 @@ import scala.language.existentials
 case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
 
   def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = Map(elems: _*))
+
+  def evalUnsafe(outs: Seq[Output[_]]): Seq[NativeTensor[_]] = {
+    ???
+  }
 
   def eval[A: TensorType](a: Output[A]): Tensor[A] = {
     val nTensor = session.eval(Seq(a), feed).head.asInstanceOf[NativeTensor[A]]
@@ -28,6 +33,7 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
       Tensor.apply[B](tensors(1).asInstanceOf[NativeTensor[B]]),
       Tensor.apply[C](tensors(2).asInstanceOf[NativeTensor[C]]))
   }
+
 }
 
 case class SessionState(scope: NativeScope, cache: Map[String, Compiled]) {
@@ -106,3 +112,19 @@ object Session {
     } finally if (session != null) session.close()
   }
 }
+
+//@typeclass trait SessionEval[A] {
+//  def asOutputs(outputs: A): Seq[Output[_]]
+//  def fromNativeTensors(tensors: Seq[NativeTensor[_]]): A
+//}
+//
+//object SessionEval {
+//  implicit def tuple2IsEval[A1: TensorType, A2: TensorType]: SessionEval[(Output[A1], Output[A2])] =
+//    new SessionEval[(Output[A1], Output[A2])] {
+//      override def asOutputs(value: (Output[A1], Output[A2])): Seq[Output[_]] = Seq(value._1, value._2)
+//      override def fromNativeTensors(tensors: Seq[NativeTensor[_]]): (Output[A1], Output[A2]) = {
+//        (Tensor.apply[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
+//          Tensor.apply[A2](tensors(1).asInstanceOf[NativeTensor[A2]]))
+//    }
+//  }
+//}

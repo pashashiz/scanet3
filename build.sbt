@@ -13,6 +13,7 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "simulacrum" % "1.0.0",
   "org.tensorflow" % "tensorflow" % "1.15.0",
   "org.tensorflow" % "proto" % "1.15.0",
+  "com.chuusai" %% "shapeless" % "2.3.3",
   "com.google.guava" % "guava" % "29.0-jre", // needed for crc32c only
   "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
   "org.scalatest" %% "scalatest" % "3.1.1" % "test"
