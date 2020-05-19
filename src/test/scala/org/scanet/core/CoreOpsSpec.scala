@@ -80,17 +80,6 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     ternary.eval should be(Tensor.scalar(-3))
   }
 
-  "placeholder" should "be substituted with a session" in {
-    using(session => {
-      val a = placeholder[Int]()
-      val b = 10.const
-      val c = a + b
-      session.runner
-        .feed(a -> Tensor.scalar(5))
-        .eval(c) should be(Tensor.scalar(15))
-    })
-  }
-
   "slice" should "index a matrix to a row" in {
     val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
     x.slice(0).eval should be(Tensor.vector(1, 2, 3))

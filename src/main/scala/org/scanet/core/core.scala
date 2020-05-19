@@ -18,5 +18,4 @@ package object core {
     val cached = memoize(f.tupled)
     (i1, i2) => cached((i1, i2))
   }
-
 }

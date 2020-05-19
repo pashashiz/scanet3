@@ -1,44 +1,25 @@
 package org.scanet.core
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Session.using
 import org.scanet.core.Tensor.scalar
-import org.scanet.test.CustomMatchers
 import org.scanet.math.syntax._
+import org.scanet.test.CustomMatchers
 
 class TFSpec extends AnyFlatSpec with CustomMatchers {
 
-  "memoization" should "cache result of the function and reuse it" in {
-    val counter = new AtomicInteger(0)
-    val plus = memoize((a: Int, b: Int) => {
-      counter.incrementAndGet()
-      a + b
-    })
-    counter.get() should be(0)
-    plus(2, 3) should be(5)
-    counter.get() should be(1)
-    plus(2, 3) should be(5)
-    counter.get() should be(1)
-  }
-
   "tensor function composition" should "work" in {
-    val sqr: TF1[Int, Int] = TF1(shape => {
+    val sqr: TF1[Int, Output[Int], Tensor[Int]] = TF1(shape => {
       val arg = placeholder[Int](shape)
       val result = arg + arg
       (arg, result)
     })
-    val identity: TF1[Int, Int] = TF1(shape => {
+    val identity: TF1[Int, Output[Int], Tensor[Int]] = TF1(shape => {
       val arg = placeholder[Int](shape)
       val result = arg
       (arg, result)
-      // (arg, Result(result, Output[Int] -> Seq[Output[_]], Seq[NativeTensor[_]] -> Tensor[Int]))
-      // for tuple 2:
-      // (arg, Result(result, (Output[R1], Output[R2]) -> Seq[Output[_]], Seq[NativeTensor[_]] -> (Tensor[R1], Tensor[R2]))
-      //
     })
-    val leftPlusRightSqr = identity.compose(sqr)(_ + _)
+    val leftPlusRightSqr: TF2[Int, Int, Output[Int], Tensor[Int]] = identity.compose(sqr)(_ + _)
     using(session => {
       val func: (Tensor[Int], Tensor[Int]) => Tensor[Int] = leftPlusRightSqr.compile(session)
       // we can call the function multiple times now
