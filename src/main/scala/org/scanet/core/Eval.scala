@@ -1,15 +1,8 @@
 package org.scanet.core
 
 import org.scanet.core.Session.using
-import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.{specialized => sp}
-
-// Op[A] => Tensor[A]
-// (Op[A], Op[B]) => (Tensor[A], Tensor[B])
-// (Op[A], Op[B], Op[C]) => ...
-
-// todo: see how shapeless handles that, for now use simple way without typeclasses
 
 case class OutputEval[@sp A: TensorType](out: Output[A]) {
   def eval: Tensor[A] = using(_.runner.eval(out))

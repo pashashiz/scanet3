@@ -17,6 +17,9 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
     session.eval(outs, feed)
   }
 
+  // NOTE: try HList for this
+  // ideally we can get rid of SessionInput and SessionOutput
+  // and just make native transformation Product[Output[T]] ~> Product[Tensor[T]]
   def evalX[O: SessionInput, T: SessionOutput](out: O): T = {
     val input: Seq[Output[_]] = out.toInput
     val output = evalUnsafe(input)
@@ -35,7 +38,6 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
   def eval[A: TensorType, B: TensorType, C: TensorType](a: Output[A], b: Output[B], c: Output[C]): (Tensor[A], Tensor[B], Tensor[C]) = {
     evalX[(Output[A], Output[B], Output[C]), (Tensor[A], Tensor[B], Tensor[C])]((a, b, c))
   }
-
 }
 
 case class SessionState(scope: NativeScope, cache: Map[String, Compiled]) {
