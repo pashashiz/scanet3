@@ -1,5 +1,6 @@
 package org.scanet.models
 
+import org.scanet.core.Output
 import org.scanet.math.syntax._
 
 object Math {
@@ -15,4 +16,7 @@ object Math {
     })
   }
 
+  def `x^2`: Model[Float, Float, Float] = Model(
+    (_: Output[Float], x: Output[Float]) => x * x
+  )
 }
