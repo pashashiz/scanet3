@@ -1,5 +1,7 @@
 package org.scanet.core
 
+import org.scanet.core.Session.using
+
 class TF1[P1: TensorType, O: SessionInput, T: SessionOutput]
     (val builder: Shape => (Output[P1], O)) {
 
@@ -11,6 +13,13 @@ class TF1[P1: TensorType, O: SessionInput, T: SessionOutput]
       session.runner.feed(p1 -> a1).evalX[O, T](out)
     }
   }
+
+  def compile(): Tensor[P1] => T =
+    p1 => {
+      using(session => {
+        compile(session).apply(p1)
+      })
+    }
 
   def compose[P2: TensorType, O_OTHER: SessionInput, T_OTHER: SessionOutput, O_NEW: SessionInput, T_NEW: SessionOutput]
       (other: TF1[P2, O_OTHER, T_OTHER])(via: (O, O_OTHER) => O_NEW): TF2[P1, P2, O_NEW, T_NEW] = {
@@ -52,12 +61,26 @@ class TF2[P1: TensorType, P2: TensorType, O: SessionInput, T: SessionOutput]
     }
   }
 
+  def compile(): (Tensor[P1], Tensor[P2])  => T =
+    (p1, p2) => {
+      using(session => {
+        compile(session).apply(p1, p2)
+      })
+    }
+
   def compose[P1_OTHER: TensorType, O_OTHER: SessionInput, T_OTHER: SessionOutput, O_NEW: SessionInput, T_NEW: SessionOutput]
   (other: TF1[P1_OTHER, O_OTHER, T_OTHER])(via: (O, O_OTHER) => O_NEW): TF3[P1, P2, P1_OTHER, O_NEW, T_NEW] = {
     TF3((a1, a2, a3) => {
       val (p1, p2, out) = builder(a1, a2)
       val (p3, outOther) = other.builder(a3)
       (p1, p2, p3, via(out, outOther))
+    }).returns[T_NEW]
+  }
+
+  def map[O_NEW: SessionInput, T_NEW: SessionOutput](mapper: O => O_NEW): TF2[P1, P2, O_NEW, T_NEW] = {
+    TF2((a1, a2) => {
+      val (p1, p2, out) = builder(a1, a2)
+      (p1, p2, mapper(out))
     }).returns[T_NEW]
   }
 }
@@ -83,6 +106,13 @@ class TF3[P1: TensorType, P2: TensorType, P3: TensorType, O: SessionInput, T: Se
       session.runner.feed(p1 -> a1, p2 -> a2, p3 -> a3).evalX[O, T](out)
     }
   }
+
+  def compile(): (Tensor[P1], Tensor[P2], Tensor[P3])  => T =
+    (p1, p2, p3) => {
+      using(session => {
+        compile(session).apply(p1, p2, p3)
+      })
+    }
 }
 
 object TF3 {

@@ -10,12 +10,12 @@ import org.scanet.test.CustomMatchers
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
 
   "linear regression" should "calculate approximation error " in {
-    val reg = Regression.linear
+    val regression = Regression.linear.result.compile()
     val x = Tensor.matrix(
       Array(1.0f, 2.0f, 6.0f),
-      Array(2.0f, 4.0f, 12.0f)).const
-    val weights = Tensor.vector(1.0f, 2.0f, 3.0f).const
-    reg(x, weights).eval should be(Tensor.scalar(8.5f))
+      Array(2.0f, 4.0f, 12.0f))
+    val weights = Tensor.vector(1.0f, 2.0f, 3.0f)
+    regression(x, weights) should be(Tensor.scalar(8.5f))
   }
 
   it should "be minimized" in {
@@ -29,7 +29,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
       .doOnEach(step => println(s"${step.iter}"))
       .build
       .run()
-    val result = Regression.linear(ds.iterator.next(100).const, weights.const).eval
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(100), weights)
     result.toScalar should be(4.48f +- 0.01f)
   }
 }

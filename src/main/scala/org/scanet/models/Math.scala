@@ -15,4 +15,11 @@ object Math {
     })
   }
 
+  def `x^2`: Model[Float, Float, Float] = Model(
+    (batchShape, weightsShape) => {
+      val batch = placeholder[Float](batchShape)
+      val x = placeholder[Float](weightsShape)
+      (batch, x, x * x)
+    }
+  )
 }
