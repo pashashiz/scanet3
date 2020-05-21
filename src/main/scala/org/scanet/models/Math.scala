@@ -1,5 +1,6 @@
 package org.scanet.models
 
+import org.scanet.core.Output
 import org.scanet.math.syntax._
 
 object Math {
@@ -16,10 +17,6 @@ object Math {
   }
 
   def `x^2`: Model[Float, Float, Float] = Model(
-    (batchShape, weightsShape) => {
-      val batch = placeholder[Float](batchShape)
-      val x = placeholder[Float](weightsShape)
-      (batch, x, x * x)
-    }
+    (_: Output[Float], x: Output[Float]) => x * x
   )
 }
