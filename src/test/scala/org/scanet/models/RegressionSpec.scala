@@ -26,7 +26,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
       .initWith(Tensor.zeros(2))
       .on(ds)
       .epochs(1500)
-      .doOnEach(step => println(s"${step.iter}"))
+      .doOnEach(step => println(s"#${step.iter}: ${step.result()}"))
       .build
       .run()
     val regression = Regression.linear.result.compile()
