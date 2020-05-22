@@ -14,9 +14,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val x = Tensor.matrix(
       Array(1.0f, 2.0f, 6.0f),
       Array(2.0f, 4.0f, 12.0f))
-    val weights = Tensor.vector(1.0f, 2.0f,  3.0f)
+    val weights = Tensor.vector(1.0f, 2.0f, 3.0f)
     regression(x, weights) should be(Tensor.scalar(8.5f))
-    Regression.linear.display()
   }
 
   it should "be minimized" in {
