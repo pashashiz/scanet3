@@ -1,17 +1,20 @@
 package org.scanet.optimizers
 
 import org.scanet.core.Session.using
-import org.scanet.core.{Output, Tensor, TensorType}
+import org.scanet.core._
 import org.scanet.datasets.Dataset
+import org.scanet.datasets.Iterator
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
 import org.scanet.models.Model
 import org.scanet.optimizers.Optimizer.BuilderState._
 
+import scala.annotation.tailrec
+
 case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
       iter: Int = 0, epoch: Int = 0, result: () => Tensor[R] = null) {
   def isFirst: Boolean = iter == 0
-  def nextIter: Step[W, R] = copy(iter = iter + 1)
+  def nextIter(res: () => Tensor[R]): Step[W, R] = copy(iter = iter + 1, result = res)
   def nextEpoch: Step[W, R] = copy(epoch = epoch + 1)
 }
 
@@ -26,28 +29,30 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
       doOnEach: Step[W, R] => Unit) {
 
   def run(): Tensor[W] = using(session => {
-    var step = Step[W, R]()
-    var it = dataset.iterator
-    var weights = initArgs
     val result = model.result compile session
-    val calcWeights = model.grad.map[Output[W], Tensor[W]] {
-      case (w, g) =>
-        val delta = alg.delta(g).cast[W]
-        if (minimizing) w - delta else w + delta
-    } compile session
-    // iterate model in session
-    while (step.isFirst || !stopCondition(step)) {
-      if (it.hasNext) {
+    val weightsTF: TF3[Float, X, W, (Output[W], Output[Float]), (Tensor[W], Tensor[Float])] =
+      TF1.identity[Float].compose(model.grad) {
+        case (meta, (w, g)) =>
+          val Delta(delta, nextMeta) = alg.delta(g, meta)
+          val d = delta.cast[W]
+          (if (minimizing) w - d else w + d, nextMeta)
+      }
+    val weightsAndMeta = weightsTF compile session
+
+    @tailrec
+    def optimize(step: Step[W, R], it: Iterator[X], weights: Tensor[W], meta: Tensor[Float]): Tensor[W] = {
+      if (stopCondition(step)) weights
+      else if (!it.hasNext) optimize(step.nextEpoch, dataset.iterator, weights, meta)
+      else {
         val batch = it.next(batchSize)
-        weights = calcWeights(batch, weights)
-        step = step.nextIter.copy(result = () => result(batch, weights))
-        doOnEach(step)
-      } else {
-        it = dataset.iterator
-        step = step.nextEpoch
+        val (nextWeight, nextMeta) = weightsAndMeta(meta, batch, weights)
+        val nextStep = step.nextIter(() => result(batch, nextWeight))
+        doOnEach(nextStep)
+        optimize(nextStep, it, nextWeight, nextMeta)
       }
     }
-    weights
+
+    optimize(Step(), dataset.iterator, initArgs, alg.initMeta(initArgs))
   })
 }
 
@@ -93,8 +98,8 @@ object Optimizer {
   }
 
   def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, _, WithFunc] =
-    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, null, _ => ()))
+    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, step => step.iter > 0, _ => ()))
 
   def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, _, WithFunc] =
-    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, null, _ => ()))
+    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, step => step.iter > 0, _ => ()))
 }

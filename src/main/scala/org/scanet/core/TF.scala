@@ -51,6 +51,8 @@ object TF1 {
   }
 
   def apply[P1: TensorType, O: SessionInput](builder: Output[P1] => O): TF1Builder[P1, O] = TF1Builder(builder)
+
+  def identity[P: TensorType]: TF1[P, Output[P], Tensor[P]] = TF1[P, Output[P]](arg => arg).returns[Tensor[P]]
 }
 
 class TF2[P1: TensorType, P2: TensorType, O: SessionInput, T: SessionOutput]

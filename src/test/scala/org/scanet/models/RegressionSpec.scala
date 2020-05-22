@@ -22,7 +22,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD())
+      .using(SGD(momentum = 0.9, nesterov = true))
       .initWith(Tensor.zeros(2))
       .on(ds)
       .epochs(1500)
@@ -31,6 +31,6 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
       .run()
     val regression = Regression.linear.result.compile()
     val result = regression(ds.iterator.next(100), weights)
-    result.toScalar should be(4.48f +- 0.01f)
+    result.toScalar should be(4.56f +- 0.01f)
   }
 }
