@@ -31,13 +31,19 @@ class TF1[P1: TensorType, O: SessionInput, T: SessionOutput]
     })
   }
 
-  def compose[P1_OTHER: TensorType, P2_OTHER: TensorType, O_OTHER: SessionInput, T_OTHER: SessionOutput, O_NEW: SessionInput, T_NEW: SessionOutput]
-    (other: TF2[P1_OTHER, P2_OTHER, O_OTHER, T_OTHER])(via: (O, O_OTHER) => O_NEW): TF3[P1, P1_OTHER, P2_OTHER, O_NEW, T_NEW] = {
-    new TF3((a1, a2, a3) => {
-      val (p1, out) = builder(a1)
-      val (p2, p3, outOther) = other.builder(a2, a3)
-      (p1, p2, p3, via(out, outOther))
-    })
+  def compose[P1_OTHER: TensorType, P2_OTHER: TensorType, O_OTHER: SessionInput, T_OTHER: SessionOutput, O_NEW: SessionInput]
+  (other: TF2[P1_OTHER, P2_OTHER, O_OTHER, T_OTHER])(via: (O, O_OTHER) => O_NEW): Composition[P1_OTHER, P2_OTHER, O_OTHER, T_OTHER, O_NEW] =
+    new Composition(other, via)
+
+  class Composition[P1_OTHER: TensorType, P2_OTHER: TensorType, O_OTHER: SessionInput, T_OTHER: SessionOutput, O_NEW: SessionInput]
+  (private val other: TF2[P1_OTHER, P2_OTHER, O_OTHER, T_OTHER], private val via: (O, O_OTHER) => O_NEW) {
+    def into[T_NEW: SessionOutput]: TF3[P1, P1_OTHER, P2_OTHER, O_NEW, T_NEW] = {
+      new TF3((a1, a2, a3) => {
+        val (p1, out) = builder(a1)
+        val (p2, p3, outOther) = other.builder(a2, a3)
+        (p1, p2, p3, via(out, outOther))
+      })
+    }
   }
 }
 
