@@ -35,7 +35,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val identity = TF1((arg: Output[Int]) => arg).returns[Tensor[Int]]
     val plus = TF2((arg1: Output[Int], arg2: Output[Int]) =>
       arg1 + arg2).returns[Tensor[Int]]
-    val leftMultiplyRightSum: TF3[Int, Int, Int, Output[Int], Tensor[Int]] = identity.compose(plus)(_ * _)
+    val leftMultiplyRightSum = identity.compose(plus)(_ * _).into[Tensor[Int]]
     using(session => {
       val func = leftMultiplyRightSum.compile(session)
       func(scalar(4), scalar(2), scalar(3)) should be(scalar(20))
@@ -55,7 +55,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val identity = TF1((arg: Output[Int]) => arg).returns[Tensor[Int]]
     val plus = TF2((arg1: Output[Int], arg2: Output[Int]) =>
       arg1 + arg2).returns[Tensor[Int]]
-    val leftMultiplyRightSum: TF3[Int, Int, Int, Output[Int], Tensor[Int]] = identity.compose(plus)(_ * _)
+    val leftMultiplyRightSum = identity.compose(plus)(_ * _).into[Tensor[Int]]
     using(session => {
       val func = leftMultiplyRightSum.compile(session)
       func(scalar(4), scalar(2), scalar(3)) should be(scalar(20))

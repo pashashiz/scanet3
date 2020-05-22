@@ -30,14 +30,12 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
 
   def run(): Tensor[W] = using(session => {
     val result = model.result compile session
-    val weightsTF: TF3[Float, X, W, (Output[W], Output[Float]), (Tensor[W], Tensor[Float])] =
-      TF1.identity[Float].compose(model.grad) {
-        case (meta, (w, g)) =>
-          val Delta(delta, nextMeta) = alg.delta(g, meta)
-          val d = delta.cast[W]
-          (if (minimizing) w - d else w + d, nextMeta)
-      }
-    val weightsAndMeta = weightsTF compile session
+    val weightsAndMeta = TF1.identity[Float].compose(model.grad) {
+      case (meta, (w, g)) =>
+        val Delta(delta, nextMeta) = alg.delta(g, meta)
+        val d = delta.cast[W]
+        (if (minimizing) w - d else w + d, nextMeta)
+    }.into[(Tensor[W], Tensor[Float])] compile session
 
     @tailrec
     def optimize(step: Step[W, R], it: Iterator[X], weights: Tensor[W], meta: Tensor[Float]): Tensor[W] = {
