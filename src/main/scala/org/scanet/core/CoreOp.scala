@@ -96,8 +96,6 @@ object CoreOp {
 
     implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with CoreStandaloneOps {
 
-      override def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
-
       override def slice[A: TensorType](out: Output[A], projection: Projection): Output[A] = {
         val adjusted = projection.adjustTo(out.shape)
         val (offsets, lengths) = adjusted.asOffsetAndLength
@@ -128,7 +126,7 @@ object CoreOp {
           } else {
             Output.name[A]("Reshape")
               .shape(shape)
-              .inputs(op, Tensor.vector(shape.dims: _*).const)
+              .inputs(op, as(Tensor.vector(shape.dims: _*).const, "new_shape"))
               .localGrad(ctx => List(reshape(ctx.parentGrad, op.shape)))
               .compileWithAllInputs
               .build
@@ -175,6 +173,8 @@ object CoreOp {
   }
 
   trait CoreStandaloneOps {
+
+    def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
     def placeholder[A: TensorType](shape: Shape): Output[A] = {
       Output.name[A]("Placeholder")
@@ -271,7 +271,7 @@ object CoreOp {
       val shape = Shape(shapes.head.dims.updated(axis, newDimSize))
       Output.name[A]("ConcatV2")
         .shape(shape)
-        .inputs(outputs :+ Tensor.scalar(axis.toLong).const: _*)
+        .inputs(outputs :+ as(Tensor.scalar(axis.toLong).const, "axis"): _*)
         .compileWithTransformer((ctx, builder) => {
           val compiledInputs = ctx.inputs.map(_.output(0))
           builder
