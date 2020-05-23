@@ -1,9 +1,14 @@
 package org.scanet.core
 
+import java.nio.{ByteBuffer, ByteOrder}
+import java.nio.ByteOrder.BIG_ENDIAN
+import java.util
+
+import com.google.protobuf.ByteString
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
 import org.scanet.math.syntax._
+import org.tensorflow.framework.Summary
 
 import scala.reflect.io.Path._
 
@@ -18,5 +23,9 @@ class TensorBoardSpec extends AnyFlatSpec with Matchers {
     val files = "tmp".toDirectory.files.map(_.path).filter(_ matches ".*events.out.tfevents.*")
     files should not be empty
     "tmp".toDirectory.deleteRecursively()
+  }
+
+  "scalar" should "be displayed" in {
+    new TensorBoard().addScalar("a", 11.0f, 0)
   }
 }

@@ -1,9 +1,5 @@
 package org.scanet.core
 
-import org.scanet.math.Logical
-import org.scanet.math.Numeric
-import org.scanet.strings.Textual
-
 class ConstOp[A: TensorType](val tensor: Tensor[A]) {
    def const: Output[A] = ConstOp.buildConst(tensor)
 }
@@ -19,22 +15,10 @@ object ConstOp {
 
   trait Syntax {
 
-    implicit def numericScalarIsConstOp[A: TensorType: Numeric](value: A): ConstOp[A] =
+    implicit def scalarIsConstOp[A: TensorType](value: A): ConstOp[A] =
       new ConstOp(Tensor.scalar(value))
 
-    implicit def logicalScalarIsConstOp[A: TensorType: Logical](value: A): ConstOp[A] =
-      new ConstOp(Tensor.scalar(value))
-
-    implicit def textualScalarIsConstOp[A: TensorType: Textual](value: A): ConstOp[A] =
-      new ConstOp(Tensor.scalar(value))
-
-    implicit def numericTensorIsConstOp[A: TensorType: Numeric](tensor: Tensor[A]): ConstOp[A] =
-      new ConstOp(tensor)
-
-    implicit def logicalTensorIsConstOp[A: TensorType: Logical](tensor: Tensor[A]): ConstOp[A] =
-      new ConstOp(tensor)
-
-    implicit def textualTensorIsConstOp[A: TensorType: Textual](tensor: Tensor[A]): ConstOp[A] =
+    implicit def tensorIsConstOp[A: TensorType](tensor: Tensor[A]): ConstOp[A] =
       new ConstOp(tensor)
   }
 
