@@ -1,12 +1,12 @@
 package org.scanet.models
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.{Tensor, TensorBoard}
+import org.scanet.core.Tensor
 import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
-import org.scanet.optimizers.Conditions.epochs
 import org.scanet.optimizers.Effect._
-import org.scanet.optimizers.{Effect, Effects, Optimizer, SGD}
+import org.scanet.optimizers.syntax._
+import org.scanet.optimizers.{Optimizer, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -27,9 +27,9 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
       .using(SGD(momentum = 0.9, nesterov = true))
       .initWith(Tensor.zeros(2))
       .on(ds)
-      .epochs(1500)
-      .each(logResult[Float, Float]())
-      .each(epochs(10), plotResult[Float, Float]())
+      .each(logResult())
+      //.each(100.epochs, plotResult())
+      .stopAfter(1500.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()

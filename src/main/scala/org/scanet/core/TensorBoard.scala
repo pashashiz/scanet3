@@ -16,7 +16,7 @@ class TensorBoard(val dir: String = "") {
 
   dir.toDirectory.createDirectory()
 
-  def addGraph[A](ops: Output[_]*): Unit = {
+  def addGraph[A](ops: Output[_]*): TensorBoard = {
     val graph = Session.using(_.toGraph(ops))
     val event = Event.newBuilder()
       .setGraphDef(ByteString.copyFrom(graph.toGraphDef))
@@ -24,7 +24,7 @@ class TensorBoard(val dir: String = "") {
     writeEvents(event)
   }
 
-  def addScalar[A](tag: String, value: A, step: Int)(implicit c: Convertible[A, Float]): Unit = {
+  def addScalar[A](tag: String, value: A, step: Int)(implicit c: Convertible[A, Float]): TensorBoard = {
     val summary = Summary.newBuilder().addValue(
       Summary.Value.newBuilder()
         .setTag(tag)
@@ -36,7 +36,7 @@ class TensorBoard(val dir: String = "") {
     writeEvents(event)
   }
 
-  def writeEvents(events: Event*): Unit = {
+  def writeEvents(events: Event*): TensorBoard = {
     val version = Event.newBuilder()
       .setFileVersion("brain.Event:2")
       .build()
@@ -44,5 +44,6 @@ class TensorBoard(val dir: String = "") {
     val file = s"events.out.tfevents.${Instant.now().toEpochMilli}.$computerName"
     TfRecords.of(List(version) ++ events)
       .writeTo(Files.newOutputStream(Paths.get(dir).resolve(file)))
+    this
   }
 }

@@ -2,13 +2,12 @@ package org.scanet.optimizers
 
 import org.scanet.core.Session.using
 import org.scanet.core._
-import org.scanet.datasets.Dataset
-import org.scanet.datasets.Iterator
-import org.scanet.math.{Convertible, Numeric}
+import org.scanet.datasets.{Dataset, Iterator}
+import org.scanet.math.Numeric
 import org.scanet.math.syntax._
 import org.scanet.models.Model
+import org.scanet.optimizers.Condition.always
 import org.scanet.optimizers.Optimizer.BuilderState._
-import org.scanet.optimizers.Optimizer.Condition
 
 import scala.annotation.tailrec
 
@@ -17,51 +16,6 @@ case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
   def isFirst: Boolean = iter == 0
   def nextIter: Step[W, R] = copy(iter = iter + 1)
   def nextEpoch: Step[W, R] = copy(epoch = epoch + 1)
-}
-
-case class Effect[A, S](acc: A, action: (A, S) => A)
-
-object Effect {
-
-  def plotResult[W: Numeric: TensorType, R: Numeric: TensorType]
-    (name: String = "result", dir: String = "board")
-    (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[W, R]] = {
-    Effect(new TensorBoard(dir), (board, step) => {
-      board.addScalar(name, step.result().toScalar, step.iter)
-      board
-    })
-  }
-
-  def logResult[W: Numeric: TensorType, R: Numeric: TensorType]()
-    (implicit c: Convertible[R, Float]): Effect[Unit, Step[W, R]] = {
-    Effect(null, (_, step) => {
-      println(s"#${step.epoch}:${step.iter} ${step.result().toScalar}")
-    })
-  }
-}
-
-case class Effects[S](all: Seq[Effect[_, S]]) {
-  def acc: Seq[_] = all.map(_.acc)
-  def action(acc: Seq[_], next: S): Seq[_] = acc.zip(all) map {
-    case (a, Effect(_, action)) => action(a, next)
-  }
-  def :+ (effect: Effect[_, S]): Effects[S] = Effects(all :+ effect)
-}
-
-object Effects {
-
-  def empty[S]: Effects[S] = Effects(Seq())
-}
-
-object Conditions {
-
-  def iterations[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] = {
-    step => step.iter % number == 0
-  }
-
-  def epochs[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] = {
-    step => step.epoch % number == 0
-  }
 }
 
 case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](
@@ -98,13 +52,11 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
       }
     }
 
-    optimize(Step(), doOnEach.acc, dataset.iterator, initArgs, alg.initMeta(initArgs))
+    optimize(Step(), doOnEach.zeros, dataset.iterator, initArgs, alg.initMeta(initArgs))
   })
 }
 
 object Optimizer {
-
-  type Condition[W, R] = (Step[W, R] => Boolean)
 
   sealed trait BuilderState
 
@@ -130,41 +82,39 @@ object Optimizer {
     def stopWhen(condition: Condition[W, R]): Builder[X, W, R, State with WithStopCondition] =
       copy(optimizer = optimizer.copy(stop = condition))
 
+    def stopAfter(condition: Condition[W, R]): Builder[X, W, R, State with WithStopCondition] =
+      stopWhen(condition)
+
     def epochs(number: Int): Builder[X, W, R, State with WithStopCondition] =
-      stopWhen(step => step.epoch == number)
+      stopWhen(Condition.epochs(number))
 
     def iterations(number: Int): Builder[X, W, R, State with WithStopCondition] =
-      stopWhen(step => step.iter == number)
+      stopWhen(Condition.iterations(number))
 
     def batch(size: Int): Builder[X, W, R, State] =
       copy(optimizer = optimizer.copy(batchSize = size))
 
-    def each(where: Condition[W, R], action: Step[W, R] => Unit): Builder[X, W, R, State] =
-      each(where, Effect[Any, Step[W, R]](null, (_, step) => action(step)))
+    // NOTE: figure out how to rename it to each without getting issues
+    // when type inference is required
+    def doEach(when: Condition[W, R], action: Step[W, R] => Unit): Builder[X, W, R, State] =
+      each(when, Effect.stateless[Step[W, R]](action))
 
-    def each(action: Step[W, R] => Unit): Builder[X, W, R, State] =
-      each(_ => true, Effect[Any, Step[W, R]](null, (_, step) => action(step)))
+    def doEach(action: Step[W, R] => Unit): Builder[X, W, R, State] =
+      each(always, Effect.stateless[Step[W, R]](action))
 
-    def each[S](effect: Effect[S, Step[W, R]]): Builder[X, W, R, State] =
-      each(_ => true, effect)
+    def each(effect: Effect[_, Step[W, R]]): Builder[X, W, R, State] =
+      each(always, effect)
 
-    def each[S](where: Condition[W, R], effect: Effect[S, Step[W, R]]): Builder[X, W, R, State] = {
-      val conditionalEffect = effect.copy(action = (state: S, step: Step[W, R]) => {
-        if (where(step)) {
-          effect.action(state, step)
-        } else {
-          state
-        }
-      })
-      copy(optimizer = optimizer.copy(doOnEach = optimizer.doOnEach :+ conditionalEffect))
+    def each(when: Condition[W, R], effect: Effect[_, Step[W, R]]): Builder[X, W, R, State] = {
+      copy(optimizer = optimizer.copy(doOnEach = optimizer.doOnEach :+ effect.conditional(when)))
     }
 
     def build(implicit ev: State =:= Complete): Optimizer[X, W, R] = optimizer
   }
 
   def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
-    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, step => step.iter > 0, Effects.empty))
+    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, always, Effects.empty))
 
   def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
-    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, step => step.iter > 0, Effects.empty))
+    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, always, Effects.empty))
 }
