@@ -17,7 +17,7 @@ class TensorBoard(val dir: String = "") {
   dir.toDirectory.createDirectory()
 
   def addGraph[A](ops: Output[_]*): TensorBoard = {
-    val graph = Session.using(_.toGraph(ops))
+    val graph = Session.withing(_.toGraph(ops))
     val event = Event.newBuilder()
       .setGraphDef(ByteString.copyFrom(graph.toGraphDef))
       .build()

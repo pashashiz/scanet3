@@ -2,7 +2,6 @@ package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.Session.using
 import org.scanet.core.Slice.syntax.::
 import org.scanet.syntax._
 

@@ -1,25 +1,25 @@
 package org.scanet.core
 
-import org.scanet.core.Session.using
+import org.scanet.core.Session.withing
 
 import scala.{specialized => sp}
 
 case class OutputEval[@sp A: TensorType](out: Output[A]) {
-  def eval: Tensor[A] = using(_.runner.eval(out))
+  def eval: Tensor[A] = withing(_.runner.eval(out))
   def display(dir: String = ""): Unit = {
     new TensorBoard(dir).addGraph(out)
   }
 }
 
 case class Tuple2Eval[@sp A1: TensorType, @sp A2: TensorType](tuple: (Output[A1], Output[A2])) {
-  def eval: (Tensor[A1], Tensor[A2]) = using(_.runner.eval(tuple._1, tuple._2))
+  def eval: (Tensor[A1], Tensor[A2]) = withing(_.runner.eval(tuple._1, tuple._2))
   def display(dir: String = ""): Unit = {
     new TensorBoard(dir).addGraph(List(tuple._1, tuple._2): _*)
   }
 }
 
 case class Tuple3Eval[A1: TensorType, A2: TensorType, A3: TensorType](tuple: (Output[A1], Output[A2], Output[A3])) {
-  def eval: (Tensor[A1], Tensor[A2], Tensor[A3]) = using(_.runner.eval(tuple._1, tuple._2, tuple._3))
+  def eval: (Tensor[A1], Tensor[A2], Tensor[A3]) = withing(_.runner.eval(tuple._1, tuple._2, tuple._3))
   def display(dir: String = ""): Unit = {
     new TensorBoard(dir).addGraph(List(tuple._1, tuple._2, tuple._3): _*)
   }
