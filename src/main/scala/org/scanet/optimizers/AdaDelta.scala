@@ -17,8 +17,8 @@ case class AdaDelta(rate: Float = 1, rho: Float = 0.9F, epsilon: Float = 1e-7F) 
     def avg(prev: Output[Float], curr: Output[Float]): Output[Float] =
       rho.const * prev + (1 - rho).const * curr.pow(2)
 
-    val prevAvgGrad = meta.slice(Projection(0))
-    val prevAvgDelta = meta.slice(Projection(1))
+    val prevAvgGrad = meta.slice(0)
+    val prevAvgDelta = meta.slice(1)
 
     val avgGrad = avg(prevAvgGrad, grad)
     val delta = rate.const * ((rms(prevAvgDelta) / rms(avgGrad)) :* grad)
