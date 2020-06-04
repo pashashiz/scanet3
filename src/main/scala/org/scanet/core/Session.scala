@@ -9,6 +9,8 @@ import scala.jdk.CollectionConverters._
 import scala.language.existentials
 import Session.syntax._
 
+import scala.util.Using
+
 case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
 
   def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = Map(elems: _*))
@@ -65,7 +67,7 @@ case class SessionState(scope: NativeScope, cache: Map[String, Compiled]) {
  * })
   * }}}
   */
-class Session {
+class Session extends AutoCloseable {
 
   val nGraph = new Graph()
   val nSession = new NativeSession(nGraph)
@@ -101,19 +103,21 @@ class Session {
     fetched.run().asScala.toList
   }
 
-  def close(): Unit = nSession.close()
-
+  override def close(): Unit = nSession.close()
 }
 
 object Session {
 
-  def using[R](f: Session => R): R = {
-    val session = new Session()
-    try {
-      val result = f(session)
-      session.close()
-      result
-    } finally if (session != null) session.close()
+  /**
+  * Same as:
+  * ```
+  * Using.resource(new Session()) {
+  *   session => ...
+  * }
+  * ```
+  */
+  def withing[R](f: Session => R): R = {
+    Using.resource(new Session())(f)
   }
 
   trait Implicits {

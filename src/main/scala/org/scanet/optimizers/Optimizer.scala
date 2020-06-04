@@ -1,6 +1,6 @@
 package org.scanet.optimizers
 
-import org.scanet.core.Session.using
+import org.scanet.core.Session.withing
 import org.scanet.core._
 import org.scanet.datasets.{Dataset, Iterator}
 import org.scanet.math.Numeric
@@ -28,7 +28,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
       stop: Condition[W, R],
       doOnEach: Effects[Step[W, R]]) {
 
-  def run(): Tensor[W] = using(session => {
+  def run(): Tensor[W] = withing(session => {
     val result = model.result compile session
     val weightsAndMeta = TF1.identity[Float].compose(model.grad) {
       case (meta, (w, g)) =>

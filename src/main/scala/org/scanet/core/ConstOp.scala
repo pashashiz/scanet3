@@ -1,5 +1,6 @@
 package org.scanet.core
 
+
 class ConstOp[A: TensorType](val tensor: Tensor[A]) {
    def const: Output[A] = ConstOp.buildConst(tensor)
 }
