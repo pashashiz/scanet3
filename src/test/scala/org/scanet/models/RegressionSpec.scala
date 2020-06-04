@@ -6,7 +6,7 @@ import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AdaGrad, Optimizer, SGD}
+import org.scanet.optimizers.{AdaDelta, Optimizer, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -24,7 +24,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(AdaGrad())
+      .using(AdaDelta())
       .initWith(s => Tensor.zeros(s))
       .on(ds)
       .each(logResult())
