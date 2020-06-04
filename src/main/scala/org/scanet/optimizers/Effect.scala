@@ -20,17 +20,17 @@ object Effect {
     (name: String = "result", dir: String = "board")
     (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[W, R]] = {
     Effect(new TensorBoard(dir), (board, step) => {
-      board.addScalar(name, step.result().toScalar, step.iter)
+      board.addScalar(name, step.result().toScalar, step.total)
     })
   }
 
   def logResult[W: Numeric: TensorType, R: Numeric: TensorType]()
     (implicit c: Convertible[R, Float]): Effect[Unit, Step[W, R]] =
-    Effect.stateless(step => println(s"#${step.epoch}:${step.iter} ${step.result().toScalar}"))
+    Effect.stateless(step => println(s"#${step.epoch}:${step.total} ${step.result().toScalar}"))
 }
 
 case class Effects[S](all: Seq[Effect[_, S]]) {
-  def zeros: Seq[_] = all.map(_.zero)
+  def unit: Seq[_] = all.map(_.zero)
   def action(acc: Seq[_], next: S): Seq[_] = acc.zip(all) map {
     case (a, Effect(_, action)) => action(a, next)
   }

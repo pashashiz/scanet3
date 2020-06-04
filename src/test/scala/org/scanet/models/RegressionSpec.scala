@@ -1,7 +1,8 @@
 package org.scanet.models
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.Tensor
+import org.scanet.core.Tensor.rand
+import org.scanet.core.{Shape, Tensor}
 import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
@@ -35,5 +36,23 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val regression = Regression.linear.result.compile()
     val result = regression(ds.iterator.next(100), weights)
     result.toScalar should be(4.56f +- 0.01f)
+  }
+
+  "facebook comments model" should "predict number of comments" ignore {
+    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(SGD(momentum = 0.5))
+      .initWith(rand(Shape(54)))
+      .on(ds)
+      .batch(1000)
+      .each(1.iterations, logResult())
+      // .each(1.epochs, plotResult())
+      .stopAfter(50.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val err = regression(ds.iterator.next(100), weights)
+    println(err)
   }
 }

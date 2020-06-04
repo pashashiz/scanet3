@@ -14,6 +14,10 @@ trait Iterator[X] {
   def hasNext: Boolean
   def next(batch: Int): Tensor[X]
   def size: Int
+  def batches(batch: Int): Int = {
+    val partialBatch = if (size % batch > 0) 1 else 0
+    (size / batch) + partialBatch
+  }
   def shape(batch: Int): Shape
 }
 

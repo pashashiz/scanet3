@@ -12,11 +12,16 @@ object Condition {
 
   def always[W: Numeric: TensorType, R: Numeric: TensorType]: Condition[W, R] = Condition(_ => true)
 
-  def iterations[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] =
-    Condition(step => (step.iter + 1) % number == 0)
+  def iterations[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] = {
+    Condition(step => {
+      step.total % number == 0
+    })
+  }
 
   def epochs[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] =
-    Condition(step => (step.epoch + 1) % number == 0)
+    Condition(step => {
+      step.isLastIter && step.epoch % number == 0
+    })
 
   trait Implicits {
 
