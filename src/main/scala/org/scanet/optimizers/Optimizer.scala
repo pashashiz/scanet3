@@ -3,7 +3,7 @@ package org.scanet.optimizers
 import org.scanet.core.Session.withing
 import org.scanet.core._
 import org.scanet.datasets.{Dataset, Iterator}
-import org.scanet.math.Numeric
+import org.scanet.math.{Dist, Numeric}
 import org.scanet.math.syntax._
 import org.scanet.models.Model
 import org.scanet.optimizers.Condition.always
@@ -22,7 +22,7 @@ case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
 case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](
       alg: Algorithm,
       model: Model[X, W, R],
-      initArgs: Tensor[W],
+      initArgs: Shape => Tensor[W],
       dataset: Dataset[X],
       batchSize: Int,
       minimizing: Boolean,
@@ -55,7 +55,8 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
       }
     }
     val it = dataset.iterator
-    optimize(Step(it.batches(batchSize)), doOnEach.unit, it, initArgs, alg.initMeta(initArgs))
+    val init = initArgs(it.shape)
+    optimize(Step(it.batches(batchSize)), doOnEach.unit, it, init, alg.initMeta(init))
   })
 }
 
@@ -77,6 +78,9 @@ object Optimizer {
       copy(optimizer = optimizer.copy(alg = alg))
 
     def initWith(args: Tensor[W]): Builder[X, W, R, State] =
+      copy(optimizer = optimizer.copy(initArgs = _ => args))
+
+    def initWith(args: Shape => Tensor[W]): Builder[X, W, R, State] =
       copy(optimizer = optimizer.copy(initArgs = args))
 
     def on(dataset: Dataset[X]): Builder[X, W, R, State with WithDataset] =
@@ -115,9 +119,9 @@ object Optimizer {
     def build(implicit ev: State =:= Complete): Optimizer[X, W, R] = optimizer
   }
 
-  def minimize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
-    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = true, always, Effects.empty))
+  def minimize[X: Numeric: TensorType, W: Numeric: TensorType: Dist, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
+    Builder(Optimizer(null, model, s => Tensor.rand(s), null, Int.MaxValue, minimizing = true, always, Effects.empty))
 
-  def maximize[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
-    Builder(Optimizer(null, model, null, null, Int.MaxValue, minimizing = false, always, Effects.empty))
+  def maximize[X: Numeric: TensorType, W: Numeric: TensorType: Dist, R: Numeric: TensorType](model: Model[X, W, R]): Builder[X, W, R, WithFunc] =
+    Builder(Optimizer(null, model, s => Tensor.rand(s), null, Int.MaxValue, minimizing = false, always, Effects.empty))
 }

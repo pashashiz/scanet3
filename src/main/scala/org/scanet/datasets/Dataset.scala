@@ -18,13 +18,13 @@ trait Iterator[X] {
     val partialBatch = if (size % batch > 0) 1 else 0
     (size / batch) + partialBatch
   }
-  def shape(batch: Int): Shape
+  def shape: Shape
 }
 
 private[datasets] trait DataSource[X] {
   def size: Int
   def slice(from: Int, to: Int): Tensor[X]
-  def shape(batch: Int): Shape
+  def shape: Shape
 }
 
 private[datasets] abstract class IndexedDataset[X](val ds: DataSource[X]) extends Dataset[X] {
@@ -46,24 +46,24 @@ private[datasets] abstract class IndexedDataset[X](val ds: DataSource[X]) extend
 
     override def size: Int = ds.size
 
-    def shape(batch: Int): Shape = ds.shape(math.min(batch, size))
+    def shape: Shape = ds.shape
   }
 }
 
 case class TensorDataset[X: TensorType : Numeric](src: Tensor[X]) extends IndexedDataset(new DataSource[X] {
-  override def size: Int = src.shape.dims.head
+  val size: Int = src.shape.dims.head
 
   override def slice(from: Int, to: Int): Tensor[X] = src(from until to)
 
-  override def shape(batch: Int): Shape = src.view.narrow(Projection(0 until batch)).shape
+  val shape: Shape = src.shape.remove(0)
 })
 
 case class EmptyDataset[X: TensorType : Numeric]() extends IndexedDataset(new DataSource[X] {
-  override def size: Int = 1
+  val size: Int = 1
 
   override def slice(from: Int, to: Int): Tensor[X] = Tensor.zeros[X](Shape())
 
-  override def shape(batch: Int): Shape = Shape()
+  val shape: Shape = Shape()
 })
 
 case class CSVDataset(path: String) extends IndexedDataset(new DataSource[Float] {
@@ -79,8 +79,8 @@ case class CSVDataset(path: String) extends IndexedDataset(new DataSource[Float]
 
   override def slice(from: Int, to: Int): Tensor[Float] = {
     val slice = data.slice(from, to)
-    Tensor(slice.flatten.toArray, shape(slice.size))
+    Tensor(slice.flatten.toArray, Shape(slice.size, columns))
   }
 
-  override def shape(batch: Int): Shape = Shape(batch, columns)
+  lazy val shape: Shape = Shape(columns)
 })
