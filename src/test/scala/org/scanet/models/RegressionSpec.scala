@@ -6,7 +6,7 @@ import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{Optimizer, SGD}
+import org.scanet.optimizers.{AdaGrad, Optimizer, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -24,7 +24,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD(momentum = 0.9, nesterov = true))
+      .using(AdaGrad())
       .initWith(s => Tensor.zeros(s))
       .on(ds)
       .each(logResult())
@@ -34,7 +34,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
       .run()
     val regression = Regression.linear.result.compile()
     val result = regression(ds.iterator.next(100), weights)
-    result.toScalar should be(4.56f +- 0.01f)
+    result.toScalar should be(4.64f +- 0.01f)
   }
 
   "facebook comments model" should "predict number of comments" ignore {

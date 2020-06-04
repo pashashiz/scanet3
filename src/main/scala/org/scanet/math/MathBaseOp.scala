@@ -129,7 +129,9 @@ import scala.Ordering.Implicits._
    * @param out tensor
    * @return tensor `^` exponent
    */
-  def pow[A: TensorType: Numeric](out: F[A], exponent: Int): F[A]
+  def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A]
+
+  def sqrt[A: TensorType: Numeric](out: F[A]): F[A] = pow(out, exponent = 0.5f)
 
   def sum[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]
 
@@ -267,7 +269,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Int): Output[A] = {
+  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Float): Output[A] = {
     Output.name[A]("Pow")
       .shape(out.shape)
       .inputs(out, Tensor.scalar(exponent).const.as("exponent").cast[A])
