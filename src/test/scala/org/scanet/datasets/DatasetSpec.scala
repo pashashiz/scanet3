@@ -27,8 +27,7 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
 
   it should "produce correct shapes" in {
     val it = TensorDataset(Tensor.vector(1, 2, 3)).iterator
-    it.shape(2) should be(Shape(2))
-    it.shape(4) should be(Shape(3))
+    it.shape should be(Shape())
   }
 
   "CSV dataset" should "read records" in {
@@ -57,7 +56,6 @@ class DatasetSpec extends AnyFlatSpec with Matchers {
 
   it should "produce correct shapes" in {
     val it = CSVDataset("linear_function_1.scv").iterator
-    it.shape(50) should be(Shape(50, 2))
-    it.shape(100) should be(Shape(97, 2))
+    it.shape should be(Shape(2))
   }
 }

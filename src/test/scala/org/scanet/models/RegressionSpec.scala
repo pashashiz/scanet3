@@ -1,8 +1,7 @@
 package org.scanet.models
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.Tensor.rand
-import org.scanet.core.{Shape, Tensor}
+import org.scanet.core.Tensor
 import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
@@ -26,7 +25,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD(momentum = 0.9, nesterov = true))
-      .initWith(Tensor.zeros(2))
+      .initWith(s => Tensor.zeros(s))
       .on(ds)
       .each(logResult())
       //.each(100.epochs, plotResult())
@@ -43,7 +42,6 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD(momentum = 0.5))
-      .initWith(rand(Shape(54)))
       .on(ds)
       .batch(1000)
       .each(1.iterations, logResult())
