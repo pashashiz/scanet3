@@ -5,9 +5,7 @@ import org.scanet.syntax._
 
 case class AdaGrad(rate: Double = 1) extends Algorithm {
 
-  def initMeta[X: TensorType](initArg: Tensor[X]): Tensor[Float] = {
-    Tensor.zeros[Float](initArg.shape)
-  }
+  def initMeta(shape: Shape): Tensor[Float] = Tensor.zeros[Float](shape)
 
   def delta(grad: Output[Float], prevGradAcc: Output[Float]): Delta = {
     // we accumulate all squared gradient per each weight

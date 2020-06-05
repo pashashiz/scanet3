@@ -6,7 +6,7 @@ import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AdaGrad, Optimizer, SGD}
+import org.scanet.optimizers.{AdaDelta, AdaGrad, Optimizer, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -55,7 +55,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD(momentum = 0.1, nesterov = true))
-      .initWith(s => Tensor.zeros(s))
+      .initWith(Tensor.zeros(_))
       .on(ds)
       .stopAfter(1300.epochs)
       .build
@@ -70,9 +70,24 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(AdaGrad())
-      .initWith(s => Tensor.zeros(s))
+      .initWith(Tensor.zeros(_))
       .on(ds)
       .stopAfter(100.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(100), weights)
+    result.toScalar should be <= 4.5f
+  }
+
+  it should "be minimized by Adadelta withing 2000 epochs" in {
+    val ds = CSVDataset("linear_function_1.scv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(AdaDelta())
+      .initWith(Tensor.zeros(_))
+      .on(ds)
+      .stopAfter(2000.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()

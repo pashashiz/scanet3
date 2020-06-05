@@ -1,10 +1,10 @@
 package org.scanet.optimizers
 
-import org.scanet.core.{Output, Tensor, TensorType}
+import org.scanet.core.{Output, Shape, Tensor}
 
 trait Algorithm {
 
-  def initMeta[X: TensorType](initArg: Tensor[X]): Tensor[Float]
+  def initMeta(shape: Shape): Tensor[Float]
 
   def delta(grad: Output[Float], meta: Output[Float]): Delta
 }
