@@ -1,5 +1,6 @@
 package org.scanet.core
 
+import java.lang.System.currentTimeMillis
 import java.net.InetAddress
 import java.nio.file.{Files, Paths}
 import java.time.Instant
@@ -31,6 +32,7 @@ class TensorBoard(val dir: String = "") {
         .setSimpleValue(c.convert(value)).build())
     val event = Event.newBuilder()
       .setSummary(summary)
+      .setWallTime(currentTimeMillis() / 1000)
       .setStep(step)
       .build()
     writeEvents(event)
