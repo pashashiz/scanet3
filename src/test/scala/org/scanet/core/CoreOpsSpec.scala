@@ -146,4 +146,20 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: " +
       "all inputs should have same dimensions except the axis, but was (2, 3), (2, 2)"
   }
+
+  "zip" should "pack 2 vectors into a matrix" in {
+    val first = Tensor.vector(1, 2, 3).const
+    val second = Tensor.vector(4, 5, 6).const
+    val expected = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6))
+    (first zip second).eval should be (expected)
+  }
+
+  "unzip" should "unpack 2 vectors from a matrix" in {
+    val matrix = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6)).const
+    matrix.unzip.eval should be((Tensor.vector(1, 2, 3), Tensor.vector(4, 5, 6)))
+  }
 }

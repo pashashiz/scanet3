@@ -1,8 +1,8 @@
 package org.scanet.core
 
 import org.scanet.core.ConstOp.syntax._
-import org.scanet.math.Numeric.syntax._
 import org.scanet.core.TensorType.syntax._
+import org.scanet.core.Slice.syntax._
 import simulacrum.{op, typeclass}
 
 @typeclass trait CoreOp[F[_]] {
@@ -55,6 +55,10 @@ import simulacrum.{op, typeclass}
   def joinAlong[A: TensorType](op: F[A], other: F[A], dim: Int): F[A]
 
   def join[A: TensorType](op: F[A], other: F[A]): F[A]
+
+  def zip[A: TensorType](first: F[A], second: F[A]): F[A]
+
+  def unzip[A: TensorType](zipped: F[A]): (F[A], F[A])
 
   /** Add operation which will be executed right after current operation and
    * return current operation as output to continue chaining.
@@ -169,6 +173,19 @@ object CoreOp {
 
       override def asVoid[A: TensorType](op: Output[A]): Output[Nothing] =
         op.asInstanceOf[Output[Nothing]]
+
+      override def zip[A: TensorType](first: Output[A], second: Output[A]): Output[A] = {
+        require(first.shape == second.shape, s"shapes should be equal but was ${first.shape} zip ${second.shape}")
+        val shape = Shape(1 :: first.shape.dims)
+        join(reshape(first, shape), reshape(second, shape))
+      }
+
+      override def unzip[A: TensorType](zipped: Output[A]): (Output[A], Output[A]) = {
+        require(zipped.shape.rank > 0, "cannot unzip a scalar")
+        require(zipped.shape.head == 2, s"first dimension should be equal to 2 but was ${zipped.shape.head}")
+        val shape = zipped.shape.remove(0)
+        (reshape(slice(zipped, 0), shape), reshape(slice(zipped, 1), shape))
+      }
     }
   }
 
@@ -279,6 +296,40 @@ object CoreOp {
             .addInput(compiledInputs.last)
         })
         .build
+    }
+
+    def reshape[A: TensorType](op: Output[A], shape: Shape): Output[A] = {
+      require(op.shape.power == shape.power ,
+        s"shape ${op.shape} cannot be reshaped into $shape")
+      if (op.shape != shape) {
+        // note: scalar is a special case, reshape does not work with scalars
+        if (shape.isScalar) {
+          squeeze(op)
+        } else {
+          Output.name[A]("Reshape")
+            .shape(shape)
+            .inputs(op, as(Tensor.vector(shape.dims: _*).const, "new_shape"))
+            .localGrad(ctx => List(reshape(ctx.parentGrad, op.shape)))
+            .compileWithAllInputs
+            .build
+        }
+      } else {
+        op
+      }
+    }
+
+    def squeeze[A: TensorType](op: Output[A]): Output[A] = {
+      val squeezed = op.shape.squeeze
+      if (squeezed.rank < op.shape.rank) {
+        Output.name[A]("Squeeze")
+          .shape(squeezed)
+          .inputs(op)
+          .localGrad(ctx => List(reshape(ctx.parentGrad, op.shape)))
+          .compileWithAllInputs
+          .build
+      } else {
+        op
+      }
     }
   }
 
