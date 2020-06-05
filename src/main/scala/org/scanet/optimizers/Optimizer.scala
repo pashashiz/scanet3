@@ -55,8 +55,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
       }
     }
     val it = dataset.iterator
-    val init = initArgs(it.shape)
-    optimize(Step(it.batches(batchSize)), doOnEach.unit, it, init, alg.initMeta(init))
+    optimize(Step(it.batches(batchSize)), doOnEach.unit, it, initArgs(it.shape), alg.initMeta(it.shape))
   })
 }
 

@@ -5,8 +5,9 @@ import org.scanet.syntax._
 
 case class AdaDelta(rate: Float = 1, rho: Float = 0.9f) extends Algorithm {
 
-  def initMeta[X: TensorType](initArg: Tensor[X]): Tensor[Float] = {
-    Tensor.zeros[Float](Shape(2 :: initArg.shape.dims))
+  def initMeta(shape: Shape): Tensor[Float] = {
+    val arg = Tensor.zeros[Float](shape).const
+    arg.zip(arg).eval
   }
 
   def delta(grad: Output[Float], meta: Output[Float]): Delta = {
@@ -15,17 +16,12 @@ case class AdaDelta(rate: Float = 1, rho: Float = 0.9f) extends Algorithm {
       (x + 1e-7f.const).sqrt
     // running (decaying) average
     def avg(prev: Output[Float], curr: Output[Float]): Output[Float] =
-      rho.const * prev + (1 - rho).const * curr.pow(2)
+      rho.const * prev + (1 - rho).const * curr.sqr
 
-    val prevAvgGrad = meta.slice(0)
-    val prevAvgDelta = meta.slice(1)
-
+    val (prevAvgGrad, prevAvgDelta) = meta.unzip
     val avgGrad = avg(prevAvgGrad, grad)
     val delta = rate.const * ((rms(prevAvgDelta) / rms(avgGrad)) :* grad)
     val avgDelta = avg(prevAvgDelta, delta)
-
-    // if meta arg is a vector - reshape to matrix to correctly join rows
-    val shape = Shape(1 :: meta.shape.dims.tail)
-    Delta(delta, avgGrad.reshape(shape).join(avgDelta.reshape(shape)))
+    Delta(delta, avgGrad.zip(avgDelta))
   }
 }
