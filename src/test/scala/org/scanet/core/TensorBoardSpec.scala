@@ -19,7 +19,7 @@ class TensorBoardSpec extends AnyFlatSpec with Matchers {
     "tmp".toDirectory.deleteRecursively()
   }
 
-  "scalar" should "be displayed" in {
-    new TensorBoard().addScalar("a", 11.0f, 0)
+  "scalar" should "be displayed" ignore {
+    new TensorBoard("tmp").addScalar("a", 11.0f, 0)
   }
 }

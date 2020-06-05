@@ -16,7 +16,7 @@ class OptimizerSpec extends AnyFlatSpec with Matchers {
       .initWith(Tensor.scalar(5.0f))
       .on(EmptyDataset())
       .epochs(20)
-      .doEach(step => println(s"result: ${step.result()}"))
+      //.doEach(step => println(s"result: ${step.result()}"))
       .build
     val x = opt.run()
     println(`x^2`.result.compile()(Tensor.scalar(0.0f), x))
@@ -29,7 +29,7 @@ class OptimizerSpec extends AnyFlatSpec with Matchers {
       .initWith(Tensor.scalar(5.0f))
       .on(EmptyDataset())
       .epochs(20)
-      .doEach(step => println(s"result: ${step.result()}"))
+      //.doEach(step => println(s"result: ${step.result()}"))
       .build
     val x = opt.run()
     println(`x^2`.result.compile()(Tensor.scalar(0.0f), x))

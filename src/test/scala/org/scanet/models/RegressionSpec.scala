@@ -6,7 +6,7 @@ import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AdaDelta, AdaGrad, Optimizer, SGD}
+import org.scanet.optimizers.{AdaGrad, Optimizer, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -20,21 +20,64 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     regression(x, weights) should be(Tensor.scalar(8.5f))
   }
 
-  it should "be minimized" in {
+  it should "be minimized by plain SDG withing 1500 epoch" in {
+    val ds = CSVDataset("linear_function_1.scv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(SGD())
+      .initWith(s => Tensor.zeros(s))
+      .on(ds)
+      .stopAfter(1500.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(100), weights)
+    result.toScalar should be <= 4.5f
+  }
+
+  it should "be minimized by SDG with momentum withing 1300 epoch" in {
+    val ds = CSVDataset("linear_function_1.scv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(SGD(momentum = 0.1))
+      .initWith(s => Tensor.zeros(s))
+      .on(ds)
+      .stopAfter(1300.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(100), weights)
+    result.toScalar should be <= 4.5f
+  }
+
+  it should "be minimized by SDG with nesterov momentum withing 1300 epoch" in {
+    val ds = CSVDataset("linear_function_1.scv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(SGD(momentum = 0.1, nesterov = true))
+      .initWith(s => Tensor.zeros(s))
+      .on(ds)
+      .stopAfter(1300.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(100), weights)
+    result.toScalar should be <= 4.5f
+  }
+
+  it should "be minimized by Adagrad withing 100 epoch" in {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(AdaGrad())
       .initWith(s => Tensor.zeros(s))
       .on(ds)
-      .each(logResult())
-      //.each(100.epochs, plotResult())
-      .stopAfter(1500.epochs)
+      .stopAfter(100.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
     val result = regression(ds.iterator.next(100), weights)
-    result.toScalar should be(4.64f +- 0.01f)
+    result.toScalar should be <= 4.5f
   }
 
   "facebook comments model" should "predict number of comments" ignore {
