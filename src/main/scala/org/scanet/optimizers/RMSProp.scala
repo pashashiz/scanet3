@@ -13,7 +13,7 @@ import org.scanet.math.syntax._
  * @param rho the decay rate
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class RMSProp(rate: Double = 0.001f, rho: Double = 0.9f, epsilon: Double = 1e-7) extends Algorithm with RMS {
+case class RMSProp(rate: Double = 0.001, rho: Double = 0.9, epsilon: Double = 1e-7) extends Algorithm with RMS {
 
   def initMeta(shape: Shape): Tensor[Float] = Tensor.zeros(shape)
 
