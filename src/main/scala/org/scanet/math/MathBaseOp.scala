@@ -131,6 +131,8 @@ import scala.Ordering.Implicits._
    */
   def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A]
 
+  def sqr[A: TensorType: Numeric](out: F[A]): F[A] = pow(out, 2.0f)
+
   def sqrt[A: TensorType: Numeric](out: F[A]): F[A]
 
   def sum[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]

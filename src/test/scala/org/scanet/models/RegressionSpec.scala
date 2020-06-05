@@ -6,7 +6,7 @@ import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AdaDelta, Optimizer, SGD}
+import org.scanet.optimizers.{AdaDelta, AdaGrad, Optimizer, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -24,7 +24,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(AdaDelta())
+      .using(AdaGrad())
       .initWith(s => Tensor.zeros(s))
       .on(ds)
       .each(logResult())
@@ -41,12 +41,12 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("facebook-comments-scaled.csv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD(momentum = 0.5))
+      .using(AdaGrad(rate = 0.5))
       .on(ds)
       .batch(1000)
       .each(1.iterations, logResult())
       // .each(1.epochs, plotResult())
-      .stopAfter(50.epochs)
+      .stopAfter(100.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
