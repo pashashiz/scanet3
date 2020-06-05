@@ -6,7 +6,7 @@ import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.optimizers.Effect._
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AdaDelta, AdaGrad, Optimizer, SGD}
+import org.scanet.optimizers.{AdaDelta, AdaGrad, Optimizer, RMSProp, SGD}
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
@@ -93,6 +93,21 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val regression = Regression.linear.result.compile()
     val result = regression(ds.iterator.next(100), weights)
     result.toScalar should be <= 4.5f
+  }
+
+  it should "be minimized by RMSProp withing 150 epochs" in {
+    val ds = CSVDataset("linear_function_1.scv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(RMSProp(rate = 0.06f))
+      .initWith(Tensor.zeros(_))
+      .on(ds)
+      .stopAfter(150.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(100), weights)
+    result.toScalar should be <= 4.55f
   }
 
   "facebook comments model" should "predict number of comments" ignore {
