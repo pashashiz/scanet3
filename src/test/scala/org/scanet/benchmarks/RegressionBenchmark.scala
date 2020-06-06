@@ -22,7 +22,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/SDG"))
-      .stopAfter(5.epochs)
+      .stopAfter(10.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
@@ -39,7 +39,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/Momentum"))
-      .stopAfter(5.epochs)
+      .stopAfter(10.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
@@ -56,7 +56,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/Nesterov"))
-      .stopAfter(5.epochs)
+      .stopAfter(10.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
@@ -73,7 +73,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/AdagGrad"))
-      .stopAfter(5.epochs)
+      .stopAfter(10.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
@@ -90,7 +90,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/AdagDelta"))
-      .stopAfter(20.epochs)
+      .stopAfter(10.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
@@ -107,7 +107,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/RMSProp"))
-      .stopAfter(20.epochs)
+      .stopAfter(10.epochs)
       .build
       .run()
     val regression = Regression.linear.result.compile()
