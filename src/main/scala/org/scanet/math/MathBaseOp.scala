@@ -144,6 +144,8 @@ import scala.Ordering.Implicits._
   def transpose[A: TensorType: Numeric](out: F[A]): F[A]
 
   def decayingAvg[A: TensorType: Numeric](avg: F[A], next: F[A], decay: F[A]): F[A]
+
+  def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -331,6 +333,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def decayingAvg[A: TensorType : Numeric](avg: Output[A], next: Output[A], decay: Output[A]): Output[A] = {
     plus(multiplyElementWise(decay, avg), multiplyElementWise(minus(1.0f.const.cast[A], decay), next))
+  }
+
+  override def rms[A: TensorType : Numeric](out: Output[A], epsilon: Output[A]): Output[A] = {
+    sqrt(plus(out, epsilon))
   }
 }
 
