@@ -15,7 +15,7 @@ case class AdaGrad(rate: Double = 1.0, epsilon: Double = 1e-7) extends Algorithm
 
   def initMeta(shape: Shape): Tensor[Float] = Tensor.zeros[Float](shape)
 
-  def delta(grad: Output[Float], prevGradAcc: Output[Float]): Delta = {
+  def delta(grad: Output[Float], prevGradAcc: Output[Float], iter: Output[Int]): Delta = {
     // we accumulate all squared gradient per each weight
     val gradAcc = prevGradAcc + grad.sqr
     // the larger gradient is accumulated the lower rate is applied for a given weight

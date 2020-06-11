@@ -20,13 +20,12 @@ case class Adam(rate: Output[Float], beta1: Output[Float], beta2: Output[Float],
     (momentum zip velocity).eval
   }
 
-  def delta(grad: Output[Float], meta: Output[Float]): Delta = {
-    val iter = 3.0f // todo: need iter here
+  def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevMomentum, prevVelocity) = meta.unzip
     val momentum = prevMomentum.decayingAvg(grad, beta1)
-    val momentumUnbiased = momentum / (1.0f.const - beta1.pow(iter))
+    val momentumUnbiased = momentum / (1.0f.const - beta1.pow(iter.cast[Float]))
     val velocity = prevVelocity.decayingAvg(grad.sqr, beta2)
-    val velocityUnbiased = velocity / (1.0f.const - beta2.pow(iter))
+    val velocityUnbiased = velocity / (1.0f.const - beta2.pow(iter.cast[Float]))
     val delta = (rate / (velocityUnbiased + epsilon).sqrt) :* momentumUnbiased
     Delta(delta, momentum zip velocity)
   }

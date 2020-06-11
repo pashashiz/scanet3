@@ -129,7 +129,9 @@ import scala.Ordering.Implicits._
    * @param out tensor
    * @return tensor `^` exponent
    */
-  def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A]
+  def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A] = pow(out, Tensor.scalar(exponent).const)
+
+  def pow[A: TensorType: Numeric](out: F[A], exponent: Output[Float]): F[A]
 
   def sqr[A: TensorType: Numeric](out: F[A]): F[A] = pow(out, 2.0f)
 
@@ -275,12 +277,12 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Float): Output[A] = {
+  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Output[Float]): Output[A] = {
     Output.name[A]("Pow")
       .shape(out.shape)
-      .inputs(out, Tensor.scalar(exponent).const.as("exponent").cast[A])
+      .inputs(out, exponent.as("exponent").cast[A])
       .localGrad(ctx => {
-        val local = multiplyElementWise(pow(out.cast[Float], exponent - 1), exponent.toFloat.const)
+        val local = multiplyElementWise(pow(out.cast[Float], minus(exponent, 1f.const)), exponent)
         List(multiplyElementWise(local, ctx.parentGrad))
       })
       .compileWithAllInputs

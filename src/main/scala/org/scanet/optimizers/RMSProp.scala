@@ -17,7 +17,7 @@ case class RMSProp(rate: Output[Float], rho: Output[Float], epsilon: Output[Floa
 
   def initMeta(shape: Shape): Tensor[Float] = Tensor.zeros(shape)
 
-  def delta(grad: Output[Float], prevAvgGrad: Output[Float]): Delta = {
+  def delta(grad: Output[Float], prevAvgGrad: Output[Float], iter: Output[Int]): Delta = {
     val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho)
     val delta = (rate / avgGrad.rms(epsilon)) :* grad
     Delta(delta, avgGrad)

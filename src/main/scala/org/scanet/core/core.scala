@@ -23,4 +23,9 @@ package object core {
     val cached = memoize(f.tupled)
     (i1, i2, i3) => cached((i1, i2, i3))
   }
+
+  def memoize[I1, I2, I3, I4, O](f: (I1, I2, I3, I4) => O): (I1, I2, I3, I4) => O = {
+    val cached = memoize(f.tupled)
+    (i1, i2, i3, i4) => cached((i1, i2, i3, i4))
+  }
 }

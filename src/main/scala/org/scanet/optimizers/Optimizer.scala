@@ -31,9 +31,9 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
 
   def run(): Tensor[W] = withing(session => {
     val result = model.result compile session
-    val weightsAndMeta = TF1.identity[Float].compose(model.grad) {
-      case (meta, (w, g)) =>
-        val Delta(delta, nextMeta) = alg.delta(g, meta)
+    val weightsAndMeta = TF2.identity[Float, Int].compose(model.grad) {
+      case ((meta, iter), (w, g)) =>
+        val Delta(delta, nextMeta) = alg.delta(g, meta, iter)
         val d = delta.cast[W]
         (if (minimizing) w - d else w + d, nextMeta)
     }.into[(Tensor[W], Tensor[Float])] compile session
@@ -44,7 +44,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
         optimize(step.nextEpoch, effectState, dataset.iterator, weights, meta)
       } else {
         val batch = it.next(batchSize)
-        val (nextWeight, nextMeta) = weightsAndMeta(meta, batch, weights)
+        val (nextWeight, nextMeta) = weightsAndMeta(meta, Tensor.scalar(step.total), batch, weights)
         val nextStep: Step[W, R] = step.copy(result = () => result(batch, nextWeight))
         val nextEffectState = doOnEach.action(effectState, nextStep)
         if (stop(step)) {

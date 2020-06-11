@@ -28,7 +28,7 @@ case class AdaDelta(rate: Output[Float], rho: Output[Float], epsilon: Output[Flo
     (avgGrad zip avgDelta).eval
   }
 
-  def delta(grad: Output[Float], meta: Output[Float]): Delta = {
+  def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevAvgGrad, prevAvgDelta) = meta.unzip
     val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho)
     val delta = rate * ((prevAvgDelta.rms(epsilon) / avgGrad.rms(epsilon)) :* grad)
