@@ -491,4 +491,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
     x.transpose.sum.grad(x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
   }
+
+  "decaying average" should "work" in {
+    10.0.const.decayingAvg(5.0.const, 0.9.const).eval should be(Tensor.scalar(9.5))
+  }
 }

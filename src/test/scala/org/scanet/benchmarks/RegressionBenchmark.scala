@@ -7,10 +7,10 @@ import org.scanet.math.syntax._
 import org.scanet.models.Regression
 import org.scanet.optimizers.Effect.{logResult, plotResult}
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AdaDelta, AdaGrad, Optimizer, RMSProp, SGD}
+import org.scanet.optimizers.{AdaDelta, AdaGrad, Adam, Optimizer, RMSProp, SGD}
 import org.scanet.test.CustomMatchers
 
-@Ignore
+//@Ignore
 class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
 
   "linear regression" should "be minimized by plain SDG" in {
@@ -107,6 +107,23 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .batch(1000)
       .each(1.epochs, logResult())
       .each(1.iterations, plotResult(name = "Error", dir = "board/RMSProp"))
+      .stopAfter(10.epochs)
+      .build
+      .run()
+    val regression = Regression.linear.result.compile()
+    val result = regression(ds.iterator.next(1000), weights)
+    result.toScalar should be <= 0.5f
+  }
+
+  it should "be minimized by Adam" in {
+    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val weights = Optimizer
+      .minimize(Regression.linear)
+      .using(Adam(rate = 0.1))
+      .on(ds)
+      .batch(1000)
+      .each(1.epochs, logResult())
+      .each(1.iterations, plotResult(name = "Error", dir = "board/Adam"))
       .stopAfter(10.epochs)
       .build
       .run()
