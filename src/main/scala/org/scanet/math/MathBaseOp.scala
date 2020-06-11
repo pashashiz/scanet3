@@ -142,6 +142,8 @@ import scala.Ordering.Implicits._
   def transpose[A: TensorType: Numeric](out: F[A], perm: Seq[Int]): F[A]
 
   def transpose[A: TensorType: Numeric](out: F[A]): F[A]
+
+  def decayingAvg[A: TensorType: Numeric](avg: F[A], next: F[A], decay: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -325,6 +327,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def transpose[A: TensorType : Numeric](out: Output[A]): Output[A] = {
     transpose(out, (0 until out.rank).reverse)
+  }
+
+  override def decayingAvg[A: TensorType : Numeric](avg: Output[A], next: Output[A], decay: Output[A]): Output[A] = {
+    plus(multiplyElementWise(decay, avg), multiplyElementWise(minus(1.0f.const.cast[A], decay), next))
   }
 }
 
