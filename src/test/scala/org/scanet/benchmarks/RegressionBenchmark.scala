@@ -10,7 +10,7 @@ import org.scanet.optimizers.syntax._
 import org.scanet.optimizers.{AdaDelta, AdaGrad, Adam, Optimizer, RMSProp, SGD}
 import org.scanet.test.CustomMatchers
 
-//@Ignore
+@Ignore
 class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
 
   "linear regression" should "be minimized by plain SDG" in {
