@@ -129,7 +129,9 @@ import scala.Ordering.Implicits._
    * @param out tensor
    * @return tensor `^` exponent
    */
-  def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A]
+  def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A] = pow(out, Tensor.scalar(exponent).const)
+
+  def pow[A: TensorType: Numeric](out: F[A], exponent: Output[Float]): F[A]
 
   def sqr[A: TensorType: Numeric](out: F[A]): F[A] = pow(out, 2.0f)
 
@@ -144,6 +146,8 @@ import scala.Ordering.Implicits._
   def transpose[A: TensorType: Numeric](out: F[A]): F[A]
 
   def decayingAvg[A: TensorType: Numeric](avg: F[A], next: F[A], decay: F[A]): F[A]
+
+  def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -273,12 +277,12 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
-  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Float): Output[A] = {
+  override def pow[A: TensorType : Numeric](out: Output[A], exponent: Output[Float]): Output[A] = {
     Output.name[A]("Pow")
       .shape(out.shape)
-      .inputs(out, Tensor.scalar(exponent).const.as("exponent").cast[A])
+      .inputs(out, exponent.as("exponent").cast[A])
       .localGrad(ctx => {
-        val local = multiplyElementWise(pow(out.cast[Float], exponent - 1), exponent.toFloat.const)
+        val local = multiplyElementWise(pow(out.cast[Float], minus(exponent, 1f.const)), exponent)
         List(multiplyElementWise(local, ctx.parentGrad))
       })
       .compileWithAllInputs
@@ -331,6 +335,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def decayingAvg[A: TensorType : Numeric](avg: Output[A], next: Output[A], decay: Output[A]): Output[A] = {
     plus(multiplyElementWise(decay, avg), multiplyElementWise(minus(1.0f.const.cast[A], decay), next))
+  }
+
+  override def rms[A: TensorType : Numeric](out: Output[A], epsilon: Output[A]): Output[A] = {
+    sqrt(plus(out, epsilon))
   }
 }
 

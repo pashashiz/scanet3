@@ -20,19 +20,25 @@ import org.scanet.syntax._
  * @param rho the decay rate
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class AdaDelta(rate: Double = 1.0, rho: Double = 0.9, epsilon: Double = 1e-7) extends Algorithm with RMS {
+case class AdaDelta(rate: Output[Float], rho: Output[Float], epsilon: Output[Float]) extends Algorithm {
 
   def initMeta(shape: Shape): Tensor[Float] = {
-    val arg1 = Tensor.zeros[Float](shape).const
-    val arg2 = Tensor.zeros[Float](shape).const
-    arg1.zip(arg2).eval
+    val avgGrad = Tensor.zeros[Float](shape).const
+    val avgDelta = Tensor.zeros[Float](shape).const
+    (avgGrad zip avgDelta).eval
   }
 
-  def delta(grad: Output[Float], meta: Output[Float]): Delta = {
+  def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevAvgGrad, prevAvgDelta) = meta.unzip
-    val avgGrad = avg(prevAvgGrad, grad)
-    val delta = rate.toFloat.const * ((rms(prevAvgDelta) / rms(avgGrad)) :* grad)
-    val avgDelta = avg(prevAvgDelta, delta)
-    Delta(delta, avgGrad.zip(avgDelta))
+    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho)
+    val delta = rate * ((prevAvgDelta.rms(epsilon) / avgGrad.rms(epsilon)) :* grad)
+    val avgDelta = prevAvgDelta.decayingAvg(delta.sqr, rho)
+    Delta(delta, avgGrad zip avgDelta)
+  }
+}
+object AdaDelta {
+
+  def apply(rate: Double = 1.0, rho: Double = 0.9, epsilon: Double = 1e-7): AdaDelta = {
+    AdaDelta(rate.toFloat.const, rho.toFloat.const, epsilon.toFloat.const)
   }
 }

@@ -89,6 +89,21 @@ class TF2[P1: TensorType, P2: TensorType, In: SessionInput, Out: SessionOutput]
     })
   }
 
+  def compose[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
+  (other: TF2[P1Other, P2Other, InOther, OutOther])(via: (In, InOther) => InNew): Composition[P1Other, P2Other, InOther, OutOther, InNew] =
+    new Composition(other, via)
+
+  class Composition[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
+  (private val other: TF2[P1Other, P2Other, InOther, OutOther], private val via: (In, InOther) => InNew) {
+    def into[OutNew: SessionOutput]: TF4[P1, P2, P1Other, P2Other, InNew, OutNew] = {
+      new TF4((a1, a2, a3, a4) => {
+        val (p1, p2, out) = builder(a1, a2)
+        val (p3, p4, ouOutOther) = other.builder(a3, a4)
+        (p1, p2, p3, p4, via(out, ouOutOther))
+      })
+    }
+  }
+
   def map[InNew: SessionInput, OutNew: SessionOutput](mapper: In => InNew): TF2[P1, P2, InNew, OutNew] = {
     new TF2((a1, a2) => {
       val (p1, p2, out) = builder(a1, a2)
@@ -109,6 +124,9 @@ object TF2 {
   }
 
   def apply[P1: TensorType, P2: TensorType, In: SessionInput](builder: (Output[P1], Output[P2]) => In): TF2Builder[P1, P2, In] = TF2Builder(builder)
+
+  def identity[P1: TensorType, P2: TensorType]: TF2[P1, P2, (Output[P1], Output[P2]), (Tensor[P1], Tensor[P2])] =
+    TF2[P1, P2, (Output[P1], Output[P2])]((arg1, arg2) => (arg1, arg2)).returns[(Tensor[P1], Tensor[P2])]
 }
 
 class TF3[P1: TensorType, P2: TensorType, P3: TensorType, In: SessionInput, Out: SessionOutput](
@@ -147,4 +165,42 @@ object TF3 {
 
   def apply[P1: TensorType, P2: TensorType, P3: TensorType, In: SessionInput]
     (builder: (Output[P1], Output[P2], Output[P3]) => In): TF3Builder[P1, P2, P3, In] = TF3Builder(builder)
+}
+
+class TF4[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, In: SessionInput, Out: SessionOutput](
+  val builder: (Shape, Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], Output[P4], In)) {
+
+  private val buildIfAbsent: (Shape, Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], Output[P4], In) = memoize(builder)
+
+  def compile(session: Session): (Tensor[P1], Tensor[P2], Tensor[P3], Tensor[P4]) => Out = {
+    (a1, a2, a3, a4) => {
+      val (p1, p2, p3, p4, out) = buildIfAbsent(a1.shape, a2.shape, a3.shape, a4.shape)
+      session.runner.feed(p1 -> a1, p2 -> a2, p3 -> a3, p4 -> a4).evalX[In, Out](out)
+    }
+  }
+
+  def compile(): (Tensor[P1], Tensor[P2], Tensor[P3], Tensor[P4]) => Out =
+    (p1, p2, p3, p4) => {
+      withing(session => {
+        compile(session).apply(p1, p2, p3, p4)
+      })
+    }
+}
+
+object TF4 {
+
+  case class TF4Builder[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, In: SessionInput]
+  (builder: (Output[P1], Output[P2], Output[P3], Output[P4]) => In) {
+    def returns[Out: SessionOutput]: TF4[P1, P2, P3, P4, In, Out] = new TF4[P1, P2, P3, P4, In, Out](
+      (shape1, shape2, shape3, shape4) => {
+        val arg1 = placeholder[P1](shape1)
+        val arg2 = placeholder[P2](shape2)
+        val arg3 = placeholder[P3](shape3)
+        val arg4 = placeholder[P4](shape4)
+        (arg1, arg2, arg3, arg4, builder(arg1, arg2, arg3, arg4))
+      })
+  }
+
+  def apply[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, In: SessionInput]
+  (builder: (Output[P1], Output[P2], Output[P3], Output[P4]) => In): TF4Builder[P1, P2, P3, P4, In] = TF4Builder(builder)
 }
