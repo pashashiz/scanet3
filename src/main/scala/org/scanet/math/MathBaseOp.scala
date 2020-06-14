@@ -149,6 +149,8 @@ import scala.Ordering.Implicits._
 
   def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
 
+  def unbiased[A: TensorType: Numeric](out: F[A], bias: F[A], iter: F[Int]): F[A]
+
   def abs[A: TensorType: Numeric](out: F[A]): F[A]
 }
 
@@ -341,6 +343,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def rms[A: TensorType : Numeric](out: Output[A], epsilon: Output[A]): Output[A] = {
     sqrt(plus(out, epsilon))
+  }
+
+  override def unbiased[A: TensorType : Numeric](out: Output[A], bias: Output[A], iter: Output[Int]): Output[A] = {
+    div(out, minus(Numeric[A].one.const, pow(bias, iter.cast[Float])))
   }
 
   override def abs[A: TensorType : Numeric](out: Output[A]): Output[A] = {
