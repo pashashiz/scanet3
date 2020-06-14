@@ -495,4 +495,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   "decaying average" should "work" in {
     10.0.const.decayingAvg(5.0.const, 0.9.const).eval should be(Tensor.scalar(9.5))
   }
+
+  "abs" should "return absolute value" in {
+    Tensor.vector(-1, 2, -3).const.abs.eval should be(Tensor.vector(1, 2, 3))
+  }
 }

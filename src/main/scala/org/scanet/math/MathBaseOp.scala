@@ -148,6 +148,8 @@ import scala.Ordering.Implicits._
   def decayingAvg[A: TensorType: Numeric](avg: F[A], next: F[A], decay: F[A]): F[A]
 
   def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
+
+  def abs[A: TensorType: Numeric](out: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -339,6 +341,15 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def rms[A: TensorType : Numeric](out: Output[A], epsilon: Output[A]): Output[A] = {
     sqrt(plus(out, epsilon))
+  }
+
+  override def abs[A: TensorType : Numeric](out: Output[A]): Output[A] = {
+    Output.name[A]("Abs")
+      .shape(out.shape)
+      .inputs(out)
+      .localGrad(ctx => List(abs(ctx.parentGrad)))
+      .compileWithAllInputs
+      .build
   }
 }
 
