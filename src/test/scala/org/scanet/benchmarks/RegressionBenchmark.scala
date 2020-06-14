@@ -149,7 +149,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
     result.toScalar should be <= 0.5f
   }
 
-  it should "be minimized by Nadamax" in {
+  it should "be minimized by Nadam" in {
     val ds = CSVDataset("facebook-comments-scaled.csv")
     val weights = Optimizer
       .minimize(Regression.linear)
@@ -157,7 +157,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .on(ds)
       .batch(1000)
       .each(1.epochs, logResult())
-      .each(1.iterations, plotResult(name = "Error", dir = "board/Nadamax"))
+      .each(1.iterations, plotResult(name = "Error", dir = "board/Nadam"))
       .stopAfter(10.epochs)
       .build
       .run()
