@@ -154,7 +154,7 @@ import scala.Ordering.Implicits._
    * {{{Tensor.vector(1.0f, 4.0f, 9.0f).const.sqrt.eval should be(Tensor.vector(1.0f, 2.0f, 3.0f))}}}
    *
    * @param out tensor
-   * @return  tensor `^` 2
+   * @return  tensor `^` 0.5
    */
   def sqrt[A: TensorType: Numeric](out: F[A]): F[A]
 
@@ -194,7 +194,7 @@ import scala.Ordering.Implicits._
    */
   def transpose[A: TensorType: Numeric](out: F[A], perm: Seq[Int]): F[A]
 
-  /** Transpose given tensor - flip over its diagonal.
+  /** Transpose given tensor - flip dimensions over its diagonal.
    *
    * {{{
    * val matrix = Tensor.matrix(Array(1, 2), Array(3, 4)).const
