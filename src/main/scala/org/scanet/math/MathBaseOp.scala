@@ -131,26 +131,126 @@ import scala.Ordering.Implicits._
    */
   def pow[A: TensorType: Numeric](out: F[A], exponent: Float): F[A] = pow(out, Tensor.scalar(exponent).const)
 
+  /** Raises the tensor to the power of the exponent
+   *
+   * {{{Tensor.vector(1.0f, 2.0f, 3.0f).const.pow(2).eval should be(Tensor.vector(1.0f, 4.0f, 9.0f))}}}
+   *
+   * @param out tensor
+   * @return tensor `^` exponent
+   */
   def pow[A: TensorType: Numeric](out: F[A], exponent: Output[Float]): F[A]
 
+  /** Raises the tensor to the power of two
+   *
+   * {{{Tensor.vector(1.0f, 2.0f, 3.0f).const.sqr.eval should be(Tensor.vector(1.0f, 4.0f, 9.0f))}}}
+   *
+   * @param out tensor
+   * @return tensor `^` 2
+   */
   def sqr[A: TensorType: Numeric](out: F[A]): F[A] = pow(out, 2.0f)
 
+  /** Returns square root of the given tensor
+   *
+   * {{{Tensor.vector(1.0f, 4.0f, 9.0f).const.sqrt.eval should be(Tensor.vector(1.0f, 2.0f, 3.0f))}}}
+   *
+   * @param out tensor
+   * @return  tensor `^` 2
+   */
   def sqrt[A: TensorType: Numeric](out: F[A]): F[A]
 
+  /** Computes the sum of elements across dimensions of a tensor.
+   *
+   * Reduces `out` along the dimensions given in `axises`.
+   * The rank of the tensor is reduced by 1 for each entry in `axises`.
+   *
+   * {{{Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(0)).eval should be(Tensor.vector(5, 7, 9))}}}
+   *
+   * @param out tensor
+   * @param axises to sum
+   * @return tensor with summed values
+   */
   def sum[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]
 
+  /** Computes the sum of elements across all dimensions of a tensor.
+   *
+   * {{{Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum.eval should be(Tensor.scalar(21))}}}
+   *
+   * @param out tensor
+   * @return tensor with summed values
+   */
   def sum[A: TensorType: Numeric](out: F[A]): F[A]
 
+  /** Shuffle dimensions of `out` according to a permutation.
+   *
+   * {{{
+   * val before = Tensor(range(1, 13), Shape(2, 2, 3))
+   * val after = Tensor(Array(1, 4, 2, 5, 3, 6, 7, 10, 8, 11, 9, 12), Shape(2, 3, 2))
+   * before.const.transpose(Seq(0, 2, 1)).eval should be(after)
+   * }}}
+   *
+   * @param out tensor to transpose
+   * @param perm dimensions permutations
+   * @return transposed tensor
+   */
   def transpose[A: TensorType: Numeric](out: F[A], perm: Seq[Int]): F[A]
 
+  /** Transpose given tensor - flip over its diagonal.
+   *
+   * {{{
+   * val matrix = Tensor.matrix(Array(1, 2), Array(3, 4)).const
+   * matrix.transpose.eval should be(Tensor.matrix(Array(1, 3), Array(2, 4)))
+   * }}}
+   *
+   * @param out tensor to transpose
+   * @return transposed tensor
+   */
   def transpose[A: TensorType: Numeric](out: F[A]): F[A]
 
+  /** Compute decaying average of given value by putting more weight into latest (`next`) value.
+   * It is equivalent to `(prev * decay) + ((1 - decay) * next)`.
+   *
+   * {{{10.0.const.decayingAvg(5.0.const, 0.9.const).eval should be(Tensor.scalar(9.5))}}}
+   *
+   * @param avg previous value
+   * @param next current value
+   * @param decay rate of decay
+   * @return decaying average
+   */
   def decayingAvg[A: TensorType: Numeric](avg: F[A], next: F[A], decay: F[A]): F[A]
 
+  /** Compute root mean squared of given value.
+   * It is equivalent to `(out + epsilon) ^ 0.5`.
+   *
+   * {{{8f.const.rms(1f.const).eval should be(Tensor.scalar(3f))}}}
+   *
+   * @return root mean squared
+   */
   def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
 
+  /** Remove bias to a component from the given (computed) value
+   * It is equivalent to `out / (1 - bias ^ iter)`
+   *
+   * {{{
+   * val x = 1.5f.const
+   * val bias = 0.5f.const
+   * val iter = 2.const
+   * x.unbiased(bias, iter).eval should be(Tensor.scalar(2))
+   * }}}
+   *
+   * @param out tensor
+   * @param bias biased component
+   * @param iter computation iteration
+   * @return unbiased value
+   */
   def unbiased[A: TensorType: Numeric](out: F[A], bias: F[A], iter: F[Int]): F[A]
 
+  /** Returns tensor with absolute values
+   *
+   * {{{Tensor.vector(-1, 2, -3).abs.eval should be(Tensor.vector(1, 2, 3)}}}
+   *
+   * @param out tensor
+   * @return |tensor|
+   */
   def abs[A: TensorType: Numeric](out: F[A]): F[A]
 }
 
