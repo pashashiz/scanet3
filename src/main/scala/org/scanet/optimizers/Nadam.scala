@@ -14,11 +14,9 @@ case class Nadam(rate: Output[Float], beta1: Output[Float], beta2: Output[Float]
   override def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevMomentum, prevVelocity) = meta.unzip
     val momentum = prevMomentum.decayingAvg(grad, beta1)
-    val momentumUnbiased = momentum.unbiased(beta1, iter)
     val velocity = prevVelocity.decayingAvg(grad.sqr, beta2)
-    val velocityUnbiased = velocity.unbiased(beta2, iter)
-    val momentum2UnbiasedNesterov = beta1 * momentumUnbiased + (1f.const - beta1) * grad / (1f.const - beta1.pow(iter.cast[Float]))
-    val delta = momentum2UnbiasedNesterov / (velocityUnbiased.sqrt + epsilon)
+    val momentumNesterov = beta1 * momentum.unbiased(beta1, iter) + (1f.const - beta1) * grad.unbiased(beta1, iter)
+    val delta = momentumNesterov / (velocity.unbiased(beta2, iter).sqrt + epsilon)
     Delta(delta, momentum zip velocity)
   }
 }
