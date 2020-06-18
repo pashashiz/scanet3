@@ -208,4 +208,12 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
       (Tensor.vector(true, false).const ^ Tensor.vector(true, true, true).const).eval
     } should have message "requirement failed: cannot logically XOR tensors with shapes (2) ^ (3)"
   }
+
+  "max" should "return maximum value" in {
+    max(Tensor.vector(1, 2, 3).const, Tensor.vector(4, 5, 6).const).eval should be(Tensor.vector(4, 5, 6))
+  }
+
+  it should "support broadcasting" in {
+    max(Tensor.vector(1, 2).const, Tensor.vector(4).const).eval should be(Tensor.vector(4, 4))
+  }
 }

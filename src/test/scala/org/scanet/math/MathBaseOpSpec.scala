@@ -495,4 +495,27 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   "decaying average" should "work" in {
     10.0.const.decayingAvg(5.0.const, 0.9.const).eval should be(Tensor.scalar(9.5))
   }
+
+  "rms" should "calculate root mean squared" in {
+    val x = 8f.const
+    val epsilon = 1f.const
+    x.rms(epsilon).eval should be(Tensor.scalar(3f))
+  }
+
+  "boost" should "increase value on low iterations" in {
+    val x = 1.5f.const
+    val rate = 0.5f.const
+    val iter = 2.const
+    x.boost(rate, iter).eval should be(Tensor.scalar(2))
+  }
+
+  it should "have low effect on high iteration" in {
+    val x = 1.5f.const
+    val rate = 0.5f.const
+    val iter = 1000000.const
+    x.boost(rate, iter).eval should be(Tensor.scalar(1.5))  }
+
+  "abs" should "return absolute value" in {
+    Tensor.vector(-1, 2, -3).const.abs.eval should be(Tensor.vector(1, 2, 3))
+  }
 }
