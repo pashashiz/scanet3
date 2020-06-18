@@ -227,22 +227,23 @@ import scala.Ordering.Implicits._
    */
   def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
 
-  /** Remove bias to a component from the given (computed) value
-   * It is equivalent to `out / (1 - bias ^ iter)`
+  /** Increase (boost) given tensor on low values of `iter`.
+   * Will return original value when `iter` approaches infinity.
+   * It is equivalent to `out / (1 - rate ^ iter)`
    *
    * {{{
    * val x = 1.5f.const
-   * val bias = 0.5f.const
+   * val rate = 0.5f.const
    * val iter = 2.const
-   * x.unbiased(bias, iter).eval should be(Tensor.scalar(2))
+   * x.boost(rate, iter).eval should be(Tensor.scalar(2))
    * }}}
    *
    * @param out tensor
-   * @param bias biased component
+   * @param rate boost rate, should be < 1
    * @param iter computation iteration
    * @return unbiased value
    */
-  def unbiased[A: TensorType: Numeric](out: F[A], bias: F[A], iter: F[Int]): F[A]
+  def boost[A: TensorType: Numeric](out: F[A], rate: F[A], iter: F[Int]): F[A]
 
   /** Returns tensor with absolute values
    *
@@ -445,8 +446,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
     sqrt(plus(out, epsilon))
   }
 
-  override def unbiased[A: TensorType : Numeric](out: Output[A], bias: Output[A], iter: Output[Int]): Output[A] = {
-    div(out, minus(Numeric[A].one.const, pow(bias, iter.cast[Float])))
+  override def boost[A: TensorType : Numeric](out: Output[A], rate: Output[A], iter: Output[Int]): Output[A] = {
+    div(out, minus(Numeric[A].one.const, pow(rate, iter.cast[Float])))
   }
 
   override def abs[A: TensorType : Numeric](out: Output[A]): Output[A] = {

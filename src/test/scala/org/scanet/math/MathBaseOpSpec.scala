@@ -502,12 +502,18 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     x.rms(epsilon).eval should be(Tensor.scalar(3f))
   }
 
-  "ubiased" should "remove bias from value's component" in {
+  "boost" should "increase value on low iterations" in {
     val x = 1.5f.const
-    val bias = 0.5f.const
+    val rate = 0.5f.const
     val iter = 2.const
-    x.unbiased(bias, iter).eval should be(Tensor.scalar(2))
+    x.boost(rate, iter).eval should be(Tensor.scalar(2))
   }
+
+  it should "have low effect on high iteration" in {
+    val x = 1.5f.const
+    val rate = 0.5f.const
+    val iter = 1000000.const
+    x.boost(rate, iter).eval should be(Tensor.scalar(1.5))  }
 
   "abs" should "return absolute value" in {
     Tensor.vector(-1, 2, -3).const.abs.eval should be(Tensor.vector(1, 2, 3))

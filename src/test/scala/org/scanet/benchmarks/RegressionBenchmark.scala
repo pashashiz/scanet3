@@ -72,7 +72,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .on(ds)
       .batch(1000)
       .each(1.epochs, logResult())
-      .each(1.iterations, plotResult(name = "Error", dir = "board/AdagGrad"))
+      .each(1.iterations, plotResult(name = "Error", dir = "board/AdaGrad"))
       .stopAfter(10.epochs)
       .build
       .run()
@@ -89,7 +89,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .on(ds)
       .batch(1000)
       .each(1.epochs, logResult())
-      .each(1.iterations, plotResult(name = "Error", dir = "board/AdagDelta"))
+      .each(1.iterations, plotResult(name = "Error", dir = "board/AdaDelta"))
       .stopAfter(10.epochs)
       .build
       .run()
