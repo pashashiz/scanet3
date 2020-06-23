@@ -12,11 +12,11 @@ import org.scanet.optimizers.Optimizer.BuilderState._
 import scala.annotation.tailrec
 
 case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
-    size: Int, iter: Int = 1, epoch: Int = 1, result: () => Tensor[R] = null) {
-  def nextIter: Step[W, R] = copy(iter = iter + 1)
-  def nextEpoch: Step[W, R] = copy(epoch = epoch + 1, iter = 1)
-  def total: Int = (epoch - 1) * size + iter
-  def isLastIter: Boolean = iter == size
+    epoch: Int = 0, iter: Int = 0, result: () => Tensor[R] = null) {
+  def nextIter: Step[W, R] = incIter(1)
+  def incIter(number: Int): Step[W, R] = copy(iter = iter + number)
+  def nextEpoch: Step[W, R] = copy(epoch = epoch + 1)
+  override def toString: String = s"$epoch:$iter"
 }
 
 case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType](
@@ -44,7 +44,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
         optimize(step.nextEpoch, effectState, dataset.iterator, weights, meta)
       } else {
         val batch = it.next(batchSize)
-        val (nextWeight, nextMeta) = weightsAndMeta(meta, Tensor.scalar(step.total), batch, weights)
+        val (nextWeight, nextMeta) = weightsAndMeta(meta, Tensor.scalar(step.iter), batch, weights)
         val nextStep: Step[W, R] = step.copy(result = () => result(batch, nextWeight))
         val nextEffectState = doOnEach.action(effectState, nextStep)
         if (stop(step)) {
@@ -55,7 +55,7 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
       }
     }
     val it = dataset.iterator
-    optimize(Step(it.batches(batchSize)), doOnEach.unit, it, initArgs(it.shape), alg.initMeta(it.shape))
+    optimize(Step(), doOnEach.unit, it, initArgs(it.shape), alg.initMeta(it.shape))
   })
 }
 

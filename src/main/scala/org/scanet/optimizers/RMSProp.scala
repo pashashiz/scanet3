@@ -13,19 +13,13 @@ import org.scanet.math.syntax._
  * @param rho the decay rate
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class RMSProp(rate: Output[Float], rho: Output[Float], epsilon: Output[Float]) extends Algorithm {
+case class RMSProp(rate: Float = 0.001f, rho: Float = 0.9f, epsilon: Float = 1e-7f) extends Algorithm {
 
   def initMeta(shape: Shape): Tensor[Float] = Tensor.zeros(shape)
 
   def delta(grad: Output[Float], prevAvgGrad: Output[Float], iter: Output[Int]): Delta = {
-    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho)
-    val delta = (rate / avgGrad.rms(epsilon)) :* grad
+    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const)
+    val delta = (rate.const / avgGrad.rms(epsilon.const)) :* grad
     Delta(delta, avgGrad)
-  }
-}
-object RMSProp {
-
-  def apply(rate: Double = 0.001, rho: Double = 0.9, epsilon: Double = 1e-7): RMSProp = {
-    RMSProp(rate.toFloat.const, rho.toFloat.const, epsilon.toFloat.const)
   }
 }

@@ -14,7 +14,7 @@ class RMSPropSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(RMSProp(rate = 0.06))
+      .using(RMSProp(rate = 0.06f))
       .initWith(Tensor.zeros(_))
       .on(ds)
       .stopAfter(150.epochs)

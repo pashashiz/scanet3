@@ -9,7 +9,7 @@ import org.scanet.syntax._
  * @param beta2 The exponential decay rate for the 2nd moment estimates.
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class Nadam(beta1: Output[Float], beta2: Output[Float], epsilon: Output[Float]) extends Algorithm {
+case class Nadam(beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta(shape: Shape): Tensor[Float] = {
     val m = Tensor.zeros[Float](shape).const
@@ -19,15 +19,10 @@ case class Nadam(beta1: Output[Float], beta2: Output[Float], epsilon: Output[Flo
 
   override def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevM, prevV) = meta.unzip
-    val m = prevM.decayingAvg(grad, beta1)
-    val v = prevV.decayingAvg(grad.sqr, beta2)
-    val mNesterov = beta1 * m.boost(beta1, iter) + (1f.const - beta1) * grad.boost(beta1, iter)
-    val delta = mNesterov / (v.boost(beta2, iter).sqrt + epsilon)
+    val m = prevM.decayingAvg(grad, beta1.const)
+    val v = prevV.decayingAvg(grad.sqr, beta2.const)
+    val mNesterov = beta1.const * m.boost(beta1.const, iter) + (1f.const - beta1.const) * grad.boost(beta1.const, iter)
+    val delta = mNesterov / (v.boost(beta2.const, iter).sqrt + epsilon.const)
     Delta(delta, m zip v)
   }
-}
-object Nadam {
-
-  def apply(beta1: Double = 0.9, beta2 : Double = 0.999, epsilon: Double = 1e-7): Nadam =
-    new Nadam(beta1.toFloat.const, beta2.toFloat.const, epsilon.toFloat.const)
 }

@@ -1,6 +1,6 @@
 package org.scanet.models
 
-import org.scanet.core.Output
+import org.scanet.core.{Output, Shape}
 import org.scanet.math.syntax._
 
 object Math {
@@ -13,10 +13,10 @@ object Math {
     Model[Float, Float, Float]((x, w) => {
       // todo: need slice and concat operations
       ???
-    })
+    }, features => Shape(features))
   }
 
   def `x^2`: Model[Float, Float, Float] = Model(
-    (_: Output[Float], x: Output[Float]) => x * x
+    (_: Output[Float], x: Output[Float]) => x * x, features => Shape(features)
   )
 }

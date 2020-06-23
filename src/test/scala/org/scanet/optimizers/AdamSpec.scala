@@ -15,7 +15,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(Adam(rate = 0.1))
+      .using(Adam(rate = 0.1f))
       .initWith(Tensor.zeros(_))
       .on(ds)
       .each(1.epochs, logResult())

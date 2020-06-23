@@ -68,7 +68,7 @@ class TF2[P1: TensorType, P2: TensorType, In: SessionInput, Out: SessionOutput]
 
   def compile(session: Session): (Tensor[P1], Tensor[P2]) => Out = {
     (a1, a2) => {
-      val (p1, p2, out) = buildIfAbsent(a1.shape, a2.shape)
+      val (p1, p2, out: In) = buildIfAbsent(a1.shape, a2.shape)
       session.runner.feed(p1 -> a1, p2 -> a2).evalX[In, Out](out)
     }
   }

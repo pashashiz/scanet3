@@ -43,7 +43,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD(momentum = 0.1))
+      .using(SGD(momentum = 0.1f))
       .initWith(s => Tensor.zeros(s))
       .on(ds)
       .stopAfter(1300.epochs)
@@ -58,7 +58,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("linear_function_1.scv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD(momentum = 0.1, nesterov = true))
+      .using(SGD(momentum = 0.1f, nesterov = true))
       .initWith(Tensor.zeros(_))
       .on(ds)
       .stopAfter(1300.epochs)

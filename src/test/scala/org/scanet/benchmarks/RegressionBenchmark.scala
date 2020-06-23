@@ -34,7 +34,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("facebook-comments-scaled.csv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD(momentum = 0.9))
+      .using(SGD(momentum = 0.9f))
       .on(ds)
       .batch(1000)
       .each(1.epochs, logResult())
@@ -51,7 +51,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("facebook-comments-scaled.csv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(SGD(momentum = 0.9, nesterov = true))
+      .using(SGD(momentum = 0.9f, nesterov = true))
       .on(ds)
       .batch(1000)
       .each(1.epochs, logResult())
@@ -119,7 +119,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
     val ds = CSVDataset("facebook-comments-scaled.csv")
     val weights = Optimizer
       .minimize(Regression.linear)
-      .using(Adam(rate = 0.1))
+      .using(Adam(rate = 0.1f))
       .on(ds)
       .batch(1000)
       .each(1.epochs, logResult())

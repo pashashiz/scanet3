@@ -81,6 +81,7 @@ case class Output[A: TensorType](
 
   override def equals(obj: Any): Boolean = obj match {
     case other: Output[_] => id == other.id
+    case _ => false
   }
 }
 

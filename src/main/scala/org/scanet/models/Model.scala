@@ -4,8 +4,9 @@ import org.scanet.core.{Output, Shape, TF2, Tensor, TensorType}
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
 
-case class Model[X: Numeric: TensorType, W: Numeric: TensorType, J: Numeric: TensorType]
-  (builder: (Output[X], Output[W]) => Output[J]) {
+case class Model[X: Numeric: TensorType, W: Numeric: TensorType, J: Numeric: TensorType](
+   builder: (Output[X], Output[W]) => Output[J],
+   shape: Int => Shape) {
 
   def result: TF2[X, W, Output[J], Tensor[J]] = TF2(builder).returns[Tensor[J]]
 

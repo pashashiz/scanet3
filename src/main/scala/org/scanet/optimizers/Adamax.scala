@@ -16,7 +16,7 @@ import org.scanet.syntax._
  * @param beta2 The exponential decay rate for the exponentially weighted infinity norm
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class Adamax(rate: Output[Float], beta1: Output[Float], beta2: Output[Float], epsilon: Output[Float]) extends Algorithm {
+case class Adamax(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta(shape: Shape): Tensor[Float] = {
     val m1 = Tensor.zeros[Float](shape).const
@@ -26,14 +26,9 @@ case class Adamax(rate: Output[Float], beta1: Output[Float], beta2: Output[Float
 
   override def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevM1, prevM2) = meta.unzip
-    val m1 = prevM1.decayingAvg(grad, beta1)
-    val m2 = max(beta2 * prevM2, (1f.const - beta2) * grad.abs)
-    val delta = rate * m1.boost(beta1, iter) / (m2 + epsilon)
+    val m1 = prevM1.decayingAvg(grad, beta1.const)
+    val m2 = max(beta2.const * prevM2, (1f.const - beta2.const) * grad.abs)
+    val delta = rate.const * m1.boost(beta1.const, iter) / (m2 + epsilon.const)
     Delta(delta, m1 zip m2)
   }
-}
-object Adamax {
-
-  def apply(rate: Double = 0.001, beta1: Double = 0.9, beta2 : Double = 0.999, epsilon: Double = 1e-7): Adamax =
-    new Adamax(rate.toFloat.const, beta1.toFloat.const, beta2.toFloat.const, epsilon.toFloat.const)
 }
