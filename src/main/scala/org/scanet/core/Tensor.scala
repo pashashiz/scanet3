@@ -1,18 +1,18 @@
 package org.scanet.core
 
+import org.scanet.core.syntax._
 import org.scanet.math.Generator.uniform
+import org.scanet.math.Numeric.syntax._
 import org.scanet.math.{Convertible, Dist, Generator, Numeric, Random}
 import org.scanet.native.{Disposable, NativeTensorOps}
-import org.scanet.math.Numeric.syntax._
-import org.scanet.core.syntax._
 import org.tensorflow.{Tensor => NativeTensor}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.{specialized => sp}
 
-class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) extends Disposable(() => native.close()) {
+class Tensor[@sp A: TensorType](val ref: TensorRef[A], val view: View) {
 
-  val buffer: TensorBuffer[A] = TensorBuffer[A](NativeTensorOps.buffer(native), view.originalShape.power)
+  val buffer: TensorBuffer[A] = TensorBuffer[A](NativeTensorOps.buffer(ref.native), view.originalShape.power)
 
   def shape: Shape = view.shape
   def rank: Int = shape.rank
@@ -50,11 +50,13 @@ class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) ext
   def slice[S1: CanBuildSliceFrom, S2: CanBuildSliceFrom, S3: CanBuildSliceFrom, S4: CanBuildSliceFrom](s1: S1, s2: S2, s3: S3, s4: S4): Tensor[A] = slice(Projection(s1, s2, s3, s4))
 
   def slice(projection: Projection): Tensor[A] = {
-    if (projection != view.projection) new Tensor(native, view narrow projection) else this
+    if (projection != view.projection) new Tensor(ref.view, view narrow projection) else this
   }
 
   def reshape(dims: Int*): Tensor[A] = reshape(Shape(dims: _*))
-  def reshape(shape: Shape): Tensor[A] = new Tensor(native, view reshape shape)
+  def reshape(shape: Shape): Tensor[A] = {
+    if (view.shape != shape) new Tensor(ref.view, view reshape shape) else this
+  }
 
   override def toString: String = {
     val sep = if (rank > 1) System.lineSeparator else " "
@@ -112,11 +114,11 @@ class Tensor[@sp A: TensorType](val native: NativeTensor[A], val view: View) ext
 
 object Tensor {
 
-  implicit def toNativeTensor[@sp A: TensorType](tensor: Tensor[A]): NativeTensor[A] = tensor.native
+  implicit def toNativeTensor[@sp A: TensorType](tensor: Tensor[A]): NativeTensor[A] = tensor.ref.native
 
   def apply[@sp A: TensorType](native: NativeTensor[A]): Tensor[A] = {
     // note: pre-initialized variables to overcome @sp issue https://github.com/scala/bug/issues/4511
-    new Tensor(native, View(Shape.of(native.shape())))
+    new Tensor(new NativeRef(native), View(Shape.of(native.shape())))
   }
 
   def apply[@sp A: TensorType](data: Array[A], shape: Shape): Tensor[A] = {
@@ -213,4 +215,24 @@ object Tensor {
     val (_, arr) = Random[A](gen).next(shape.power)(TensorType[A].classTag, Dist[A])
     Tensor[A](arr, shape)
   }
+}
+
+sealed trait TensorRef[A] {
+
+  def native: NativeTensor[A]
+
+  def view: TensorRef[A]
+}
+
+class NativeRef[A: TensorType](val native: NativeTensor[A]) extends Disposable(() => native.close()) with TensorRef[A] {
+
+  override def view: TensorRef[A] = new ParentRef[A](this)
+}
+
+// capture reference to origin TensorRef to prevent it from being GCed (together with its native tensor)
+class ParentRef[A: TensorType](private val origin: TensorRef[A]) extends TensorRef[A] {
+
+  val native: NativeTensor[A] = origin.native
+
+  val view: TensorRef[A] = this
 }
