@@ -10,10 +10,11 @@ import org.tensorflow.{Tensor => NativeTensor}
 import scala.collection.mutable.ArrayBuffer
 import scala.{specialized => sp}
 
-class Tensor[@sp A: TensorType](val ref: TensorRef[A], val view: View) {
+class Tensor[@sp A: TensorType](private val ref: TensorRef[A], val view: View) {
 
-  val buffer: TensorBuffer[A] = TensorBuffer[A](NativeTensorOps.buffer(ref.native), view.originalShape.power)
+  val buffer: TensorBuffer[A] = TensorBuffer[A](NativeTensorOps.buffer(native), view.originalShape.power)
 
+  def native: NativeTensor[A] = ref.native
   def shape: Shape = view.shape
   def rank: Int = shape.rank
   def power: Int = shape.power

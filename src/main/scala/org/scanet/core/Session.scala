@@ -94,7 +94,7 @@ class Session extends AutoCloseable {
       state.cache.get(output.id) match {
         case Some((_, output)) =>
           val nativeOutput = output.output(0)
-          val nativeTensor = tensor.ref.native
+          val nativeTensor = tensor.native
           runner.feed(nativeOutput, nativeTensor)
         case None => runner
       }

@@ -11,7 +11,7 @@ import scala.util.control.NonFatal
  * @param deallocator a deallocator which will be called after the object is garbage collected
  */
 abstract class Disposable(private[Disposable] val deallocator: () => Unit) {
-  new PhantomReference[Disposable](this, Disposable.refs)
+  new PhantomReference(this, Disposable.refs)
 }
 
 object Disposable {
@@ -23,7 +23,7 @@ object Disposable {
       // that is a blocking call so we do not busy wait here
       refs.remove.foreach(ref => {
         try {
-          ref.get.foreach(r => r.deallocator())
+          ref.get.foreach(_.deallocator())
         } catch {
           case _: InterruptedException => Thread.currentThread.interrupt()
           case NonFatal(e) =>
