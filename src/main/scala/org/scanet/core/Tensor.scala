@@ -2,7 +2,6 @@ package org.scanet.core
 
 import java.nio.ByteBuffer
 
-import org.scanet.core.Tensor.TensorRef
 import org.scanet.core.syntax._
 import org.scanet.math.Generator.uniform
 import org.scanet.math.Numeric.syntax._
@@ -143,6 +142,7 @@ object Tensor {
 
   def apply[A: TensorType](native: NativeTensor[A]): Tensor[A] = {
     new Tensor(new NativeRef(native), View(Shape.of(native.shape())))
+  }
 
   def apply[A: TensorType](data: Array[A], shape: Shape): Tensor[A] = {
     require(data.length == shape.power,
