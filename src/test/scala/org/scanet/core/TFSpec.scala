@@ -12,7 +12,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val duplicate = TF1((arg: Output[Int]) =>
       (arg + 0.const, arg + 0.const)).returns[(Tensor[Int], Tensor[Int])]
     withing(session => {
-      val func = duplicate.compile(session)
+      val func = duplicate compile session
       // we can call the function multiple times now
       // that is compiled and same session will be reused
       // cool thing here is if we call the function with args which have
@@ -26,7 +26,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val identity = TF1((arg: Output[Int]) => arg).returns[Tensor[Int]]
     val leftPlusRightSqr: TF2[Int, Int, Output[Int], Tensor[Int]] = identity.compose(sqr)(_ + _)
     withing(session => {
-      val func = leftPlusRightSqr.compile(session)
+      val func = leftPlusRightSqr compile session
       func(scalar(5), scalar(3)) should be(scalar(11))
     })
   }
@@ -37,7 +37,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
       arg1 + arg2).returns[Tensor[Int]]
     val leftMultiplyRightSum = identity.compose(plus)(_ * _).into[Tensor[Int]]
     withing(session => {
-      val func = leftMultiplyRightSum.compile(session)
+      val func = leftMultiplyRightSum compile session
       func(scalar(4), scalar(2), scalar(3)) should be(scalar(20))
     })
   }
@@ -46,7 +46,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val plus = TF2((arg1: Output[Int], arg2: Output[Int]) =>
       arg1 + arg2).returns[Tensor[Int]]
     withing(session => {
-      val func = plus.compile(session)
+      val func = plus compile session
       func(scalar(2), scalar(3)) should be(scalar(5))
     })
   }
@@ -57,7 +57,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
       arg1 + arg2).returns[Tensor[Int]]
     val leftMultiplyRightSum = identity.compose(plus)(_ * _).into[Tensor[Int]]
     withing(session => {
-      val func = leftMultiplyRightSum.compile(session)
+      val func = leftMultiplyRightSum compile session
       func(scalar(4), scalar(2), scalar(3)) should be(scalar(20))
     })
   }
@@ -69,7 +69,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
       .returns[Tensor[Int]]
     val leftMultiplyRightSum = plus.compose(minus)(_ * _).into[Tensor[Int]]
     withing(session => {
-      val func = leftMultiplyRightSum.compile(session)
+      val func = leftMultiplyRightSum compile session
       func(scalar(1), scalar(2), scalar(4), scalar(2)) should be(scalar(6))
     })
   }
@@ -78,7 +78,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val plus = TF3((arg1: Output[Int], arg2: Output[Int], arg3: Output[Int]) =>
       arg1 + arg2 + arg3).returns[Tensor[Int]]
     withing(session => {
-      val func = plus.compile(session)
+      val func = plus compile session
       func(scalar(2), scalar(3), scalar(4)) should be(scalar(9))
     })
   }
@@ -87,7 +87,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     val plus = TF4((arg1: Output[Int], arg2: Output[Int], arg3: Output[Int], arg4: Output[Int]) =>
       arg1 + arg2 + arg3 + arg4).returns[Tensor[Int]]
     withing(session => {
-      val func = plus.compile(session)
+      val func = plus compile session
       func(scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(14))
     })
   }

@@ -14,7 +14,6 @@ class TensorSerializer extends KryoRegistrator {
         override def isImmutable: Boolean = true
 
         override def write(kryo: Kryo, output: Output, tensor: Tensor[_]): Unit = {
-          println("WRITE")
           val bytes = tensor.toBytes
           output.writeInt(tensor.`type`.code)
           output.writeInt(tensor.shape.rank)
@@ -24,7 +23,6 @@ class TensorSerializer extends KryoRegistrator {
         }
 
         override def read(kryo: Kryo, input: Input, clazz: Class[Tensor[_]]): Tensor[_] = {
-          println("READ")
           val tensorType = TensorType.of(input.readInt())
           val rank = input.readInt()
           val shape = Shape.of(input.readLongs(rank))

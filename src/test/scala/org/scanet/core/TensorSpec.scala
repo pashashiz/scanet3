@@ -7,6 +7,7 @@ import org.scanet.math.Numeric.syntax._
 import org.scanet.math.Dist.syntax._
 import org.scanet.core.syntax._
 import org.scanet.core.Slice.syntax.::
+import org.scanet.core.TensorType.IntTag
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -280,4 +281,60 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
         |]"""
         .stripMargin)
   }
+
+  "compact" should "compact sliced tensor" in {
+    Tensor.range(0 until 7).slice(0 until 2).compact.hasView should be(false)
+  }
+
+  "compact" should "not compact not sliced tensor" in {
+    val tensor = Tensor.range(0 until 7)
+    tensor.compact should be theSameInstanceAs tensor
+  }
+
+  "Int tensor" should "be serialized to bytes array" in {
+    val bytes = Array[Byte](
+      5, 0, 0, 0,
+      7, 0, 0, 0)
+    Tensor.vector[Int](5, 7).toBytes should be(bytes)
+  }
+
+  it should "be deserialized from bytes array" in {
+    val bytes = Array[Byte](
+      5, 0, 0, 0,
+      7, 0, 0, 0)
+    Tensor.fromBytes[Int](bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
+  }
+
+  "String tensor" should "be serialized to bytes array" in {
+    val bytes = Array[Byte](
+      0, 0, 0, 0, 0, 0, 0, 0,
+      3, 0, 0, 0, 0, 0, 0, 0,
+      2, 97, 98,
+      1, 99)
+    Tensor.vector[String]("ab", "c").toBytes should be(bytes)
+  }
+
+  it should "be deserialized from bytes array" in {
+    val bytes = Array[Byte](
+      0, 0, 0, 0, 0, 0, 0, 0,
+      3, 0, 0, 0, 0, 0, 0, 0,
+      2, 97, 98,
+      1, 99)
+    Tensor.fromBytes[String](bytes, Shape(2)) should be(Tensor.vector[String]("ab", "c"))
+  }
+
+  "tensor with view" should "be compacted when serialized to bytes array" in {
+    val bytes = Array[Byte](
+      0, 0, 0, 0,
+      1, 0, 0, 0)
+    Tensor.range(0 until 7).slice(0 until 2).toBytes should be(bytes)
+  }
+
+  "untyped tensor" should "be deserialized from bytes array" in {
+    val bytes = Array[Byte](
+      5, 0, 0, 0,
+      7, 0, 0, 0)
+    Tensor.fromBytesUntyped(IntTag, bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
+  }
+
 }

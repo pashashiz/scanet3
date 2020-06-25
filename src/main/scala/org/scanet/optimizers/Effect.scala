@@ -20,13 +20,14 @@ object Effect {
     (name: String = "result", dir: String = "board")
     (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[W, R]] = {
     Effect(new TensorBoard(dir), (board, step) => {
-      board.addScalar(name, step.result().toScalar, step.iter)
+      board.addScalar(name, step.result.get, step.iter)
     })
   }
 
   def logResult[W: Numeric: TensorType, R: Numeric: TensorType]()
     (implicit c: Convertible[R, Float]): Effect[Unit, Step[W, R]] =
-    Effect.stateless(step => println(s"#${step.epoch}:${step.iter} ${step.result().toScalar}"))
+    Effect.stateless(step => println(
+      s"#${step.epoch}:${step.iter} loss: ${step.result.map(_.toString).getOrElse("")}"))
 }
 
 case class Effects[S](all: Seq[Effect[_, S]]) {

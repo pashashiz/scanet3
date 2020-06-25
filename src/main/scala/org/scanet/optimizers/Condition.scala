@@ -12,6 +12,8 @@ object Condition {
 
   def always[W: Numeric: TensorType, R: Numeric: TensorType]: Condition[W, R] = Condition(_ => true)
 
+  def never[W: Numeric: TensorType, R: Numeric: TensorType]: Condition[W, R] = Condition(_ => false)
+
   def iterations[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] = {
     Condition(step => {
       step.iter % number == 0

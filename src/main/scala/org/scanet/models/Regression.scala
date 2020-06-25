@@ -8,6 +8,7 @@ object Regression {
 
   def linear: Model[Float, Float, Float] = {
     Model[Float, Float, Float](
+      "linear-regression",
       (batch, weights) => {
         // batch: (n, m - 1), weights: (m)
         val rows = batch.shape.dims(0)

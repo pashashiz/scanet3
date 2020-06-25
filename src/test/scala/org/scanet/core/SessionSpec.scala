@@ -39,4 +39,28 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
         (10.const, 5.const, 1.const)) should be((Tensor.scalar(10), Tensor.scalar(5), Tensor.scalar(1)))
     })
   }
+
+  "session pool" should "work" in {
+    val pool = SessionPool.max(4)
+    pool.withing(session => {
+      session.runner.eval(5.const) should be(Tensor.scalar(5))
+    })
+  }
+
+  it should "reuse existing sessions" in {
+    val pool = SessionPool.max(4)
+    val prevSession = pool.withing(identity)
+    pool.withing(session => session should be theSameInstanceAs prevSession)
+  }
+
+  it should "create a new session on demand" in {
+    val pool = SessionPool.max(4)
+    pool.withing(session1 => {
+      pool.used should be(1)
+      pool.withing(session2 => {
+        pool.used should be(2)
+        session1 should not be theSameInstanceAs(session2)
+      })
+    })
+  }
 }

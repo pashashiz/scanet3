@@ -4,13 +4,15 @@ import org.scanet.core.Session.withing
 import org.scanet.core.syntax._
 
 class TF1[P1: TensorType, In: SessionInput, Out: SessionOutput]
-    (val builder: Shape => (Output[P1], In)) {
+    (val builder: Shape => (Output[P1], In), val id: Option[String] = None) {
 
   private val buildIfAbsent: Shape => (Output[P1], In) = memoize(builder)
 
+  def withId(id: String): TF1[P1, In, Out] = new TF1(builder, Some(id))
+
   def compile(session: Session): Tensor[P1] => Out = {
     a1 => {
-      val (p1, out: In) = buildIfAbsent(a1.shape)
+      val (p1, out) = buildIfAbsent(a1.shape)
       session.runner.feed(p1 -> a1).evalX[In, Out](out)
     }
   }
@@ -68,7 +70,7 @@ class TF2[P1: TensorType, P2: TensorType, In: SessionInput, Out: SessionOutput]
 
   def compile(session: Session): (Tensor[P1], Tensor[P2]) => Out = {
     (a1, a2) => {
-      val (p1, p2, out: In) = buildIfAbsent(a1.shape, a2.shape)
+      val (p1, p2, out) = buildIfAbsent(a1.shape, a2.shape)
       session.runner.feed(p1 -> a1, p2 -> a2).evalX[In, Out](out)
     }
   }

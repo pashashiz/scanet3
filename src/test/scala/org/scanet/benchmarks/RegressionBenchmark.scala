@@ -2,19 +2,18 @@ package org.scanet.benchmarks
 
 import org.scalatest.Ignore
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.datasets.CSVDataset
 import org.scanet.math.syntax._
 import org.scanet.models.Regression
 import org.scanet.optimizers.Effect.{logResult, plotResult}
 import org.scanet.optimizers.syntax._
-import org.scanet.optimizers.{AMSGrad, AdaDelta, AdaGrad, Adam, Adamax, Nadam, Optimizer, RMSProp, SGD}
-import org.scanet.test.CustomMatchers
+import org.scanet.optimizers._
+import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
 @Ignore
-class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
+class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
 
   "linear regression" should "be minimized by plain SDG" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD())
@@ -25,13 +24,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
     result.toScalar should be <= 1f
   }
 
   it should "be minimized by SDG with momentum" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD(momentum = 0.9f))
@@ -42,13 +41,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
     result.toScalar should be <= 1f
   }
 
   it should "be minimized by SDG with nesterov acceleration" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(SGD(momentum = 0.9f, nesterov = true))
@@ -59,13 +58,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
     result.toScalar should be <= 1f
   }
 
   it should "be minimized by AdagGrad" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(AdaGrad())
@@ -76,13 +75,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 
   it should "be minimized by AdagDelta" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(AdaDelta())
@@ -93,13 +92,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 
   it should "be minimized by RMSProp" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(RMSProp())
@@ -110,13 +109,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 
   it should "be minimized by Adam" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(Adam(rate = 0.1f))
@@ -127,13 +126,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 
   it should "be minimized by Adamax" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(Adamax())
@@ -144,13 +143,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 
   it should "be minimized by Nadam" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(Nadam())
@@ -161,13 +160,13 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 
   it should "be minimized by AMSGrad" in {
-    val ds = CSVDataset("facebook-comments-scaled.csv")
+    val ds = facebookComments
     val weights = Optimizer
       .minimize(Regression.linear)
       .using(AMSGrad())
@@ -178,8 +177,8 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers {
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.result.compile()
-    val result = regression(ds.iterator.next(1000), weights)
-    result.toScalar should be <= 0.5f
+    val regression = Regression.linear.loss.compile()
+    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+    result.toScalar should be <= 1f
   }
 }
