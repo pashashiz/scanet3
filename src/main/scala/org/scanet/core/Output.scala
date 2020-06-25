@@ -9,6 +9,7 @@ import org.scanet.native.NativeTensorOps._
 import org.tensorflow.{Operation, OperationBuilder}
 
 case class Output[A: TensorType](
+      id: String = UUID.randomUUID().toString,
       name: String,
       label: String,
       shape: Shape,
@@ -17,7 +18,9 @@ case class Output[A: TensorType](
       compiler: CompileContext[A] => Operation,
       localGradF: GradContext[A] => List[Output[Float]]) {
 
-  val id: String = UUID.randomUUID().toString
+  def withId(newId: String): Output[A] = copy(id = newId)
+
+  def withId(newId: Option[String]): Output[A] = newId.map(withId).getOrElse(this)
 
   def rank: Int = shape.rank
 
@@ -81,6 +84,7 @@ case class Output[A: TensorType](
 
   override def equals(obj: Any): Boolean = obj match {
     case other: Output[_] => id == other.id
+    case _ => false
   }
 }
 

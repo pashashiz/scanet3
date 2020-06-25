@@ -2,7 +2,7 @@ package org.scanet.math
 
 // NOTE: simulacrum does not support multiple types,
 // so there is manual implementation
-trait Convertible[A, B] {
+trait Convertible[A, B] extends Serializable {
   def convert(a: A): B
 }
 

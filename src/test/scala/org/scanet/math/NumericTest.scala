@@ -19,7 +19,5 @@ class NumericTest extends AnyFlatSpec with Matchers {
     // NOTE: + op does no work
     def checkOrder2[A: Numeric, B: Numeric](a: A, b: B)(implicit c: Convertible[B, A]): A = a plus b
     checkOrder2(1, 2.0f) should be(3)
-    val rng = spire.random.rng.Cmwc5()
-    rng.next[Int]
   }
 }

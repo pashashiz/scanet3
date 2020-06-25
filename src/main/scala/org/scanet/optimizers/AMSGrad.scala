@@ -15,7 +15,7 @@ import org.scanet.syntax._
  * @param beta2 The exponential decay rate for the 2nd moment estimates.
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class AMSGrad(rate: Output[Float], beta1: Output[Float], beta2: Output[Float], epsilon: Output[Float]) extends Algorithm {
+case class AMSGrad(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta(shape: Shape): Tensor[Float] = {
     val m = Tensor.zeros[Float](shape).const
@@ -26,15 +26,10 @@ case class AMSGrad(rate: Output[Float], beta1: Output[Float], beta2: Output[Floa
 
   override def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevM, prevV, prevCorrectedVelocity) = meta.unzip3
-    val m = prevM.decayingAvg(grad, beta1)
-    val vCurrent = prevV.decayingAvg(grad.sqr, beta2)
+    val m = prevM.decayingAvg(grad, beta1.const)
+    val vCurrent = prevV.decayingAvg(grad.sqr, beta2.const)
     val v = max(prevCorrectedVelocity, vCurrent)
-    val delta = rate * m / (v.sqrt + epsilon)
+    val delta = rate.const * m / (v.sqrt + epsilon.const)
     Delta(delta, zip(m, vCurrent, v))
   }
-}
-object AMSGrad {
-
-  def apply(rate: Double = 0.001, beta1: Double = 0.9, beta2 : Double = 0.999, epsilon: Double = 1e-7): AMSGrad =
-    new AMSGrad(rate.toFloat.const, beta1.toFloat.const, beta2.toFloat.const, epsilon.toFloat.const)
 }

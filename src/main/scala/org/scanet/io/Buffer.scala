@@ -157,13 +157,22 @@ class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buf
     array
   }
 
-  def toStream: LazyList[A] = {
-    def next(index: Int): LazyList[A] = {
-      if (limit == index) LazyList.empty
+  def toStream: Stream[A] = {
+    def next(index: Int): Stream[A] = {
+      if (limit == index) Stream.empty
       else get(index) #:: next(index + 1)
     }
     next(position)
   }
+
+// NOTE: use with scala 2.13
+//  def toStream: LazyList[A] = {
+//    def next(index: Int): LazyList[A] = {
+//      if (limit == index) LazyList.empty
+//      else get(index) #:: next(index + 1)
+//    }
+//    next(position)
+//  }
 
   def arrayOffset: Int = original.arrayOffset()
 

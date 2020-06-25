@@ -1,15 +1,19 @@
 package org.scanet.core
 
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
+
 import org.scanet.core.Output.Compiled
 import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{Graph, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
 import simulacrum.typeclass
 
-import scala.jdk.CollectionConverters._
+import org.scanet.core.Session.syntax._
 import scala.language.existentials
-import Session.syntax._
+import scala.util.Try
+import scala.collection.JavaConverters._
 
-import scala.util.Using
+//import scala.util.Using // use with scala 2.13
 
 case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
 
@@ -51,13 +55,13 @@ case class SessionState(scope: NativeScope, cache: Map[String, Compiled]) {
 }
 
 /** Session is a mutable object which keeps track of all compiled operations
-  * and may reuse them if executed again. Sometimes that iss important to use the same session
-  * when we need to run the same execution graph over and over by changing placeholders,
-  * such graph would be constructed and optimized only once.
-  *
-  * Recommended usage withing `using` boundary which will release native resources:
-  * {{{
-  * using(session => {
+ * and may reuse them if executed again. Sometimes that iss important to use the same session
+ * when we need to run the same execution graph over and over by changing placeholders,
+ * such graph would be constructed and optimized only once.
+ *
+ * Recommended usage withing `using` boundary which will release native resources:
+ * {{{
+ * using(session => {
  *   val a = placeholder[Int]()
  *   val b = 10.const
  *   val c = a + b
@@ -65,8 +69,8 @@ case class SessionState(scope: NativeScope, cache: Map[String, Compiled]) {
  *     .feed(a -> Tensor.scalar(5))
  *     .eval(c) should be(Tensor.scalar(15))
  * })
-  * }}}
-  */
+ * }}}
+ */
 class Session extends AutoCloseable {
 
   val nGraph = new Graph()
@@ -109,15 +113,21 @@ class Session extends AutoCloseable {
 object Session {
 
   /**
-  * Same as:
-  * ```
-  * Using.resource(new Session()) {
-  *   session => ...
-  * }
-  * ```
-  */
+   * Same as:
+   * ```
+   * Using.resource(new Session()) {
+   *   session => ...
+   * }
+   * ```
+   */
   def withing[R](f: Session => R): R = {
-    Using.resource(new Session())(f)
+    // Using.resource(new Session())(f) // use with scala 2.13
+    val session = new Session()
+    try {
+      val result = f(session)
+      session.close()
+      result
+    } finally if (session != null) session.close()
   }
 
   trait Implicits {
@@ -159,4 +169,31 @@ object Session {
 
 @typeclass trait SessionOutput[T] {
   def fromOutput(tensors: Seq[NativeTensor[_]]): T
+}
+
+class LazySession {
+  lazy val get = new Session()
+}
+
+class SessionPool(val maxSize: Int) {
+
+  private val pool: BlockingDeque[LazySession] = new LinkedBlockingDeque[LazySession](maxSize)
+  private val inUse: AtomicInteger = new AtomicInteger(0)
+
+  pool.addAll(List.fill(maxSize)(new LazySession()).asJavaCollection)
+
+  def used: Int = inUse.get
+
+  def withing[R](f: Session => R): R = {
+    val session = pool.takeFirst()
+    inUse.incrementAndGet()
+    val result = Try {f(session.get)}
+    pool.addFirst(session)
+    inUse.decrementAndGet()
+    result.get
+  }
+}
+
+object SessionPool {
+  def max(size: Int): SessionPool = new SessionPool(size)
 }

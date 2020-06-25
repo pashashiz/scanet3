@@ -1,5 +1,6 @@
 package org.scanet.core
 
+import org.scanet.native.RichDataType
 import org.tensorflow.DataType
 import simulacrum.typeclass
 
@@ -7,6 +8,7 @@ import scala.reflect.ClassTag
 
 @typeclass trait TensorType[A] {
   def tag: DataType
+  def code: Int = new RichDataType(tag).code
   def classTag: ClassTag[A]
   def show: String = classTag.toString()
   def coder: TensorCoder[A]
@@ -64,7 +66,32 @@ object TensorType {
   val BoolTag: DataType = DataType.BOOL
   val StringType: DataType = DataType.STRING
 
+  // reverse lookup, might be used for deserialization
+  def of(dataType: DataType): TensorType[_] = {
+    import syntax._
+    dataType match {
+      case FloatTag => TensorType[Float]
+      case DoubleTag => TensorType[Double]
+      case LongTag => TensorType[Long]
+      case IntTag => TensorType[Int]
+      case ByteTag => TensorType[Byte]
+      case BoolTag => TensorType[Boolean]
+      case StringType => TensorType[String]
+      case _ => throw new IllegalArgumentException(s"data type $dataType is not supported")
+    }
+  }
+
+  def of(code: Int): TensorType[_] = {
+    val dataType = DataType.values()
+      .find(t => new RichDataType(t).code == code)
+      .get
+    of(dataType)
+  }
+
+  implicit def toRich(dataType: DataType): RichDataType = new RichDataType(dataType)
+
   trait Instances {
+
     implicit def floatTfTypeInst: TensorType[Float] = new TensorTypeFloat {}
     implicit def doubleTfTypeInst: TensorType[Double] = new TensorTypeDouble {}
     implicit def longTfTypeInst: TensorType[Long] = new TensorTypeLong {}

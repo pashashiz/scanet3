@@ -12,7 +12,7 @@ import org.scanet.syntax._
  * @param beta2 The exponential decay rate for the 2nd moment estimates.
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class Adam(rate: Output[Float], beta1: Output[Float], beta2: Output[Float], epsilon: Output[Float]) extends Algorithm  {
+case class Adam(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm  {
 
   def initMeta(shape: Shape): Tensor[Float] = {
     val m = Tensor.zeros[Float](shape).const
@@ -22,16 +22,9 @@ case class Adam(rate: Output[Float], beta1: Output[Float], beta2: Output[Float],
 
   def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
     val (prevM, prevV) = meta.unzip
-    val m = prevM.decayingAvg(grad, beta1)
-    val v = prevV.decayingAvg(grad.sqr, beta2)
-    val delta = (rate / (v.boost(beta2, iter) + epsilon).sqrt) :* m.boost(beta1, iter)
+    val m = prevM.decayingAvg(grad, beta1.const)
+    val v = prevV.decayingAvg(grad.sqr, beta2.const)
+    val delta = (rate.const / (v.boost(beta2.const, iter) + epsilon.const).sqrt) :* m.boost(beta1.const, iter)
     Delta(delta, m zip v)
   }
-}
-
-object Adam {
-
-  def apply(rate: Double = 0.001, beta1: Double = 0.9, beta2 : Double = 0.999, epsilon: Double = 1e-7): Adam =
-    new Adam(rate.toFloat.const, beta1.toFloat.const, beta2.toFloat.const, epsilon.toFloat.const)
-
 }

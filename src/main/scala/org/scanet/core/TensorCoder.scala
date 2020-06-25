@@ -7,57 +7,59 @@ import scala.annotation.tailrec
 case class TensorBuffer[A: TensorType](buf: ByteBuffer, size: Int) {
    val coder: TensorCoder[A] = TensorType[A].coder
    def read(pos: Int): A = coder.read(buf, pos, size)
-   def write(array: Array[A]): Unit = coder.write(buf, array)
+   def write(src: Array[A]): Unit = coder.write(src, buf)
+   def writeBytes(src: Array[Byte]): Unit = buf.put(src).rewind()
 }
 
 trait TensorCoder[A] {
-   def write(buf: ByteBuffer, array: Array[A]): Unit
-   def read(buf: ByteBuffer, pos: Int, bufSize: Int): A
-   def size(array: Array[A]): Int = array.length
+
+   def write(src: Array[A], dest: ByteBuffer): Unit
+   def read(src: ByteBuffer, pos: Int, bufSize: Int): A
+   def sizeOf(src: Array[A]): Int = src.length
 }
 
 class FloatTensorCoder extends TensorCoder[Float] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Float = buf.getFloat(pos * 4)
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): Float = src.getFloat(pos * 4)
 
-   override def write(buf: ByteBuffer, array: Array[Float]): Unit = {
-      buf.asFloatBuffer().put(array).rewind()
+   override def write(src: Array[Float], dest: ByteBuffer): Unit = {
+      dest.asFloatBuffer().put(src).rewind()
    }
 }
 
 class DoubleTensorCoder extends TensorCoder[Double] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Double = buf.getDouble(pos * 8)
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): Double = src.getDouble(pos * 8)
 
-   override def write(buf: ByteBuffer, array: Array[Double]): Unit = {
-      buf.asDoubleBuffer().put(array).rewind()
+   override def write(src: Array[Double], dest: ByteBuffer): Unit = {
+      dest.asDoubleBuffer().put(src).rewind()
    }
 }
 
 class IntTensorCoder extends TensorCoder[Int] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Int = buf.getInt(pos * 4)
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): Int = src.getInt(pos * 4)
 
-   override def write(buf: ByteBuffer, array: Array[Int]): Unit = {
-      buf.asIntBuffer().put(array).rewind()
+   override def write(src: Array[Int], dest: ByteBuffer): Unit = {
+      dest.asIntBuffer().put(src).rewind()
    }
 }
 
 class LongTensorCoder extends TensorCoder[Long] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Long = buf.getLong(pos * 8)
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): Long = src.getLong(pos * 8)
 
-   override def write(buf: ByteBuffer, array: Array[Long]): Unit = {
-      buf.asLongBuffer().put(array).rewind()
+   override def write(src: Array[Long], dest: ByteBuffer): Unit = {
+      dest.asLongBuffer().put(src).rewind()
    }
 }
 
 class ByteTensorCoder extends TensorCoder[Byte] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Byte = buf.get(pos)
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): Byte = src.get(pos)
 
-   override def write(buf: ByteBuffer, array: Array[Byte]): Unit = {
-      buf.put(array).rewind()
+   override def write(src: Array[Byte], dest: ByteBuffer): Unit = {
+      dest.put(src).rewind()
    }
 }
 
@@ -65,24 +67,24 @@ class BooleanTensorCoder extends TensorCoder[Boolean] {
 
    override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Boolean = buf.get(pos) == 1
 
-   override def write(buf: ByteBuffer, array: Array[Boolean]): Unit = {
-      buf.put(array.map(b => if (b) 1.toByte else 0.toByte)).rewind()
+   override def write(src: Array[Boolean], dest: ByteBuffer): Unit = {
+      dest.put(src.map(b => if (b) 1.toByte else 0.toByte)).rewind()
    }
 }
 
 class StringTensorCoder extends TensorCoder[String] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): String = {
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): String = {
       @tailrec
       def loop(idx: Int, offset: Int, dst: Array[Byte]): String =
          if (idx == dst.length) new String(dst)
          else {
-            dst(idx) = buf.get(offset + idx)
+            dst(idx) = src.get(offset + idx)
             loop(idx + 1, offset, dst)
          }
       def offset(pos: Int) =
-         if (pos == bufSize) buf.limit
-         else buf.getLong(pos * 8).toInt + bufSize * 8
+         if (pos == bufSize) src.limit
+         else src.getLong(pos * 8).toInt + bufSize * 8
 
       val curr = offset(pos)
       val next = offset(pos + 1)
@@ -91,19 +93,19 @@ class StringTensorCoder extends TensorCoder[String] {
       loop(0, curr + ubytes(len), Array.ofDim[Byte](len))
    }
 
-   override def write(buf: ByteBuffer, array: Array[String]): Unit = {
-      array.foldLeft(0)((offset, str) => {
-         buf.putLong(offset)
+   override def write(src: Array[String], dest: ByteBuffer): Unit = {
+      src.foldLeft(0)((offset, str) => {
+         dest.putLong(offset)
          offset + strLen(str)
       })
-      array.foreach(str => {
-         buf.put(asUBytes(str.length, buf.order))
-         buf.put(str.getBytes)
+      src.foreach(str => {
+         dest.put(asUBytes(str.length, dest.order))
+         dest.put(str.getBytes)
       })
-      buf.rewind()
+      dest.rewind()
    }
 
-   override def size(array: Array[String]): Int = array.length * 8 + array.map(strLen).sum
+   override def sizeOf(array: Array[String]): Int = array.length * 8 + array.map(strLen).sum
 
    private def strLen(str: String): Int = ubytes(str.length) + str.length
 
