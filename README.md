@@ -5,7 +5,7 @@
 
 Type-safe, high performance, distributed Neural networks in Scala (not Python, finally...).
 
-## Architecture Intro
+## Intro
 
 Low level (linear algebra) operations powered by low level TensorFlow API (C, C++ bindings via JNI). 
 
@@ -16,44 +16,89 @@ and only result is returned back via `DirectBuffer`which points into native memo
 `DirectBuffer` is wrapped with `Tensor` object which allows 
 to slice and read data in a convenient way (just like `Breeze` or `Numpy` does).
 
-todo
+The optimizer is built on `Spark` and can optimize the model in a distributed/parallel way.
+The input data is expected to be `RDD[Array[TensorType]`. 
+Usually, `TensorType` is choosen to be  `Float` since it performs best on GPU, but that is not
+limited to it.
+
+Example of solving a linear regression model:
+
+``` scala
+val ds = facebookComments
+val weights = Optimizer
+  .minimize(Regression.linear)
+  .using(Adam(rate = 0.1f))
+  .on(ds)
+  .batch(1000)
+  .each(1.epochs, logResult())
+  .each(1.iterations, plotResult(name = "Error", dir = "board/Adam"))
+  .stopAfter(10.epochs)
+  .build
+  .run()
+val regression = Regression.linear.loss.compile()
+val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
+result.toScalar should be <= 1f
+```
+
+Here, `loss` will be logged as well as added to `TensorBoard`. 
+To check live optimization process you can:
+```sh
+tensorboard --logdir board
+```
 
 ## Road Map
 
-## Tensor Flow Low Level
-That is done for now
+### Tensor Flow Low Level API
+- [x] Tensor
+- [x] DSL for computation DAG 
+- [x] TF Session
+- [x] Core ops
+- [x] Math ops
+- [x] Logical ops
+- [x] String ops
+- [x] TF Functions, Placeholders, Session caching
+- [x] Tensor Board basic support
 
-## Optimizers
-0. Random weight by default
-1. Add SGD, AdaGrad + AdaDelta, RMSProp, Adam + Nadam
-2. Minimize basic math functions
-3. Add logging
-4. Add more stop conditions (check which are used right now in Keras)
-5. Minimize Linear regression + r2 score estimator
-6. Minimize Logistic regression + accuracy estimator, confusion matrix, precision, recall, f1 score
-7. Add runtime tensorboard chart
-8. Investigate the way to parallelize optimizer
-9. Check the way to read data into dataset
+### Optimizer engine
+- [x] Spark
+- [ ] Hyper parameter tuning
+- [ ] Model Import/Export
+ 
+### Optimizer algorithms
+- [x] SGD
+- [x] AdaGrad
+- [x] AdaDelta
+- [x] RMSProp
+- [x] Adam
+- [x] Nadam
+- [x] Adamax
+- [x] AMSGrad
 
+### Models
+- [x] Linear Regression
+- [ ] Simple math models for benchmarks
+- [ ] Logistic Regression
+- [ ] ANN (Multilayer Perceptron NN)
+- [ ] Layers Dropout, Regularization, Normalization
+- [ ] Convolutional NN
+- [ ] Recurent NN
+- [ ] others
 
-## CPU & GPU & TPU banchmarks
-1. Create computation intensive operation, like `matmul` multiple times large tensors
-   and compare with Scala `breeze`, python `tensorflow`, python `numpy`
-2. Improve performance if needed
+### Preprocessing
+- [ ] Auto-converting into `RDD[Array[TensorType]]`
+- [ ] Feature scalers
+- [ ] Feature embedding
+- [ ] Hashed features
+- [ ] Crossed features
 
-## NN baseline + Multilayer Perceptron NN + Evaluation-2
-1. todo
+### Estimators
+- [ ] r2 score
+- [ ] accuracy estimator, confusion matrix, precision, recall, f1 score
+- [ ] runtime estimating and new stop condition based on that
 
-## Additional Layers (dropout, etc.)
-1. todo
-
-## Convolutional NN
-1. todo
-
-## Recurent NN
-1. todo
-
-## Distributed Processing (Spark)
-1. todo
-
-
+### CPU & GPU & TPU banchmarks
+- [ ] Create computation intensive operation, like `matmul` multiple times large tensors
+      and compare with Scala `breeze`, python `tensorflow`, python `numpy`
+- [ ] Compare with existing implementations using local CPU
+- [ ] Compare with existing implementations using one GPU
+- [ ] Compare with existing implementations using distributed mode on GCP DataProc
