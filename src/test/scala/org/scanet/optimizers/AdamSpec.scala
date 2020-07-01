@@ -49,8 +49,6 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       Array(0.3462f, 0.7802f),
       Array(0.6018f, 0.8630f),
     )
-    predictor(input) should be(Tensor.matrix(
-      Array(0.4014743f),
-      Array(0.7791392f)))
+    predictor(input).const.round.eval should be(Tensor.matrix(Array(0f), Array(1f)))
   }
 }
