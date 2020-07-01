@@ -18,9 +18,13 @@ object ReverseAD {
 
     def directedGraph: DirectedGraph[Expr] = {
       def fill(graph: DirectedGraph[Expr], current: Expr): DirectedGraph[Expr] = {
-        val withCurrent = graph :+ Node(current.id, current)
-        val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
-        withAll.linkAll(current.inputs.map(node => (node.id, current.id)))
+        if (!graph.contains(current.id)) {
+          val withCurrent = graph :+ Node(current.id, current)
+          val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
+          withAll.linkAll(current.inputs.map(node => (node.id, current.id)))
+        } else {
+          graph
+        }
       }
       fill(DirectedGraph[Expr](), this)
     }
@@ -80,6 +84,7 @@ object ReverseAD {
     val b = Const(5)
     val x = Const(3)
     val f = Plus(Multiply(a, x), b)
+    print(f.directedGraph)
     println(s"sample 1: ${f.eval}, ${f.grad(x)}") // 11.0, 2.0
   }
 

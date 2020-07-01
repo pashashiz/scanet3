@@ -3,7 +3,7 @@ package org.scanet.optimizers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
-import org.scanet.models.Regression
+import org.scanet.models.LinearRegression
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
@@ -11,8 +11,8 @@ class RMSPropSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
 
   "RMSProp" should "minimize linear regression" in {
     val ds = linearFunction
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(RMSProp(rate = 0.06f))
       .initWith(Tensor.zeros(_))
       .on(ds)
@@ -21,8 +21,8 @@ class RMSPropSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
       .stopAfter(100.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 97).next(), weights)
-    result.toScalar should be <= 4.7f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
+    loss(x, y).toScalar should be <= 4.7f
   }
 }

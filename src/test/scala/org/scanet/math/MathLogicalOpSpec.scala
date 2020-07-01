@@ -216,4 +216,8 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   it should "support broadcasting" in {
     max(Tensor.vector(1, 2).const, Tensor.vector(4).const).eval should be(Tensor.vector(4, 4))
   }
+
+  "Boolean" should "be casted to Int" in {
+    Tensor.vector(true, false, true).const.cast[Int].eval should be(Tensor.vector(1, 0, 1))
+  }
 }

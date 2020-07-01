@@ -44,6 +44,13 @@ object ForwardAD {
     val f = Multiply(Multiply(x, x), x)
     println(s"sample 4: ${f.eval}, ${f.grad(x)}") // 64, 48
   }
+
+//  def sample5(): Unit = {
+//    // f(x) = x * x * x -> df/dx = 3x^2 | x = 4
+//    val x = Const(4)
+//    val f = Multiply(Multiply(x, x), x)
+//    println(s"sample 4: ${f.eval}, ${f.grad(x)}") // 64, 48
+//  }
 }
 
 sealed trait Expr {

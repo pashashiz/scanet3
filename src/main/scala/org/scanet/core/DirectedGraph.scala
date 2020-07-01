@@ -1,13 +1,13 @@
 package org.scanet.core
 
-import org.scanet.research.Expr
-
 import scala.collection.mutable
 
 /**
   * Mutable directed graph
   */
 case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
+
+  def contains(id: String): Boolean = nodes.contains(id)
 
   def :+(node: Node[A]): DirectedGraph[A] = {
     if (!nodes.contains(node.id)) {

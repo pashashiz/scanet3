@@ -83,12 +83,33 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     })
   }
 
+  it should "support composition with other 2 arg function" in {
+    val plus = TF3((arg1: Output[Int], arg2: Output[Int], arg3: Output[Int]) =>
+      arg1 + arg2 + arg3).returns[Tensor[Int]]
+    val minus = TF2((arg1: Output[Int], arg2: Output[Int]) => arg1 - arg2)
+      .returns[Tensor[Int]]
+    val leftMultiplyRightSum = plus.compose(minus)(_ * _).into[Tensor[Int]]
+    withing(session => {
+      val func = leftMultiplyRightSum compile session
+      func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(2)) should be(scalar(12))
+    })
+  }
+
   "tensor function of 4 args" should "work" in {
     val plus = TF4((arg1: Output[Int], arg2: Output[Int], arg3: Output[Int], arg4: Output[Int]) =>
       arg1 + arg2 + arg3 + arg4).returns[Tensor[Int]]
     withing(session => {
       val func = plus compile session
       func(scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(14))
+    })
+  }
+
+  "tensor function of 5 args" should "work" in {
+    val plus = TF5((arg1: Output[Int], arg2: Output[Int], arg3: Output[Int], arg4: Output[Int], arg5: Output[Int]) =>
+      arg1 + arg2 + arg3 + arg4 + arg5).returns[Tensor[Int]]
+    withing(session => {
+      val func = plus compile session
+      func(scalar(2), scalar(3), scalar(4), scalar(5), scalar(6)) should be(scalar(20))
     })
   }
 }
