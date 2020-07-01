@@ -131,12 +131,14 @@ import simulacrum.{op, typeclass}
 
 @typeclass trait Numeric[A] extends Field[A] with Order[A] {}
 
+@typeclass trait Floating[A] extends Numeric[A]
+
 object Numeric {
 
   trait Instances {
 
-    implicit def floatInst: Numeric[Float] = new NumericFloat {}
-    implicit def doubleInst: Numeric[Double] = new NumericDouble {}
+    implicit def floatInst: Floating[Float] = new FloatIsFloatingPoint {}
+    implicit def doubleInst: Floating[Double] = new DoubleIsFloatingPoint {}
     implicit def longInst: Numeric[Long] = new NumericLong {}
     implicit def intInst: Numeric[Int] = new NumericInt {}
     implicit def byteInst: Numeric[Byte] = new NumericByte {}
@@ -182,7 +184,7 @@ object Numeric {
   object syntax extends Syntax
 }
 
-trait NumericFloat extends Numeric[Float] with TensorTypeFloat {
+trait FloatIsFloatingPoint extends Floating[Float] with TensorTypeFloat {
   override def one: Float = 1.0f
   override def zero: Float = 0.0f
   override def plus[B](left: Float, right: B)(implicit c: Convertible[B, Float]): Float =
@@ -197,7 +199,7 @@ trait NumericFloat extends Numeric[Float] with TensorTypeFloat {
   override def compare(x: Float, y: Float): Int = x.compareTo(y)
 }
 
-trait NumericDouble extends Numeric[Double] with TensorTypeDouble {
+trait DoubleIsFloatingPoint extends Floating[Double] with TensorTypeDouble {
   override def one: Double = 1.0d
   override def zero: Double = 0.0d
   override def plus[B](left: Double, right: B)(implicit c: Convertible[B, Double]): Double =

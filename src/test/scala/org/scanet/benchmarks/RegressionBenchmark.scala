@@ -15,7 +15,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   "linear regression" should "be minimized by plain SDG" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(SGD())
       .on(ds)
       .batch(1000)
@@ -32,7 +32,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by SDG with momentum" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(SGD(momentum = 0.9f))
       .on(ds)
       .batch(1000)
@@ -49,7 +49,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by SDG with nesterov acceleration" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(SGD(momentum = 0.9f, nesterov = true))
       .on(ds)
       .batch(1000)
@@ -66,7 +66,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by AdagGrad" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(AdaGrad())
       .on(ds)
       .batch(1000)
@@ -83,7 +83,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by AdagDelta" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(AdaDelta())
       .on(ds)
       .batch(1000)
@@ -100,7 +100,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by RMSProp" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(RMSProp())
       .on(ds)
       .batch(1000)
@@ -117,7 +117,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by Adam" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(Adam(rate = 0.1f))
       .on(ds)
       .batch(1000)
@@ -134,7 +134,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by Adamax" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(Adamax())
       .on(ds)
       .batch(1000)
@@ -151,7 +151,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by Nadam" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(Nadam())
       .on(ds)
       .batch(1000)
@@ -168,7 +168,7 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
   it should "be minimized by AMSGrad" in {
     val ds = facebookComments
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(AMSGrad())
       .on(ds)
       .batch(1000)

@@ -7,16 +7,24 @@ import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
 
-  "linear regression" should "calculate loss" in {
-    val loss = LinearRegression.loss.compile()
+  "linear regression" should "calculate loss with Float precision" in {
+    val loss = LinearRegression[Float].loss.compile()
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.vector(1.0f, 2.0f, 3.0f)
     loss(x, y, weights) should be(Tensor.scalar(8.5f))
   }
 
+  it should "calculate loss with Double precision" in {
+    val loss = LinearRegression[Double].loss.compile()
+    val x = Tensor.matrix(Array(1.0, 2.0), Array(2.0, 4.0))
+    val y = Tensor.matrix(Array(6.0), Array(12.0))
+    val weights = Tensor.vector(1.0, 2.0, 3.0)
+    loss(x, y, weights) should be(Tensor.scalar(8.5))
+  }
+
   it should "calculate result" in {
-    val result = LinearRegression.result.compile()
+    val result = LinearRegression[Float].result.compile()
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(9.0f), Array(17.0f))
     val weights = Tensor.vector(1.0f, 2.0f, 3.0f)
@@ -24,7 +32,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate gradient " in {
-    val grad = LinearRegression.grad.compile()
+    val grad = LinearRegression[Float].grad.compile()
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.vector(0.0f, 0.0f, 0.0f)
@@ -32,7 +40,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "logistic regression" should "calculate loss" in {
-    val regression = LogisticRegression.loss.compile()
+    val regression = LogisticRegression[Float].loss.compile()
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.vector(0.1f, 0.2f, 0.3f)
@@ -40,7 +48,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate result" in {
-    val result = LinearRegression.result.compile()
+    val result = LinearRegression[Float].result.compile()
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.vector(0.1f, 0.2f, 0.3f)
@@ -48,7 +56,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate gradient " in {
-    val grad = LogisticRegression.grad.compile()
+    val grad = LogisticRegression[Float].grad.compile()
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.vector(0.1f, 0.2f, 0.3f)

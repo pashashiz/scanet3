@@ -1,16 +1,17 @@
 package org.scanet.models
 
-import org.scanet.core.{Output, Shape, error}
+import org.scanet.core.{Output, Shape, TensorType, error}
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.math.syntax._
 
 object Math {
 
-  object `x^2` extends Model[Float, Float, Float] {
+  case class `x^2`[E: Floating: Numeric: TensorType]() extends Model[E, E, E] {
 
-    override def buildResult(x: Output[Float], weights: Output[Float]): Output[Float] =
+    override def buildResult(x: Output[E], weights: Output[E]): Output[E] =
       error("result function is not supported for pure math models")
 
-    override def buildLoss(x : Output[Float], y: Output[Float], weights: Output[Float]): Output[Float] =
+    override def buildLoss(x : Output[E], y: Output[E], weights: Output[E]): Output[E] =
       weights * weights
 
     override def weightsShape(features: Int): Shape = Shape()

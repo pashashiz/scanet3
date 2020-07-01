@@ -12,7 +12,7 @@ class AdaGradSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
   "AdaGrad" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(AdaGrad())
       .initWith(Tensor.zeros(_))
       .on(ds)

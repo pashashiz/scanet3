@@ -1,6 +1,7 @@
 package org.scanet.models
 
-import org.scanet.core.{Output, Shape}
+import org.scanet.core.{Output, Shape, TensorType}
+import org.scanet.math.{Numeric, Floating}
 import org.scanet.math.syntax._
 
 /** Ordinary least squares Linear Regression.
@@ -11,18 +12,18 @@ import org.scanet.math.syntax._
   *
   * Model always has only one output
   */
-object LinearRegression extends Model[Float, Float, Float] {
+case class LinearRegression[E: Floating: Numeric: TensorType]() extends Model[E, E, E] {
 
-  override def buildResult(x: Output[Float], weights: Output[Float]): Output[Float] = {
+  override def buildResult(x: Output[E], weights: Output[E]): Output[E] = {
     withBias(x) * reshape(weights).transpose
   }
 
-  override def buildLoss(x: Output[Float], y: Output[Float], weights: Output[Float]): Output[Float] = {
+  override def buildLoss(x: Output[E], y: Output[E], weights: Output[E]): Output[E] = {
     val rows = x.shape.dims.head
-    (0.5f / rows).const :* (withBias(x) * reshape(weights).transpose - y).pow(2).sum
+    (0.5f / rows).const.cast[E] :* (withBias(x) * reshape(weights).transpose - y).pow(2).sum
   }
 
-  private def reshape(weights: Output[Float]): Output[Float] =
+  private def reshape(weights: Output[E]): Output[E] =
     weights.reshape(1, weights.shape.head)
 
   override def weightsShape(features: Int): Shape = Shape(features + 1)

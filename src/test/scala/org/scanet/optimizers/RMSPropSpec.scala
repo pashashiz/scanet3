@@ -12,7 +12,7 @@ class RMSPropSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
   "RMSProp" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(RMSProp(rate = 0.06f))
       .initWith(Tensor.zeros(_))
       .on(ds)

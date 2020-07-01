@@ -1,11 +1,11 @@
 package org.scanet.models
 
 import org.scanet.core.{Output, TF1, TF2, Tensor, TensorType}
-import org.scanet.math.Numeric
+import org.scanet.math.{Numeric, Floating}
 import org.scanet.math.syntax._
 
-class TrainedModel[E: Numeric : TensorType, W: Numeric : TensorType, J: Numeric : TensorType](
-    val model: Model[E, W, J], val weights: Tensor[W]) {
+class TrainedModel[E: Numeric : Floating : TensorType, W: Numeric : Floating : TensorType, J: Numeric : Floating : TensorType](
+     val model: Model[E, W, J], val weights: Tensor[W]) {
 
   def buildResult(x: Output[E]): Output[J] = model.buildResult(x, weights.const)
 

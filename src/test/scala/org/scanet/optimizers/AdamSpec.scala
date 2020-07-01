@@ -14,7 +14,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
   "Adam" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(Adam(rate = 0.1f))
       .initWith(Tensor.zeros(_))
       .on(ds)
@@ -31,7 +31,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
   it should "minimize logistic regression" in {
     val ds = logisticRegression.map(a => Array(a(0)/100, a(1)/100, a(2)))
     val trained = Optimizer
-      .minimize(LogisticRegression)
+      .minimize(LogisticRegression[Float])
       .using(Adam(0.1f))
       .initWith(s => Tensor.zeros(s))
       .on(ds)
