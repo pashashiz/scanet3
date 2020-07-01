@@ -1,5 +1,6 @@
 package org.scanet.math
 
+import org.scanet.core.TensorType.{DoubleTag, FloatTag}
 import org.scanet.core.syntax._
 import org.scanet.core.{Output, Shape, Tensor, TensorType}
 import org.scanet.math.Numeric.syntax._
@@ -253,6 +254,32 @@ import scala.Ordering.Implicits._
    * @return |tensor|
    */
   def abs[A: TensorType: Numeric](out: F[A]): F[A]
+
+  /**
+   * Computes sigmoid of `x` element-wise. Specifically
+   *
+   * {{{y = 1 / (1 + e^(-x))}}}
+   *
+   * @param out tensor
+   * @return sigmoid
+   */
+  def sigmoid[A: TensorType: Numeric](out: F[A]): F[A]
+
+  /**
+   * Computes natural logarithm of `x` element-wise
+   *
+   * @param out tensor
+   * @return natural logarithm
+   */
+  def log[A: TensorType: Numeric](out: F[A]): F[A]
+
+  /**
+   * Computes element-wise integer closest to `x`.
+   *
+   * @param out tensor
+   * @return rounded tensor
+   */
+  def round[A: TensorType: Numeric](out: F[A]): F[A]
 }
 
 object MathBaseOp {
@@ -455,6 +482,39 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .shape(out.shape)
       .inputs(out)
       .localGrad(ctx => List(abs(ctx.parentGrad)))
+      .compileWithAllInputs
+      .build
+  }
+
+  override def sigmoid[A: TensorType : Numeric](out: Output[A]): Output[A] = {
+    val tag = TensorType[A].tag
+    // todo: we need to introduce Floating (floating point) typeclass to type-check this
+    require(tag == FloatTag || tag == DoubleTag, "only Float or Double is supported")
+    Output.name[A]("Sigmoid")
+      .shape(out.shape)
+      .inputs(out)
+      .localGrad(ctx => {
+        val s = sigmoid(out)
+        val grad = multiplyElementWise(s, minus(1.0f.const.cast[A], s))
+        List(multiplyElementWise(grad.cast[Float], ctx.parentGrad))
+      })
+      .compileWithAllInputs
+      .build
+  }
+
+  override def log[A: TensorType : Numeric](out: Output[A]): Output[A] = {
+    Output.name[A]("Log")
+      .shape(out.shape)
+      .inputs(out)
+      .localGrad(ctx => List(div(ctx.parentGrad, out.cast[Float])))
+      .compileWithAllInputs
+      .build
+  }
+
+  override def round[A: TensorType : Numeric](out: Output[A]): Output[A] = {
+    Output.name[A]("Rint")
+      .shape(out.shape)
+      .inputs(out)
       .compileWithAllInputs
       .build
   }

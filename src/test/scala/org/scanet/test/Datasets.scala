@@ -20,6 +20,18 @@ trait Datasets {
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1)))
   }
 
+  def logisticRegression: RDD[Array[Float]] = {
+    spark.read
+      .schema(StructType(Array(
+        StructField("x1", FloatType, nullable = false),
+        StructField("x2", FloatType, nullable = false),
+        StructField("y", FloatType, nullable = false)
+      )))
+      .csv(resource("logistic_regression_1.scv"))
+      .rdd
+      .map(row => Array[Float](row.getFloat(0), row.getFloat(1), row.getFloat(2)))
+  }
+
   def facebookComments: RDD[Array[Float]] = {
     spark.read
       .csv(resource("facebook-comments-scaled.csv"))

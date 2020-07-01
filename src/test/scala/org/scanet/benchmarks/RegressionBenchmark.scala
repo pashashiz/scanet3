@@ -3,7 +3,7 @@ package org.scanet.benchmarks
 import org.scalatest.Ignore
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.math.syntax._
-import org.scanet.models.Regression
+import org.scanet.models.LinearRegression
 import org.scanet.optimizers.Effect.{logResult, plotResult}
 import org.scanet.optimizers.syntax._
 import org.scanet.optimizers._
@@ -14,8 +14,8 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
 
   "linear regression" should "be minimized by plain SDG" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(SGD())
       .on(ds)
       .batch(1000)
@@ -24,15 +24,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by SDG with momentum" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(SGD(momentum = 0.9f))
       .on(ds)
       .batch(1000)
@@ -41,15 +41,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by SDG with nesterov acceleration" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(SGD(momentum = 0.9f, nesterov = true))
       .on(ds)
       .batch(1000)
@@ -58,15 +58,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by AdagGrad" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(AdaGrad())
       .on(ds)
       .batch(1000)
@@ -75,15 +75,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by AdagDelta" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(AdaDelta())
       .on(ds)
       .batch(1000)
@@ -92,15 +92,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by RMSProp" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(RMSProp())
       .on(ds)
       .batch(1000)
@@ -109,15 +109,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by Adam" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(Adam(rate = 0.1f))
       .on(ds)
       .batch(1000)
@@ -126,15 +126,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by Adamax" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(Adamax())
       .on(ds)
       .batch(1000)
@@ -143,15 +143,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by Nadam" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(Nadam())
       .on(ds)
       .batch(1000)
@@ -160,15 +160,15 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 
   it should "be minimized by AMSGrad" in {
     val ds = facebookComments
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(AMSGrad())
       .on(ds)
       .batch(1000)
@@ -177,8 +177,8 @@ class RegressionBenchmark extends AnyFlatSpec with CustomMatchers with SharedSpa
       .stopAfter(10.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-    result.toScalar should be <= 1f
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+    loss(x, y).toScalar should be <= 1f
   }
 }

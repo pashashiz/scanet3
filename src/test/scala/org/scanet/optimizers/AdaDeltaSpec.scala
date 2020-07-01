@@ -3,7 +3,7 @@ package org.scanet.optimizers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
-import org.scanet.models.Regression
+import org.scanet.models.LinearRegression
 import org.scanet.optimizers.Effect.logResult
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
@@ -12,8 +12,8 @@ class AdaDeltaSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with
 
   "AdaDelta" should "minimize linear regression" in {
     val ds = linearFunction
-    val weights = Optimizer
-      .minimize(Regression.linear)
+    val trained = Optimizer
+      .minimize(LinearRegression)
       .using(AdaDelta())
       .initWith(Tensor.zeros(_))
       .on(ds)
@@ -22,9 +22,9 @@ class AdaDeltaSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with
       .stopAfter(100.epochs)
       .build
       .run()
-    val regression = Regression.linear.loss.compile()
-    val result = regression(BatchingIterator(ds.collect.iterator, 97).next(), weights)
+    val loss = trained.loss.compile()
+    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
     // note: that reaches 4.5 in 2000 epochs
-    result.toScalar should be <= 25f
+    loss(x, y).toScalar should be <= 25f
   }
 }

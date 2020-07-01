@@ -26,7 +26,7 @@ trait SharedSpark extends BeforeAndAfterAll {
       .set("spark.app.id", appID)
       .set("spark.driver.host", "localhost")
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-      .set("spark.kryo.registrator", "org.scanet.optimizers.TensorSerializer")
+      .set("spark.kryo.registrator", "org.scanet.optimizers.KryoSerializers")
   }
 
   override def beforeAll() {

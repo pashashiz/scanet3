@@ -67,9 +67,13 @@ case class Output[A: TensorType](
 
   def asGraph: DirectedGraph[Output[_]] = {
     def fill(graph: DirectedGraph[Output[_]], current: Output[_]): DirectedGraph[Output[_]] = {
-      val withCurrent = graph :+ Node(current.id, current)
-      val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
-      withAll.linkAll(current.inputs.map(node => (node.id, current.id)))
+      if (!graph.contains(current.id)) {
+        val withCurrent = graph :+ Node(current.id, current)
+        val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
+        withAll.linkAll(current.inputs.map(node => (node.id, current.id)))
+      } else {
+        graph
+      }
     }
     fill(DirectedGraph[Output[_]](), this)
   }
@@ -142,7 +146,7 @@ object Output {
 
     def compileWithValue(tensor: Tensor[A]): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder
-        .setAttr("value", tensor)
+        .setAttr("value", tensor.compact)
         .setAttr("dtype", TensorType[A].tag)
       )
 
@@ -170,6 +174,10 @@ object Output {
 
     def compileWithAttr(name: String, shape: Shape): Builder[A, State with WithCompiler] =
       compileWithTransformer((_, builder) => builder.setAttr(name, shape))
+
+    def compileWithAttr(name: String, shape: Boolean): Builder[A, State with WithCompiler] =
+      compileWithTransformer((_, builder) => builder.setAttr(name, shape))
+
 
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))

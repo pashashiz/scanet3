@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 import org.scanet.core.{Tensor, _}
 import org.scanet.math.syntax._
 import org.scanet.math.{Convertible, Dist, Numeric}
-import org.scanet.models.Model
+import org.scanet.models.{Model, TrainedModel}
 import org.scanet.optimizers.Condition.always
 import org.scanet.optimizers.Optimizer.BuilderState._
 import org.scanet.optimizers.Optimizer.{sessionsPool, tfCache}
@@ -13,7 +13,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
-    epoch: Int = 0, iter: Int = 0, result: Option[R] = None) {
+                                                                 epoch: Int = 0, iter: Int = 0, result: Option[R] = None) {
   def nextIter: Step[W, R] = incIter(1)
   def incIter(number: Int): Step[W, R] = copy(iter = iter + number)
   def nextEpoch: Step[W, R] = copy(epoch = epoch + 1)
@@ -21,19 +21,19 @@ case class Step[W: Numeric: TensorType, R: Numeric: TensorType](
   override def toString: String = s"$epoch:$iter"
 }
 
-case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType]
-     (alg: Algorithm,
-      model: Model[X, W, R],
-      initArgs: Shape => Tensor[W],
-      dataset: RDD[Array[X]],
-      partitons: Int,
-      batchSize: Int,
-      minimizing: Boolean,
-      stop: Condition[W, R],
-      @transient doOnEach: Effects[Step[W, R]])
-     (implicit c: Convertible[Int, R]) {
+case class Optimizer[E: Numeric: TensorType, W: Numeric: TensorType, R: Numeric: TensorType]
+(alg: Algorithm,
+ model: Model[E, W, R],
+ initArgs: Shape => Tensor[W],
+ dataset: RDD[Array[E]],
+ partitons: Int,
+ batchSize: Int,
+ minimizing: Boolean,
+ stop: Condition[W, R],
+ @transient doOnEach: Effects[Step[W, R]])
+(implicit c: Convertible[Int, R]) {
 
-  def run(): Tensor[W] = {
+  def run(): TrainedModel[E, W, R] = {
     val ds = dataset.repartition(partitons).cache()
     val sc = ds.sparkContext
 
@@ -53,15 +53,17 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
         optimize(step, nextEffectState, newWeights, newMeta)
       }
     }
-    optimize(Step(), doOnEach.unit, Tensor.zeros(), Tensor.zeros())
+    val weights = optimize(Step(), doOnEach.unit, Tensor.zeros(), Tensor.zeros())
+    model.trained(weights)
   }
 
   private def optimizeOnPartition(
-        it: scala.Iterator[Array[X]], globalIter: Int, weights: Tensor[W], meta: Tensor[Float]): (Int, Tensor[W], Tensor[Float], R) = {
+    it: scala.Iterator[Array[E]], globalIter: Int, weights: Tensor[W], meta: Tensor[Float]): (Int, Tensor[W], Tensor[Float], R) = {
     val result = sessionsPool.withing(session => {
-      val batches: BatchingIterator[X] = BatchingIterator(it, batchSize)
+      val batches = Tensor2Iterator(it, batchSize, splitAt = size => size - model.outputs())
       val (weightsInitialized, metaInitialized) = if (globalIter == 0) {
-        val shape = model.shape(batches.columns)
+        val features = batches.columns - model.outputs()
+        val shape = model.weightsShape(features)
         (initArgs(shape), alg.initMeta(shape))
       } else {
         (weights, meta)
@@ -69,8 +71,8 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
 
       val loss = tfCache.getOrCompute(s"$model:loss", model.loss) compile session
       val calc = tfCache.getOrCompute(s"$model:$alg:calc",
-        TF2.identity[Float, Int].compose(model.weightsAndGrad) {
-          case ((meta, iter), (w, g)) =>
+        model.weightsAndGrad.compose(TF2.identity[Float, Int]) {
+          case ((w, g), (meta, iter)) =>
             val Delta(del, nextMeta) = alg.delta(g, meta, iter)
             val d = del.cast[W]
             (if (minimizing) w - d else w + d, nextMeta)
@@ -78,12 +80,12 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
 
       @tailrec
       def optimize(iter: Int, weights: Tensor[W], meta: Tensor[Float]): (Int, Tensor[W], Tensor[Float], R) = {
-        val batch = batches.next()
-        val (nextWeights, nextMeta) = calc(meta, Tensor.scalar(globalIter + iter + 1), batch, weights)
+        val (x, y) = batches.next()
+        val (nextWeights, nextMeta) = calc(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
         if (batches.hasNext) {
           optimize(iter + 1, nextWeights, nextMeta)
         } else {
-          (iter + 1, nextWeights, nextMeta, loss(batch, nextWeights).toScalar)
+          (iter + 1, nextWeights, nextMeta, loss(x, y, nextWeights).toScalar)
         }
       }
 
@@ -94,8 +96,8 @@ case class Optimizer[X: Numeric: TensorType, W: Numeric: TensorType, R: Numeric:
 
   // todo: tuple3 -> case class
   private def averageMetaAndWeights(
-       left: (Int, Tensor[W], Tensor[Float], R),
-       right: (Int, Tensor[W], Tensor[Float], R)): (Int, Tensor[W], Tensor[Float], R) = {
+                                     left: (Int, Tensor[W], Tensor[Float], R),
+                                     right: (Int, Tensor[W], Tensor[Float], R)): (Int, Tensor[W], Tensor[Float], R) = {
     sessionsPool.withing(session => {
       val (leftIter, leftWeights, leftMeta, leftResult) = left
       val (rightIter, rightWeights, rightMeta, rightResult) = right
@@ -183,10 +185,10 @@ object Optimizer {
   }
 
   def minimize[X: Numeric: TensorType, W: Numeric: TensorType: Dist, R: Numeric: TensorType]
-    (model: Model[X, W, R])(implicit c: Convertible[Int, R]): Builder[X, W, R, WithFunc] =
+  (model: Model[X, W, R])(implicit c: Convertible[Int, R]): Builder[X, W, R, WithFunc] =
     Builder(Optimizer(null, model, s => Tensor.rand(s), null, 1, 10000, minimizing = true, always, Effects.empty))
 
   def maximize[X: Numeric: TensorType, W: Numeric: TensorType: Dist, R: Numeric: TensorType]
-    (model: Model[X, W, R])(implicit c: Convertible[Int, R]): Builder[X, W, R, WithFunc] =
+  (model: Model[X, W, R])(implicit c: Convertible[Int, R]): Builder[X, W, R, WithFunc] =
     Builder(Optimizer(null, model, s => Tensor.rand(s), null, 1, 10000, minimizing = false, always, Effects.empty))
 }

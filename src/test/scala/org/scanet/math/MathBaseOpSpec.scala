@@ -518,4 +518,19 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   "abs" should "return absolute value" in {
     Tensor.vector(-1, 2, -3).const.abs.eval should be(Tensor.vector(1, 2, 3))
   }
+
+  "sigmoid" should "return a result of sigmoid function" in {
+    Tensor.vector(1.0f, 5.0f, 10.0f).const.sigmoid.eval should
+      be(Tensor.vector(0.7310586f, 0.9933072f, 0.9999546f))
+  }
+
+  "log" should "return a result of natural logarithm" in {
+    Tensor.vector(1.0f, 5.0f, 10.0f).const.log.eval should
+      be(Tensor.vector(0.0f, 1.609438f, 2.3025851f))
+  }
+
+  "round" should "return element-wise integer closest to x" in {
+    Tensor.vector(1.6f, 1.4f, -1.7f).const.round.eval should
+      be(Tensor.vector(2f, 1f, -2f))
+  }
 }

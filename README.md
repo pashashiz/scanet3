@@ -26,7 +26,7 @@ Example of solving a linear regression model:
 ``` scala
 val ds = facebookComments
 val weights = Optimizer
-  .minimize(Regression.linear)
+  .minimize(LinearRegression)
   .using(Adam(rate = 0.1f))
   .on(ds)
   .batch(1000)
@@ -35,7 +35,7 @@ val weights = Optimizer
   .stopAfter(10.epochs)
   .build
   .run()
-val regression = Regression.linear.loss.compile()
+val regression = LinearRegression.loss.compile()
 val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
 result.toScalar should be <= 1f
 ```
@@ -77,7 +77,7 @@ tensorboard --logdir board
 ### Models
 - [x] Linear Regression
 - [ ] Simple math models for benchmarks
-- [ ] Logistic Regression
+- [x] Binary Logistic Regression
 - [ ] ANN (Multilayer Perceptron NN)
 - [ ] Layers Dropout, Regularization, Normalization
 - [ ] Convolutional NN
@@ -93,7 +93,8 @@ tensorboard --logdir board
 
 ### Estimators
 - [ ] r2 score
-- [ ] accuracy estimator, confusion matrix, precision, recall, f1 score
+- [x] accuracy estimator, 
+- [ ] confusion matrix, precision, recall, f1 score
 - [ ] runtime estimating and new stop condition based on that
 
 ### CPU & GPU & TPU banchmarks
