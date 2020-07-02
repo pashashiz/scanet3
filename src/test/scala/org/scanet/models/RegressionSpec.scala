@@ -31,12 +31,16 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     result(x, weights) should be(y)
   }
 
-  it should "calculate gradient " in {
+  it should "calculate gradient" in {
     val grad = LinearRegression[Float].grad.compile()
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.vector(0.0f, 0.0f, 0.0f)
     grad(x, y, weights) should be(Tensor.vector(-9.0f, -15.0, -30.0f))
+  }
+
+  it should "produce unique toString to be used as a cache key" in {
+    LinearRegression[Float].toString should be("LinearRegression[Float, Float]")
   }
 
   "logistic regression" should "calculate loss" in {
@@ -61,6 +65,10 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.vector(0.1f, 0.2f, 0.3f)
     grad(x, y, weights) should be(Tensor.vector(0.16822177f, 0.075301215f, 0.13678399f))
+  }
+
+  it should "produce unique toString to be used as a cache key" in {
+    LogisticRegression[Float].toString should be("LogisticRegression[Float, Float]")
   }
 }
 

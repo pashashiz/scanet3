@@ -6,7 +6,7 @@ import org.scanet.math.syntax._
 
 object Math {
 
-  case class `x^2`[E: Floating: Numeric: TensorType]() extends Model[E, E, E] {
+  case class `x^2`[E: Floating: Numeric: TensorType]() extends Model[E, E] {
 
     override def buildResult(x: Output[E], weights: Output[E]): Output[E] =
       error("result function is not supported for pure math models")

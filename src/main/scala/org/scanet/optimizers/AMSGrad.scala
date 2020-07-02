@@ -1,6 +1,7 @@
 package org.scanet.optimizers
 
 import org.scanet.core._
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.syntax._
 
 /** AMSGrad optimizer which is based on Adam and RMSProp.
@@ -17,19 +18,19 @@ import org.scanet.syntax._
  */
 case class AMSGrad(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
-  override def initMeta(shape: Shape): Tensor[Float] = {
-    val m = Tensor.zeros[Float](shape).const
-    val vCurrent = Tensor.zeros[Float](shape).const
-    val v = Tensor.zeros[Float](shape).const
+  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+    val m = Tensor.zeros[T](shape).const
+    val vCurrent = Tensor.zeros[T](shape).const
+    val v = Tensor.zeros[T](shape).const
     zip(m, vCurrent, v).eval
   }
 
-  override def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
+  override def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T] = {
     val (prevM, prevV, prevCorrectedVelocity) = meta.unzip3
-    val m = prevM.decayingAvg(grad, beta1.const)
-    val vCurrent = prevV.decayingAvg(grad.sqr, beta2.const)
+    val m = prevM.decayingAvg(grad, beta1.const.cast[T])
+    val vCurrent = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
     val v = max(prevCorrectedVelocity, vCurrent)
-    val delta = rate.const * m / (v.sqrt + epsilon.const)
+    val delta = rate.const.cast[T] * m / (v.sqrt + epsilon.const.cast[T])
     Delta(delta, zip(m, vCurrent, v))
   }
 }

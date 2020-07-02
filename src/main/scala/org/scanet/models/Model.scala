@@ -6,11 +6,13 @@ import org.scanet.math.Floating
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
 
-abstract class Model[E: Numeric: Floating: TensorType, W: Numeric: Floating: TensorType,  J: Numeric: Floating: TensorType]() extends Serializable {
+abstract class Model[
+  E: Numeric: TensorType,
+  R: Numeric: Floating: TensorType]() extends Serializable {
 
-  def buildResult(x: Output[E], weights: Output[W]): Output[J]
+  def buildResult(x: Output[E], weights: Output[R]): Output[R]
 
-  def result: TF2[E, W, Output[J], Tensor[J]] = TF2(buildResult).returns[Tensor[J]]
+  def result: TF2[E, R, Output[R], Tensor[R]] = TF2(buildResult).returns[Tensor[R]]
 
   /** @param features number of features in a edataset
    * @return shape of weights tensor
@@ -21,17 +23,17 @@ abstract class Model[E: Numeric: Floating: TensorType, W: Numeric: Floating: Ten
    */
   def outputs(): Int
 
-  def buildLoss(x: Output[E], y: Output[E], weights: Output[W]): Output[J]
+  def buildLoss(x: Output[E], y: Output[E], weights: Output[R]): Output[R]
 
-  def loss: TF3[E, E, W, Output[J], Tensor[J]] = TF3(buildLoss).returns[Tensor[J]]
+  def loss: TF3[E, E, R, Output[R], Tensor[R]] = TF3(buildLoss).returns[Tensor[R]]
 
-  def weightsAndGrad: TF3[E, E, W, (Output[W], Output[Float]), (Tensor[W], Tensor[Float])] =
-    TF3((x: Output[E], y: Output[E], w: Output[W]) => (w, buildLoss(x, y, w).grad(w))).returns[(Tensor[W], Tensor[Float])]
+  def weightsAndGrad: TF3[E, E, R, (Output[R], Output[R]), (Tensor[R], Tensor[R])] =
+    TF3((x: Output[E], y: Output[E], w: Output[R]) => (w, buildLoss(x, y, w).grad(w).returns[R])).returns[(Tensor[R], Tensor[R])]
 
-  def grad: TF3[E, E, W, Output[Float], Tensor[Float]] =
-    TF3((x: Output[E], y: Output[E], w: Output[W]) => buildLoss(x, y, w).grad(w)).returns[Tensor[Float]]
+  def grad: TF3[E, E, R, Output[R], Tensor[R]] =
+    TF3((x: Output[E], y: Output[E], w: Output[R]) => buildLoss(x, y, w).grad(w).returns[R]).returns[Tensor[R]]
 
-  def trained(weights: Tensor[W]) = new TrainedModel(this, weights)
+  def trained(weights: Tensor[R]) = new TrainedModel(this, weights)
 
   def splitXY(batch: Output[E]): (Output[E], Output[E]) = {
     // x: (n, m - 1), y: (n, 1)
@@ -46,5 +48,5 @@ abstract class Model[E: Numeric: Floating: TensorType, W: Numeric: Floating: Ten
     Tensor.ones[E](rows, 1).const.joinAlong(x, 1)
   }
 
-  override def toString: String = getClass.getSimpleName
+  override def toString: String = s"${getClass.getSimpleName}[${TensorType[E].classTag}, ${TensorType[R].classTag}]"
 }

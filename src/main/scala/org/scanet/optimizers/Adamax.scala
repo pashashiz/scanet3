@@ -1,6 +1,7 @@
 package org.scanet.optimizers
 
 import org.scanet.core._
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.syntax._
 
 /** Adamax is a variant of Adam based on the infinity norm.
@@ -18,17 +19,17 @@ import org.scanet.syntax._
  */
 case class Adamax(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
-  override def initMeta(shape: Shape): Tensor[Float] = {
-    val m1 = Tensor.zeros[Float](shape).const
-    val m2 = Tensor.zeros[Float](shape).const
+  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+    val m1 = Tensor.zeros[T](shape).const
+    val m2 = Tensor.zeros[T](shape).const
     (m1 zip m2).eval
   }
 
-  override def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
+  override def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T] = {
     val (prevM1, prevM2) = meta.unzip
-    val m1 = prevM1.decayingAvg(grad, beta1.const)
-    val m2 = max(beta2.const * prevM2, (1f.const - beta2.const) * grad.abs)
-    val delta = rate.const * m1.boost(beta1.const, iter) / (m2 + epsilon.const)
+    val m1 = prevM1.decayingAvg(grad, beta1.const.cast[T])
+    val m2 = max(beta2.const.cast[T] * prevM2, (1f.const.cast[T] - beta2.const.cast[T]) * grad.abs)
+    val delta = rate.const.cast[T] * m1.boost(beta1.const.cast[T], iter) / (m2 + epsilon.const.cast[T])
     Delta(delta, m1 zip m2)
   }
 }

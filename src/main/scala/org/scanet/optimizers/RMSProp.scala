@@ -1,6 +1,7 @@
 package org.scanet.optimizers
 
-import org.scanet.core.{Output, Shape, Tensor}
+import org.scanet.core.{Output, Shape, Tensor, TensorType}
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.math.syntax._
 
 /**
@@ -15,11 +16,13 @@ import org.scanet.math.syntax._
  */
 case class RMSProp(rate: Float = 0.001f, rho: Float = 0.9f, epsilon: Float = 1e-7f) extends Algorithm {
 
-  def initMeta(shape: Shape): Tensor[Float] = Tensor.zeros(shape)
+  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+    Tensor.zeros[T](shape)
+  }
 
-  def delta(grad: Output[Float], prevAvgGrad: Output[Float], iter: Output[Int]): Delta = {
-    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const)
-    val delta = (rate.const / avgGrad.rms(epsilon.const)) :* grad
+  override def delta[T: Floating: Numeric: TensorType](grad: Output[T], prevAvgGrad: Output[T], iter: Output[Int]): Delta[T] = {
+    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const.cast[T])
+    val delta = (rate.const.cast[T] / avgGrad.rms(epsilon.const.cast[T])) :* grad
     Delta(delta, avgGrad)
   }
 }

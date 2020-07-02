@@ -1,6 +1,7 @@
 package org.scanet.optimizers
 
 import org.scanet.core._
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.syntax._
 
 /**
@@ -22,17 +23,17 @@ import org.scanet.syntax._
  */
 case class AdaDelta(rate: Float = 1.0f, rho: Float = 0.9f, epsilon: Float = 1e-7f) extends Algorithm {
 
-  def initMeta(shape: Shape): Tensor[Float] = {
-    val avgGrad = Tensor.zeros[Float](shape).const
-    val avgDelta = Tensor.zeros[Float](shape).const
+  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+    val avgGrad = Tensor.zeros[T](shape).const
+    val avgDelta = Tensor.zeros[T](shape).const
     (avgGrad zip avgDelta).eval
   }
 
-  def delta(grad: Output[Float], meta: Output[Float], iter: Output[Int]): Delta = {
+  override def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T] = {
     val (prevAvgGrad, prevAvgDelta) = meta.unzip
-    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const)
-    val delta = rate.const * ((prevAvgDelta.rms(epsilon.const) / avgGrad.rms(epsilon.const)) :* grad)
-    val avgDelta = prevAvgDelta.decayingAvg(delta.sqr, rho.const)
+    val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const.cast[T])
+    val delta = rate.const.cast[T] * ((prevAvgDelta.rms(epsilon.const.cast[T]) / avgGrad.rms(epsilon.const.cast[T])) :* grad)
+    val avgDelta = prevAvgDelta.decayingAvg(delta.sqr, rho.const.cast[T])
     Delta(delta, avgGrad zip avgDelta)
   }
 }

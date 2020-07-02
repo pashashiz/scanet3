@@ -2,7 +2,7 @@ package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.{Shape, Tensor}
+import org.scanet.core.{Output, Shape, Tensor}
 import org.scanet.math.syntax._
 
 import scala.Array.range
@@ -11,14 +11,14 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   "const" should "have ones gradient if input is same const" in {
     val a = 2.const
-    (a grad a).eval should be(Tensor.scalar(1))
+    (a grad a).returns[Float].eval should be(Tensor.scalar(1))
   }
 
   it should "fail to find a gradient if input is not a part of the computation graph" in {
     the [IllegalArgumentException] thrownBy {
       val a = 2.const
       val b = 3.const
-      a grad b
+      (a grad b).returns[Float]
     } should have message "requirement failed: " +
       "cannot find a gradient with respect to Const[Int]:() cause that input is not a part of the computation graph"
   }
@@ -53,35 +53,35 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   it should "calculate a gradient if left side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
-    ((x + a) grad x).eval should be(Tensor.scalar(1))
+    ((x + a) grad x).returns[Float].eval should be(Tensor.scalar(1))
   }
 
   it should "calculate a gradient if right side is a differentiable variable" in {
     val a = 2.const
     val x = 3.const
-    ((a + x) grad x).eval should be(Tensor.scalar(1))
+    ((a + x) grad x).returns[Float].eval should be(Tensor.scalar(1))
   }
 
   it should "calculate a gradient if right and left side is a differentiable variable" in {
     val x = 2.const
-    ((x + x) grad x).eval should be(Tensor.scalar(2))
+    ((x + x) grad x).returns[Float].eval should be(Tensor.scalar(2))
   }
 
   it should "calculate a gradient for minus op if left side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
-    ((x - a) grad x).eval should be(Tensor.scalar(1))
+    ((x - a) grad x).returns[Float].eval should be(Tensor.scalar(1))
   }
 
   it should "calculate a gradient for minus op if right side is a differentiable variable" in {
     val a = 2.const
     val x = 3.const
-    ((a - x) grad x).eval should be(Tensor.scalar(-1))
+    ((a - x) grad x).returns[Float].eval should be(Tensor.scalar(-1))
   }
 
   it should "calculate a gradient for minus op if right and left side is a differentiable variable" in {
     val x = 2.const
-    ((x - x) grad x).eval should be(Tensor.scalar(0))
+    ((x - x) grad x).returns[Float].eval should be(Tensor.scalar(0))
   }
 
   it should "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
@@ -90,8 +90,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(20, 25, 30)).const
     val x = Tensor.vector(1, 2, 3).const
     val grad = Tensor.vector(2, 2, 2)
-    ((a + x).sum grad x).eval should be(grad)
-    ((x + a).sum grad x).eval should be(grad)
+    ((a + x).sum grad x).returns[Float].eval should be(grad)
+    ((x + a).sum grad x).returns[Float].eval should be(grad)
   }
 
   it should "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
@@ -102,8 +102,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val grad = Tensor.matrix(
       Array(1, 1, 1),
       Array(1, 1, 1))
-    ((x + a).sum grad x).eval should be(grad)
-    ((a + x).sum grad x).eval should be(grad)
+    ((x + a).sum grad x).returns[Float].eval should be(grad)
+    ((a + x).sum grad x).returns[Float].eval should be(grad)
   }
 
   "plus N" should "add multiple tensors" in {
@@ -122,14 +122,14 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val b = 2.const
     val x = 3.const
 
-    plus(a, b, x).sum.grad(x).eval should be(Tensor.scalar(1))
+    plus(a, b, x).sum.grad(x).returns[Float].eval should be(Tensor.scalar(1))
   }
 
   it should "calculate gradient for plus N when diff variable is used more than once" in {
     val a = Tensor.vector(1, 2).const
     val x = Tensor.vector(5, 6).const
 
-    plus(a, x, x).sum.grad(x).eval should be(Tensor.vector(2, 2))
+    plus(a, x, x).sum.grad(x).returns[Float].eval should be(Tensor.vector(2, 2))
   }
 
   "multiplication" should "produce dot product on 2 matrices" in {
@@ -188,7 +188,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(5, 5),
       Array(7, 7),
       Array(9, 9))
-    ((a * x).sum grad x).eval should be(grad)
+    ((a * x).sum grad x).returns[Float].eval should be(grad)
   }
 
   it should "calculate gradient when 2 matrices are given and left side is a differentiable variable" in {
@@ -204,7 +204,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val grad = Tensor.matrix(
       Array(15, 35, 55),
       Array(15, 35, 55))
-    ((x * a).sum grad x).eval should be(grad)
+    ((x * a).sum grad x).returns[Float].eval should be(grad)
   }
 
   it should "calculate gradient when vector and matrix are given and left side is a differentiable variable" in {
@@ -213,7 +213,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(5, 10),
       Array(15, 20),
       Array(25, 30)).const
-    (x * a).sum.grad(x).eval should be(Tensor.vector(15, 35, 55))
+    (x * a).sum.grad(x).returns[Float].eval should be(Tensor.vector(15, 35, 55))
   }
 
   it should "calculate gradient when vector and matrix are given and right side is a differentiable variable" in {
@@ -222,7 +222,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(5, 10),
       Array(15, 20),
       Array(25, 30)).const
-    (a * x).sum.grad(x).eval should be(Tensor.matrix(
+    (a * x).sum.grad(x).returns[Float].eval should be(Tensor.matrix(
       Array(1, 1),
       Array(2, 2),
       Array(3, 3)))
@@ -231,25 +231,25 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   it should "calculate gradient when scalar and vector are given and left side is a differentiable variable" in {
     val x = 2.const
     val a = Tensor.vector(1, 2, 3).const
-    (x * a).sum.grad(x).eval should be(Tensor.scalar(6))
+    (x * a).sum.grad(x).returns[Float].eval should be(Tensor.scalar(6))
   }
 
   it should "calculate gradient when scalar and vector are given and right side is a differentiable variable" in {
     val a = 2.const
     val x = Tensor.vector(1, 2, 3).const
-    (a * x).sum.grad(x).eval should be(Tensor.vector(2, 2, 2))
+    (a * x).sum.grad(x).returns[Float].eval should be(Tensor.vector(2, 2, 2))
   }
 
   it should "calculate gradient when 2 scalars are given and left side is a differentiable variable" in {
     val x = 2.const
     val a = 3.const
-    (x * a).grad(x).eval should be(Tensor.scalar(3))
+    (x * a).grad(x).returns[Float].eval should be(Tensor.scalar(3))
   }
 
   it should "calculate gradient when 2 scalars are given and right side is a differentiable variable" in {
     val a = 2.const
     val x = 3.const
-    (a * x).grad(x).eval should be(Tensor.scalar(2))
+    (a * x).grad(x).returns[Float].eval should be(Tensor.scalar(2))
   }
 
   "minus" should "subtract 2 scalars" in {
@@ -279,8 +279,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(5, 10, 15),
       Array(20, 25, 30)).const
     val x = Tensor.vector(1, 2, 3).const
-    ((a - x).sum grad x).eval should be(Tensor.vector(-2, -2, -2))
-    ((x - a).sum grad x).eval should be(Tensor.vector(2, 2, 2))
+    ((a - x).sum grad x).returns[Float].eval should be(Tensor.vector(-2, -2, -2))
+    ((x - a).sum grad x).returns[Float].eval should be(Tensor.vector(2, 2, 2))
   }
 
   it should "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
@@ -288,8 +288,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(5, 10, 15),
       Array(20, 25, 30)).const
     val a = Tensor.vector(1, 2, 3).const
-    ((x - a).sum grad x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
-    ((a - x).sum grad x).eval should be(Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
+    ((x - a).sum grad x).returns[Float].eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
+    ((a - x).sum grad x).returns[Float].eval should be(Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
   }
 
   "negate" should "work on a scalar" in {
@@ -297,8 +297,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "support gradient negation for scalars" in {
-    val x = 3.const
-    x.negate.grad(x).eval should be(Tensor.scalar(-1))
+    val x: Output[Int] = 3.const
+    x.negate.grad(x).returns[Float].eval should be(Tensor.scalar(-1))
   }
 
   "negate" should "work on a tensor" in {
@@ -307,7 +307,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   it should "support gradient of negation for vectors" in {
     val x = Tensor.vector(1, 2, 3).const
-    x.negate.sum.grad(x).eval should be(Tensor.vector(-1, -1, -1))
+    x.negate.sum.grad(x).returns[Float].eval should be(Tensor.vector(-1, -1, -1))
   }
 
   "element-wise division" should "work on tensors with same dimensions" in {
@@ -332,16 +332,16 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val a = 4.const
     val x = 2.const
 
-    (a div x).sum.grad(x).eval should be(Tensor.scalar(-1.0))
-    (a div x).sum.grad(a).eval should be(Tensor.scalar(0.5))
+    (a div x).sum.grad(x).returns[Float].eval should be(Tensor.scalar(-1.0))
+    (a div x).sum.grad(a).returns[Float].eval should be(Tensor.scalar(0.5))
   }
 
   it should "calculate gradient for vectors" in {
     val a = Tensor.vector(5, 10, 15).const
     val x = Tensor.vector(5, 5, 5).const
 
-    (a div x).sum.grad(x).eval should be(Tensor.vector(-0.2f, -0.4f, -0.6f))
-    (a div x).sum.grad(a).eval should be(Tensor.vector(0.2f, 0.2f, 0.2f))
+    (a div x).sum.grad(x).returns[Float].eval should be(Tensor.vector(-0.2f, -0.4f, -0.6f))
+    (a div x).sum.grad(a).returns[Float].eval should be(Tensor.vector(0.2f, 0.2f, 0.2f))
   }
 
   it should "calculate gradient for matrices with broadcasting when smaller tensor is differentiable value" in {
@@ -350,8 +350,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(24, 28, 32)).const
     val x = Tensor.vector(2, 4, 8).const
 
-    (a div x).sum.grad(x).eval should be(Tensor.vector(-9f, -2.75f, -0.8125f))
-    (x div a).sum.grad(x).eval should be(Tensor.vector(0.125f, 0.09821428f, 0.08125f))
+    (a div x).sum.grad(x).returns[Float].eval should be(Tensor.vector(-9f, -2.75f, -0.8125f))
+    (x div a).sum.grad(x).returns[Float].eval should be(Tensor.vector(0.125f, 0.09821428f, 0.08125f))
   }
 
   it should "calculate gradient for matrices with broadcasting when bigger tensor is differentiable value" in {
@@ -360,11 +360,11 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(24, 28, 32)).const
     val x = Tensor.vector(2, 4, 8).const
 
-    (a div x).sum.grad(a).eval should be(Tensor.matrix(Array(0.5f, 0.25f, 0.125f), Array(0.5f, 0.25f, 0.125f)))
+    (a div x).sum.grad(a).returns[Float].eval should be(Tensor.matrix(Array(0.5f, 0.25f, 0.125f), Array(0.5f, 0.25f, 0.125f)))
     val grad = Tensor.matrix(
       Array(-0.013888889f, -0.015625f, -0.02f),
       Array(-0.0034722222f, -0.0051020407f, -0.0078125f))
-    (x div a).sum.grad(a).eval should be(grad)
+    (x div a).sum.grad(a).returns[Float].eval should be(grad)
   }
 
   "element-wise multiplication" should "work on tensors with same dimensions" in {
@@ -384,18 +384,18 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   it should "calculate a gradient equals to right side if left side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
-    ((x :* a) grad x).eval should be(Tensor.scalar(3))
+    ((x :* a) grad x).returns[Float].eval should be(Tensor.scalar(3))
   }
 
   it should "calculate a gradient equals to left side if right side is a differentiable variable" in {
     val a = 3.const
     val x = 2.const
-    ((a :* x) grad x).eval should be(Tensor.scalar(3))
+    ((a :* x) grad x).returns[Float].eval should be(Tensor.scalar(3))
   }
 
   it should "calculate a gradient equals to sum if right and left side is a differentiable variable" in {
     val x = Tensor.scalar(3).const
-    ((x :* x) grad x).eval should be(Tensor.scalar(6))
+    ((x :* x) grad x).returns[Float].eval should be(Tensor.scalar(6))
   }
 
   it should "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
@@ -404,8 +404,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(20, 25, 30)).const
     val x = Tensor.vector(1, 2, 3).const
     val grad = Tensor.vector(25, 35, 45)
-    ((a :* x).sum grad x).eval should be(grad)
-    ((x :* a).sum grad x).eval should be(grad)
+    ((a :* x).sum grad x).returns[Float].eval should be(grad)
+    ((x :* a).sum grad x).returns[Float].eval should be(grad)
   }
 
   it should "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
@@ -416,8 +416,8 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val grad = Tensor.matrix(
       Array(1, 2, 3),
       Array(1, 2, 3))
-    ((x :* a).sum grad x).eval should be(grad)
-    ((a :* x).sum grad x).eval should be(grad)
+    ((x :* a).sum grad x).returns[Float].eval should be(grad)
+    ((a :* x).sum grad x).returns[Float].eval should be(grad)
   }
 
   "pow" should "compute the power of the tensor with high exponent" in {
@@ -434,7 +434,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   it should "calculate a gradient" in {
     val x = Tensor.vector(5, 10, 15).const
-    x.pow(3).sum.grad(x).eval should be(Tensor.vector(75.0f, 300.0f, 675.0f))
+    x.pow(3).sum.grad(x).returns[Float].eval should be(Tensor.vector(75.0f, 300.0f, 675.0f))
   }
 
   "sqrt" should "compute square root of tensor" in {
@@ -443,7 +443,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   it should "calculate a gradient" in {
     val x = Tensor.vector(1.0f, 4.0f, 16.0f).const
-    x.sqrt.sum.grad(x).eval should be(Tensor.vector(0.5f, 0.25, 0.125f))
+    x.sqrt.sum.grad(x).returns[Float].eval should be(Tensor.vector(0.5f, 0.25, 0.125f))
   }
 
   "sum" should "calculate sum across all axises by default" in {
@@ -484,12 +484,12 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
 
   it should "support grad on a vector" in {
     val x = Tensor.vector(1, 2, 3).const
-    x.transpose.sum.grad(x).eval should be(Tensor.vector(1, 1, 1))
+    x.transpose.sum.grad(x).returns[Float].eval should be(Tensor.vector(1, 1, 1))
   }
 
   it should "support grad on a matrix" in {
     val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
-    x.transpose.sum.grad(x).eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
+    x.transpose.sum.grad(x).returns[Float].eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
   }
 
   "decaying average" should "work" in {
