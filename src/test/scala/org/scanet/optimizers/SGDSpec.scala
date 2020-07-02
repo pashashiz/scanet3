@@ -14,7 +14,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
   "Plain SGD" should "minimize x^2" in {
     val ds = zero
     val trained = Optimizer
-      .minimize(`x^2`)
+      .minimize(`x^2`[Float])
       .using(SGD(rate = 0.1f))
       .initWith(_ => Tensor.scalar(5.0f))
       .on(ds)
@@ -30,7 +30,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
   "Plain SGD" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(SGD())
       .initWith(s => Tensor.zeros(s))
       .on(ds)
@@ -47,7 +47,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
   "SGD with momentum" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(SGD(momentum = 0.1f))
       .initWith(s => Tensor.zeros(s))
       .on(ds)
@@ -64,7 +64,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
   "SGD with Nesterov acceleration" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = Optimizer
-      .minimize(LinearRegression)
+      .minimize(LinearRegression[Float])
       .using(SGD(momentum = 0.1f, nesterov = true))
       .initWith(s => Tensor.zeros(s))
       .on(ds)
