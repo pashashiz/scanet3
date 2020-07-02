@@ -12,7 +12,7 @@ import org.scanet.math.syntax._
  *
  * Model always has only one output
  */
-case class LogisticRegression[E: Floating: Numeric: TensorType]() extends Model[E, E, E] {
+case class LogisticRegression[E: Floating: Numeric: TensorType]() extends Model[E, E] {
 
   override def buildResult(x: Output[E], weights: Output[E]): Output[E] = {
     (withBias(x) * reshape(weights).transpose).sigmoid

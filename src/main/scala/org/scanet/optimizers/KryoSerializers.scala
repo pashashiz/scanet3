@@ -10,7 +10,7 @@ class KryoSerializers extends KryoRegistrator {
 
   override def registerClasses(kryo: Kryo): Unit = {
     kryo.forClass[Tensor[_]](new TensorSerializer())
-    kryo.register(classOf[TrainedModel[_, _, _]])
+    kryo.register(classOf[TrainedModel[_, _]])
   }
 }
 

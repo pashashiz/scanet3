@@ -4,23 +4,23 @@ import org.scanet.core.TensorType
 import org.scanet.math.Numeric
 import simulacrum.typeclass
 
-case class Condition[W: Numeric: TensorType, R: Numeric: TensorType](f: Step[W, R] => Boolean) extends (Step[W, R] => Boolean) {
-  override def apply(step: Step[W, R]): Boolean = f(step)
+case class Condition[R: Numeric: TensorType](f: Step[R] => Boolean) extends (Step[R] => Boolean) {
+  override def apply(step: Step[R]): Boolean = f(step)
 }
 
 object Condition {
 
-  def always[W: Numeric: TensorType, R: Numeric: TensorType]: Condition[W, R] = Condition(_ => true)
+  def always[R: Numeric: TensorType]: Condition[R] = Condition(_ => true)
 
-  def never[W: Numeric: TensorType, R: Numeric: TensorType]: Condition[W, R] = Condition(_ => false)
+  def never[R: Numeric: TensorType]: Condition[R] = Condition(_ => false)
 
-  def iterations[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] = {
+  def iterations[R: Numeric: TensorType](number: Int): Condition[R] = {
     Condition(step => {
       step.iter % number == 0
     })
   }
 
-  def epochs[W: Numeric: TensorType, R: Numeric: TensorType](number: Int): Condition[W, R] =
+  def epochs[R: Numeric: TensorType](number: Int): Condition[R] =
     Condition(step => {
       step.epoch % number == 0
     })
@@ -28,10 +28,10 @@ object Condition {
   trait Implicits {
 
     implicit def canBuildConditionFromInt: CanBuildConditionFrom[Int] = new CanBuildConditionFrom[Int] {
-      override def iterations[W: Numeric : TensorType, R: Numeric : TensorType](a: Int): Condition[W, R] =
-        Condition.iterations[W, R](a)
-      override def epochs[W: Numeric : TensorType, R: Numeric : TensorType](a: Int): Condition[W, R] =
-        Condition.epochs[W, R](a)
+      override def iterations[R: Numeric : TensorType](a: Int): Condition[R] =
+        Condition.iterations[R](a)
+      override def epochs[R: Numeric : TensorType](a: Int): Condition[R] =
+        Condition.epochs[R](a)
     }
   }
 
@@ -41,7 +41,7 @@ object Condition {
 }
 
 @typeclass trait CanBuildConditionFrom[A] {
-  def iterations[W: Numeric: TensorType, R: Numeric: TensorType](a: A): Condition[W, R]
-  def epochs[W: Numeric: TensorType, R: Numeric: TensorType](a: A): Condition[W, R]
+  def iterations[R: Numeric: TensorType](a: A): Condition[R]
+  def epochs[R: Numeric: TensorType](a: A): Condition[R]
 }
 

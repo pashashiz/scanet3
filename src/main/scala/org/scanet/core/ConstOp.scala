@@ -1,5 +1,9 @@
 package org.scanet.core
 
+import org.scanet
+import org.scanet.core.Output.Grad
+import org.scanet.math.Floating
+
 
 class ConstOp[A: TensorType](val tensor: Tensor[A]) {
    def const: Output[A] = ConstOp.buildConst(tensor)
@@ -11,7 +15,10 @@ object ConstOp {
     Output.name[A]("Const")
       .shape(tensor.shape)
       .compileWithValue(tensor)
-      .localGrad(_ => List())
+      .localGrad(new Grad[A] {
+        override def calc[R: scanet.math.Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] =
+          List()
+      })
       .build
 
   trait Syntax {

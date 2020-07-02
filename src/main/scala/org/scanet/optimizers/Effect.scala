@@ -16,16 +16,16 @@ object Effect {
   def stateless[E](action: E => Unit): Effect[Unit, E] =
     Effect((), (_, element) => action(element))
 
-  def plotResult[W: Numeric: TensorType, R: Numeric: TensorType]
+  def plotResult[R: Numeric: TensorType]
     (name: String = "result", dir: String = "board")
-    (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[W, R]] = {
+    (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[R]] = {
     Effect(new TensorBoard(dir), (board, step) => {
       board.addScalar(name, step.result.get, step.iter)
     })
   }
 
-  def logResult[W: Numeric: TensorType, R: Numeric: TensorType]()
-    (implicit c: Convertible[R, Float]): Effect[Unit, Step[W, R]] =
+  def logResult[R: Numeric: TensorType]()
+    (implicit c: Convertible[R, Float]): Effect[Unit, Step[R]] =
     Effect.stateless(step => println(
       s"#${step.epoch}:${step.iter} loss: ${step.result.map(_.toString).getOrElse("")}"))
 }

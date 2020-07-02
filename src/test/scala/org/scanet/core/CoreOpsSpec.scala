@@ -39,7 +39,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
   it should "support gradient" in {
     val x = Tensor.vector(1, 2, 3, 4).const
-    x.reshape(2, 2).sum.grad(x).eval should be(Tensor.vector(1, 1, 1, 1))
+    x.reshape(2, 2).sum.grad(x).returns[Float].eval should be(Tensor.vector(1, 1, 1, 1))
   }
 
   "squeeze" should "convert matrix into a vector when first dimension is 1" in {
@@ -48,7 +48,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
   it should "support gradient" in {
     val x = Tensor.matrix(Array(1, 2, 3)).const
-    x.squeeze.sum.grad(x).eval should be(Tensor.matrix(Array(1, 1, 1)))
+    x.squeeze.sum.grad(x).returns[Float].eval should be(Tensor.matrix(Array(1, 1, 1)))
   }
 
   "cast" should "convert vector of Floats into Ints" in {
@@ -58,7 +58,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
   "cast" should "support gradient" in {
     val a = Tensor.vector(1, 2, 3).const
     val x = Tensor.vector(5.2f, 10.2f, 15.3f).const
-    ((x.cast[Int] + a).sum grad x).eval should be(Tensor.vector(1.0f, 1.0f, 1.0f))
+    ((x.cast[Int] + a).sum grad x).returns[Float].eval should be(Tensor.vector(1.0f, 1.0f, 1.0f))
   }
 
   "when" should "calculate output based on true condition" in {

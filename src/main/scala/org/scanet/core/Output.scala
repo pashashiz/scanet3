@@ -5,6 +5,7 @@ import java.util.UUID
 import org.scanet.core
 import org.scanet.core.Output.BuilderState._
 import org.scanet.core.Output._
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.native.NativeTensorOps._
 import org.tensorflow.{Operation, OperationBuilder}
 
@@ -16,7 +17,7 @@ case class Output[A: TensorType](
       inputs: List[Output[_]],
       controls: List[Output[_]],
       compiler: CompileContext[A] => Operation,
-      localGradF: GradContext[A] => List[Output[Float]]) {
+      gradF: Grad[A]) {
 
   def withId(newId: String): Output[A] = copy(id = newId)
 
@@ -61,8 +62,9 @@ case class Output[A: TensorType](
     inputs.flatMap(op => op.upstreamOptions)
   }
 
-  def localGrad(index: Int, parentGrad: Output[Float]): Output[Float] = {
-    localGradF(GradContext(this, parentGrad))(index)
+  def localGrad[R: Floating: Numeric: TensorType](index: Int, parentGrad: Output[R]): Output[R] = {
+    val grads = gradF.calc[R](this, parentGrad)
+    grads(index)
   }
 
   def asGraph: DirectedGraph[Output[_]] = {
@@ -102,7 +104,11 @@ object Output {
 
   type Compiled = (Label, Operation)
 
-  case class GradContext[A](current: Output[A], parentGrad: Output[Float])
+//  case class GradContext[A, R: Floating: Numeric: TensorType](current: Output[A], parentGrad: Output[R])
+
+  trait Grad[A] {
+    def calc[R: Numeric: Floating: TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]]
+  }
 
   case class CompileContext[A: TensorType](
         state: SessionState,
@@ -127,7 +133,7 @@ object Output {
         inputs: List[Output[A]] = Nil,
         controls: List[Output[A]] = Nil,
         transformers: List[Transformer[A]] = Nil,
-        localGradF: GradContext[A] => List[Output[Float]] = null) {
+        grad: Grad[A] = null) {
 
     def label(label: String): Builder[A, State] = copy(label = label)
 
@@ -182,8 +188,8 @@ object Output {
     def compileWithControlInputs: Builder[A, State with WithCompiler] =
       compileWithTransformer((ctx, builder) => ctx.controls.foldLeft(builder)(_.addControlInput(_)))
 
-    def localGrad(f: GradContext[A] => List[Output[Float]]): Builder[A, State] =
-      copy(localGradF = f)
+    def localGrad(grad: Grad[A]): Builder[A, State] =
+      copy(grad = grad)
 
     def build(implicit ev: State =:= Complete): Output[A] = {
       core.Output[A](
@@ -197,7 +203,11 @@ object Output {
           val transformed = transformers.foldLeft(init)((acc, next) => next(context, acc))
           transformed.build()
         },
-        localGradF = Option(localGradF).getOrElse((_: GradContext[A]) => error(s"gradient is not implemented for '$name' operator")))
+        gradF = Option(grad).getOrElse(new Grad[A] {
+          override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
+            error(s"gradient is not implemented for '$name' operator")
+          }
+        }))
     }
   }
 

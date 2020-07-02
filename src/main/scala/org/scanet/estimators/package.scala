@@ -10,7 +10,7 @@ import org.scanet.optimizers.Tensor2Iterator
 
 package object estimators {
 
-  def accuracy[E: Floating: Numeric: TensorType](model: TrainedModel[E, E, E], ds: RDD[Array[E]]): Float = {
+  def accuracy[E: Floating: TensorType, R: Floating: Numeric: TensorType](model: TrainedModel[E, R], ds: RDD[Array[E]]): Float = {
     val batchSize = 10000
     val brModel = ds.sparkContext.broadcast(model)
     val (positives, total) = ds.mapPartitions(it => {
@@ -19,7 +19,7 @@ package object estimators {
       withing(session => {
         val positive = TF2((x: Output[E], y: Output[E]) => {
           val yPredicted = model.buildResult(x).round
-          (y :== yPredicted).cast[Int].sum
+          (y.cast[R] :== yPredicted).cast[Int].sum
         }).returns[Tensor[Int]].compile(session)
         val result = batches.foldLeft((0, 0))((acc, next) => {
           val (x, y) = next

@@ -1,8 +1,10 @@
 package org.scanet.core
 
 import org.scanet.core.ConstOp.syntax._
+import org.scanet.core.Output.Grad
 import org.scanet.core.TensorType.syntax._
 import org.scanet.core.Slice.syntax._
+import org.scanet.math.{Floating, Numeric}
 import simulacrum.{op, typeclass}
 
 @typeclass trait CoreOp[F[_]] {
@@ -132,7 +134,11 @@ object CoreOp {
           Output.name[B]("Cast")
             .shape(op.shape)
             .inputs(op)
-            .localGrad(ctx => List(ctx.parentGrad))
+            .localGrad(new Grad[B] {
+              override def calc[R: Numeric : Floating : TensorType](current: Output[B], parentGrad: Output[R]): List[Output[R]] = {
+                List(parentGrad)
+              }
+            })
             .compileWithAttr("DstT", TensorType[B])
             .compileWithAllInputs
             .build
@@ -285,7 +291,11 @@ object CoreOp {
         Output.name[A]("Squeeze")
           .shape(squeezed)
           .inputs(op)
-          .localGrad(ctx => List(reshape(ctx.parentGrad, op.shape)))
+          .localGrad(new Grad[A] {
+            override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
+              List(reshape(parentGrad, op.shape))
+            }
+          })
           .compileWithAllInputs
           .build
       } else {
@@ -304,7 +314,11 @@ object CoreOp {
           Output.name[A]("Reshape")
             .shape(shape)
             .inputs(op, as(Tensor.vector(shape.dims: _*).const, "new_shape"))
-            .localGrad(ctx => List(reshape(ctx.parentGrad, op.shape)))
+            .localGrad(new Grad[A] {
+              override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
+                List(reshape(parentGrad, op.shape))
+              }
+            })
             .compileWithAllInputs
             .build
         }
