@@ -24,20 +24,18 @@ limited to it.
 Example of solving a linear regression model:
 
 ``` scala
-val ds = facebookComments
-val weights = Optimizer
-  .minimize(LinearRegression)
+val ds = facebookComments // RDD[Array[Float]]
+val trained = ds.train(LinearRegression)
+  .loss(MeanSquaredError)
   .using(Adam(rate = 0.1f))
-  .on(ds)
   .batch(1000)
   .each(1.epochs, logResult())
   .each(1.iterations, plotResult(name = "Error", dir = "board/Adam"))
   .stopAfter(10.epochs)
-  .build
   .run()
-val regression = LinearRegression.loss.compile()
-val result = regression(BatchingIterator(ds.collect.iterator, 1000).next(), weights)
-result.toScalar should be <= 1f
+val loss = trained.loss.compile()
+val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+loss(x, y).toScalar should be <= 1f
 ```
 
 Here, `loss` will be logged as well as added to `TensorBoard`. 

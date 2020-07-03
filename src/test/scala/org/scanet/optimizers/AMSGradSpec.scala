@@ -12,16 +12,13 @@ class AMSGradSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
 
   "AMSGrad" should "minimize linear regression" in {
     val ds = linearFunction
-    val trained = Optimizer
-      .minimize[Float](LinearRegression)
+    val trained = ds.train(LinearRegression)
       .loss(MeanSquaredError)
       .using(AMSGrad(rate = 0.1f))
       .initWith(Tensor.zeros(_))
-      .on(ds)
       .batch(97)
       .each(1.epochs, logResult())
       .stopAfter(100.epochs)
-      .build
       .run()
     val loss = trained.loss.compile()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()

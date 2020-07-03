@@ -12,16 +12,13 @@ class NadamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Da
 
   "Nadam" should "minimize linear regression" in {
     val ds = linearFunction
-    val trained = Optimizer
-      .minimize[Float](LinearRegression)
+    val trained = ds.train(LinearRegression)
       .loss(MeanSquaredError)
       .using(Nadam())
       .initWith(Tensor.zeros(_))
-      .on(ds)
       .batch(97)
       .each(1.epochs, logResult())
       .stopAfter(50.epochs)
-      .build
       .run()
     val loss = trained.loss.compile()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()

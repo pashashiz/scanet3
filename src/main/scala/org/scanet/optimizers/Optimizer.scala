@@ -195,6 +195,8 @@ object Optimizer {
     }
 
     def build(implicit ev: State =:= Complete): Optimizer[A] = optimizer
+
+    def run()(implicit ev: State =:= Complete): TrainedModel[A] = build.run()
   }
 
   def minimize[R: Numeric: Floating : TensorType: Dist]
