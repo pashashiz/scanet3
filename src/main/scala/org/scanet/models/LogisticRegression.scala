@@ -12,26 +12,15 @@ import org.scanet.math.syntax._
  *
  * Model always has only one output
  */
-case class LogisticRegression[E: Floating: Numeric: TensorType]() extends Model[E, E] {
+case object LogisticRegression extends Model {
 
-  override def buildResult(x: Output[E], weights: Output[E]): Output[E] = {
+  override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: Output[A]): Output[A] =
     (withBias(x) * reshape(weights).transpose).sigmoid
-  }
 
-  override def buildLoss(x: Output[E], y: Output[E], weights: Output[E]): Output[E] = {
-    val rows = x.shape.dims.head
-    // x: (n, m) * wt: (m, 1) -> (n, 1) | y: (n, 1)
-    val one = 1.0f.const.cast[E]
-    val s = (withBias(x) * reshape(weights).transpose).sigmoid
-    val left = y :* s.log
-    val right = (one - y) :* (one - s).log
-    (1f / rows).const.cast[E] :* (left.negate - right).sum
-  }
-
-  private def reshape(weights: Output[E]): Output[E] =
+  private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)
 
-  override def weightsShape(features: Int): Shape = Shape(features + 1)
+  override def shape(features: Int): Shape = Shape(features + 1)
 
   override def outputs(): Int = 1
 }

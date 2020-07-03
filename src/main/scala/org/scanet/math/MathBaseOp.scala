@@ -160,6 +160,15 @@ import scala.Ordering.Implicits._
    */
   def sqrt[A: TensorType: Numeric](out: F[A]): F[A]
 
+  /** Returns square root of the given tensor which never reaches zero
+   * It is equivalent to `(out + epsilon) ^ 0.5`.
+   *
+   * {{{8f.const.sqrtZeroSafe(1f.const).eval should be(Tensor.scalar(3f))}}}
+   *
+   * @return tensor
+   */
+  def sqrtZeroSafe[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
+
   /** Computes the sum of elements across dimensions of a tensor.
    *
    * Reduces `out` along the dimensions given in `axises`.
@@ -181,6 +190,28 @@ import scala.Ordering.Implicits._
    * @return tensor with summed values
    */
   def sum[A: TensorType: Numeric](out: F[A]): F[A]
+
+  /** Computes the mean of elements across dimensions of a tensor.
+   *
+   * Reduces `out` along the dimensions given in `axises`.
+   * The rank of the tensor is reduced by 1 for each entry in `axises`.
+   *
+   * {{{Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.mean(Seq(0)).eval should be(Tensor.vector(5, 7, 9))}}}
+   *
+   * @param out tensor
+   * @param axises to sum
+   * @return tensor with mean values
+   */
+  def mean[A: TensorType: Numeric](out: F[A], axises: Seq[Int]): F[A]
+
+  /** Computes the mean of elements across all dimensions of a tensor.
+   *
+   * {{{Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.mean.eval should be(Tensor.scalar(21))}}}
+   *
+   * @param out tensor
+   * @return tensor with mean values
+   */
+  def mean[A: TensorType: Numeric](out: F[A]): F[A]
 
   /** Shuffle dimensions of `out` according to a permutation.
    *
@@ -219,15 +250,6 @@ import scala.Ordering.Implicits._
    * @return decaying average
    */
   def decayingAvg[A: TensorType: Numeric](avg: F[A], next: F[A], decay: F[A]): F[A]
-
-  /** Compute root mean squared of given value.
-   * It is equivalent to `(out + epsilon) ^ 0.5`.
-   *
-   * {{{8f.const.rms(1f.const).eval should be(Tensor.scalar(3f))}}}
-   *
-   * @return root mean squared
-   */
-  def rms[A: TensorType: Numeric](out: F[A], epsilon: F[A]): F[A]
 
   /** Increase (boost) given tensor on low values of `iter`.
    * Will return original value when `iter` approaches infinity.
@@ -453,6 +475,10 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
       .build
   }
 
+  override def sqrtZeroSafe[A: TensorType : Numeric](out: Output[A], epsilon: Output[A]): Output[A] = {
+    sqrt(plus(out, epsilon))
+  }
+
   override def sum[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
     if (out.isScalar || axises.isEmpty) {
       out
@@ -471,6 +497,26 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
   }
 
   override def sum[A: TensorType : Numeric](out: Output[A]): Output[A] = sum(out, 0 until out.rank)
+
+  override def mean[A: TensorType : Numeric](out: Output[A], axises: Seq[Int]): Output[A] = {
+    if (out.isScalar || axises.isEmpty) {
+      out
+    } else {
+      Output.name[A]("Mean")
+        .shape(out.shape.remove(axises: _*))
+        .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const.as("axises"))
+        .localGrad(new Grad[A] {
+          override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
+            val size = out.shape.select(axises: _*).power
+            List(div(multiplyElementWise(Tensor.ones[R](out.shape).const, parentGrad), size.const.cast[R]))
+          }
+        })
+        .compileWithAllInputs
+        .build
+    }
+  }
+
+  override def mean[A: TensorType : Numeric](out: Output[A]): Output[A] = mean(out, 0 until out.rank)
 
   override def transpose[A: TensorType : Numeric](out: Output[A], perm: Seq[Int]): Output[A] = {
     if (out.isScalar) {
@@ -495,10 +541,6 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
 
   override def decayingAvg[A: TensorType : Numeric](avg: Output[A], next: Output[A], decay: Output[A]): Output[A] = {
     plus(multiplyElementWise(decay, avg), multiplyElementWise(minus(1.0f.const.cast[A], decay), next))
-  }
-
-  override def rms[A: TensorType : Numeric](out: Output[A], epsilon: Output[A]): Output[A] = {
-    sqrt(plus(out, epsilon))
   }
 
   override def boost[A: TensorType : Numeric](out: Output[A], rate: Output[A], iter: Output[Int]): Output[A] = {

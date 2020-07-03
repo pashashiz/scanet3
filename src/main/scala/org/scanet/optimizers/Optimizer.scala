@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 import org.scanet.core.{Tensor, _}
 import org.scanet.math.syntax._
 import org.scanet.math.{Convertible, Dist, Floating, Numeric}
-import org.scanet.models.{Model, TrainedModel}
+import org.scanet.models.{Loss, Model, TrainedModel}
 import org.scanet.optimizers.Condition.always
 import org.scanet.optimizers.Optimizer.BuilderState._
 import org.scanet.optimizers.Optimizer.{sessionsPool, tfCache}
@@ -12,44 +12,46 @@ import org.scanet.optimizers.Optimizer.{sessionsPool, tfCache}
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-case class Step[R: Numeric: TensorType](
-    epoch: Int = 0, iter: Int = 0, result: Option[R] = None) {
-  def nextIter: Step[R] = incIter(1)
-  def incIter(number: Int): Step[R] = copy(iter = iter + number)
-  def nextEpoch: Step[R] = copy(epoch = epoch + 1)
-  def withResult(value: R): Step[R] = copy(result = Some(value))
+case class Step[A: Numeric: TensorType](
+    epoch: Int = 0, iter: Int = 0, result: Option[A] = None) {
+  def nextIter: Step[A] = incIter(1)
+  def incIter(number: Int): Step[A] = copy(iter = iter + number)
+  def nextEpoch: Step[A] = copy(epoch = epoch + 1)
+  def withResult(value: A): Step[A] = copy(result = Some(value))
   override def toString: String = s"$epoch:$iter"
 }
 
 // E - type of input dataset to train on, could have any numeric values
 // R - type to use on a model, could be only Float or Double
 case class Optimizer[
-  E: Numeric : TensorType,
-  R: Numeric : Floating : TensorType](
+  A: Numeric : Floating : TensorType](
      alg: Algorithm,
-     model: Model[E, R],
-     initArgs: Shape => Tensor[R],
-     dataset: RDD[Array[E]],
+     model: Model,
+     loss: Loss,
+     initArgs: Shape => Tensor[A],
+     dataset: RDD[Array[A]],
      partitons: Int,
      batchSize: Int,
      minimizing: Boolean,
-     stop: Condition[R],
-     @transient doOnEach: Effects[Step[R]])
-(implicit c: Convertible[Int, R]) {
+     stop: Condition[A],
+     @transient doOnEach: Effects[Step[A]])
+   (implicit c: Convertible[Int, A]) {
 
-  def run(): TrainedModel[E, R] = {
+  private val lossModel = model.withLoss(loss)
+
+  def run(): TrainedModel[A] = {
     val ds = dataset.repartition(partitons).cache()
     val sc = ds.sparkContext
 
     @tailrec
-    def optimize(prevStep: Step[R], effectState: Seq[_], weights: Tensor[R], meta: Tensor[R]): Tensor[R] = {
+    def optimize(prevStep: Step[A], effectState: Seq[_], weights: Tensor[A], meta: Tensor[A]): Tensor[A] = {
       val weightsBr = sc.broadcast(weights)
       val metaBr = sc.broadcast(meta)
       val (iter, newWeights, newMeta, result) = ds
         .mapPartitions(it => Iterator(optimizeOnPartition(
           it, prevStep.iter, weightsBr.value, metaBr.value)))
         .treeReduce(averageMetaAndWeights)
-      val step: Step[R] = prevStep.nextEpoch.incIter(iter).withResult(result)
+      val step: Step[A] = prevStep.nextEpoch.incIter(iter).withResult(result)
       val nextEffectState = doOnEach.action(effectState, step)
       if (stop(step)) {
         newWeights
@@ -58,38 +60,40 @@ case class Optimizer[
       }
     }
     val weights = optimize(Step(), doOnEach.unit, Tensor.zeros(), Tensor.zeros())
-    model.trained(weights)
+    lossModel.trained(weights)
   }
 
   private def optimizeOnPartition(
-      it: scala.Iterator[Array[E]], globalIter: Int, weights: Tensor[R], meta: Tensor[R]): (Int, Tensor[R], Tensor[R], R) = {
+    it: scala.Iterator[Array[A]], globalIter: Int, weights: Tensor[A], meta: Tensor[A]): (Int, Tensor[A], Tensor[A], A) = {
     val result = sessionsPool.withing(session => {
       val batches = Tensor2Iterator(it, batchSize, splitAt = size => size - model.outputs())
       val (weightsInitialized, metaInitialized) = if (globalIter == 0) {
         val features = batches.columns - model.outputs()
-        val shape = model.weightsShape(features)
-        (initArgs(shape), alg.initMeta[R](shape))
+        val shape = model.shape(features)
+        (initArgs(shape), alg.initMeta[A](shape))
       } else {
         (weights, meta)
       }
-
-      val loss = tfCache.getOrCompute(s"$model:loss", model.loss) compile session
-      val calc = tfCache.getOrCompute(s"$model:$alg:calc",
-        model.weightsAndGrad.compose(TF2.identity[R, Int]) {
+      val lossCompiled = tfCache.getOrCompute(
+        s"$lossModel:loss[${TensorType[A].classTag}]",
+        lossModel.loss[A] compile session)
+      val calcCompiled = tfCache.getOrCompute(
+        s"$lossModel:$alg:calc[${TensorType[A].classTag}]]",
+        lossModel.weightsAndGrad[A].compose(TF2.identity[A, Int]) {
           case ((w, g), (meta, iter)) =>
-            val Delta(del, nextMeta) = alg.delta[R](g, meta, iter)
-            val d = del.cast[R]
+            val Delta(del, nextMeta) = alg.delta[A](g, meta, iter)
+            val d = del.cast[A]
             (if (minimizing) w - d else w + d, nextMeta)
-        }.into[(Tensor[R], Tensor[R])]) compile session
+        }.into[(Tensor[A], Tensor[A])]) compile session
 
       @tailrec
-      def optimize(iter: Int, weights: Tensor[R], meta: Tensor[R]): (Int, Tensor[R], Tensor[R], R) = {
+      def optimize(iter: Int, weights: Tensor[A], meta: Tensor[A]): (Int, Tensor[A], Tensor[A], A) = {
         val (x, y) = batches.next()
-        val (nextWeights, nextMeta) = calc(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
+        val (nextWeights, nextMeta) = calcCompiled(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
         if (batches.hasNext) {
           optimize(iter + 1, nextWeights, nextMeta)
         } else {
-          (iter + 1, nextWeights, nextMeta, loss(x, y, nextWeights).toScalar)
+          (iter + 1, nextWeights, nextMeta, lossCompiled(x, y, nextWeights).toScalar)
         }
       }
 
@@ -99,21 +103,21 @@ case class Optimizer[
   }
 
   // todo: tuple3 -> case class
-  private def averageMetaAndWeights(
-                                     left: (Int, Tensor[R], Tensor[R], R),
-                                     right: (Int, Tensor[R], Tensor[R], R)): (Int, Tensor[R], Tensor[R], R) = {
+  private def averageMetaAndWeights
+  (left: (Int, Tensor[A], Tensor[A], A),
+   right: (Int, Tensor[A], Tensor[A], A)): (Int, Tensor[A], Tensor[A], A) = {
     sessionsPool.withing(session => {
       val (leftIter, leftWeights, leftMeta, leftResult) = left
       val (rightIter, rightWeights, rightMeta, rightResult) = right
-      val weightsAvg = tfCache.getOrCompute("weightsAvg", avg[R]) compile session
-      val metaAvg = tfCache.getOrCompute("metaAvg", avg[R]) compile session
+      val weightsAvg = tfCache.getOrCompute("weightsAvg", avg[A]) compile session
+      val metaAvg = tfCache.getOrCompute("metaAvg", avg[A]) compile session
       val resultAvg = (leftResult plus rightResult) / c.convert(2)
       (leftIter + rightIter, weightsAvg(leftWeights, rightWeights), metaAvg(leftMeta, rightMeta), resultAvg)
     })
   }
 
-  private def avg[A: Numeric: TensorType]: TF2[A, A, Output[A], Tensor[A]] =
-    TF2((arg1: Output[A], arg2: Output[A]) => (arg1 + arg2) / 2.0f.const.cast[A]).returns[Tensor[A]]
+  private def avg[X: Numeric: TensorType]: TF2[X, X, Output[X], Tensor[X]] =
+    TF2((arg1: Output[X], arg2: Output[X]) => (arg1 + arg2) / 2.0f.const.cast[X]).returns[Tensor[X]]
 }
 
 object Optimizer {
@@ -136,66 +140,68 @@ object Optimizer {
   object BuilderState {
     sealed trait WithAlg extends BuilderState
     sealed trait WithFunc extends BuilderState
+    sealed trait WithLoss extends BuilderState
     sealed trait WithDataset extends BuilderState
     sealed trait WithStopCondition extends BuilderState
-    type Complete = WithAlg with WithFunc with WithDataset with WithStopCondition
+    type Complete = WithAlg with WithFunc with WithLoss with WithDataset with WithStopCondition
   }
 
-  case class Builder[
-    X: Numeric: TensorType,
-    R: Numeric: Floating : TensorType,
-    State <: BuilderState](optimizer: Optimizer[X, R])(implicit c: Convertible[Int, R]) {
+  case class Builder[A: Numeric: Floating : TensorType, State <: BuilderState]
+  (optimizer: Optimizer[A])(implicit c: Convertible[Int, A]) {
 
-    def using(alg: Algorithm): Builder[X, R, State with WithAlg] =
+    def loss(loss: Loss): Builder[A, State with WithLoss] =
+      copy(optimizer = optimizer.copy(loss = loss))
+
+    def using(alg: Algorithm): Builder[A, State with WithAlg] =
       copy(optimizer = optimizer.copy(alg = alg))
 
-    def initWith(args: Shape => Tensor[R]): Builder[X, R, State] =
+    def initWith(args: Shape => Tensor[A]): Builder[A, State] =
       copy(optimizer = optimizer.copy(initArgs = args))
 
-    def on(dataset: RDD[Array[X]]): Builder[X, R, State with WithDataset] =
+    def on(dataset: RDD[Array[A]]): Builder[A, State with WithDataset] =
       copy(optimizer = optimizer.copy(dataset = dataset))
 
-    def stopWhen(condition: Condition[R]): Builder[X, R, State with WithStopCondition] =
+    def stopWhen(condition: Condition[A]): Builder[A, State with WithStopCondition] =
       copy(optimizer = optimizer.copy(stop = condition))
 
-    def stopAfter(condition: Condition[R]): Builder[X, R, State with WithStopCondition] =
+    def stopAfter(condition: Condition[A]): Builder[A, State with WithStopCondition] =
       stopWhen(condition)
 
-    def epochs(number: Int): Builder[X, R, State with WithStopCondition] =
+    def epochs(number: Int): Builder[A, State with WithStopCondition] =
       stopWhen(Condition.epochs(number))
 
-    def iterations(number: Int): Builder[X, R, State with WithStopCondition] =
+    def iterations(number: Int): Builder[A, State with WithStopCondition] =
       stopWhen(Condition.iterations(number))
 
-    def partition(number: Int): Builder[X, R, State] =
+    def partition(number: Int): Builder[A, State] =
       copy(optimizer = optimizer.copy(partitons = number))
 
-    def batch(size: Int): Builder[X, R, State] =
+    def batch(size: Int): Builder[A, State] =
       copy(optimizer = optimizer.copy(batchSize = size))
 
     // NOTE: figure out how to rename it to each without getting issues
     // when type inference is required
-    def doEach(when: Condition[R], action: Step[R] => Unit): Builder[X, R, State] =
-      each(when, Effect.stateless[Step[R]](action))
+    def doEach(when: Condition[A], action: Step[A] => Unit): Builder[A, State] =
+      each(when, Effect.stateless[Step[A]](action))
 
-    def doEach(action: Step[R] => Unit): Builder[X, R, State] =
-      each(always, Effect.stateless[Step[R]](action))
+    def doEach(action: Step[A] => Unit): Builder[A, State] =
+      each(always, Effect.stateless[Step[A]](action))
 
-    def each(effect: Effect[_, Step[R]]): Builder[X, R, State] =
+    def each(effect: Effect[_, Step[A]]): Builder[A, State] =
       each(always, effect)
 
-    def each(when: Condition[R], effect: Effect[_, Step[R]]): Builder[X, R, State] = {
+    def each(when: Condition[A], effect: Effect[_, Step[A]]): Builder[A, State] = {
       copy(optimizer = optimizer.copy(doOnEach = optimizer.doOnEach :+ effect.conditional(when)))
     }
 
-    def build(implicit ev: State =:= Complete): Optimizer[X, R] = optimizer
+    def build(implicit ev: State =:= Complete): Optimizer[A] = optimizer
   }
 
-  def minimize[E: Numeric: TensorType, R: Numeric: Floating : TensorType: Dist]
-  (model: Model[E, R])(implicit c: Convertible[Int, R]): Builder[E, R, WithFunc] =
-    Builder(Optimizer(null, model, s => Tensor.rand(s), null, 1, 10000, minimizing = true, always, Effects.empty))
+  def minimize[R: Numeric: Floating : TensorType: Dist]
+  (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s), null, 1, 10000, minimizing = true, always, Effects.empty))
 
-  def maximize[E: Numeric: TensorType, R: Numeric: Floating : TensorType: Dist]
-  (model: Model[E, R])(implicit c: Convertible[Int, R]): Builder[E, R, WithFunc] =
-    Builder(Optimizer(null, model, s => Tensor.rand(s), null, 1, 10000, minimizing = false, always, Effects.empty))
+  def maximize[R: Numeric: Floating : TensorType: Dist]
+  (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s), null, 1, 10000, minimizing = false, always, Effects.empty))
 }
