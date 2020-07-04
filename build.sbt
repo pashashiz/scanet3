@@ -18,8 +18,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "3.0.0",
   "org.apache.spark" %% "spark-sql" % "3.0.0",
   "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
-  "org.scalatest" %% "scalatest" % "3.1.1" % "test",
-  "org.deeplearning4j" %% "dl4j-spark" % "1.0.0-beta7"
+  "org.scalatest" %% "scalatest" % "3.1.1" % "test"
 )
 
 scalacOptions ++= Seq(
