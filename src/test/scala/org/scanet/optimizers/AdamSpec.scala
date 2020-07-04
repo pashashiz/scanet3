@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.estimators.accuracy
 import org.scanet.math.syntax._
-import org.scanet.models.{LinearRegression, LogisticRegression}
+import org.scanet.models.{BinaryCrossentropy, LinearRegression, LogisticRegression, MeanSquaredError}
 import org.scanet.optimizers.Effect.logResult
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
@@ -13,32 +13,28 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
 
   "Adam" should "minimize linear regression" in {
     val ds = linearFunction
-    val trained = Optimizer
-      .minimize(LinearRegression[Float])
+    val trained = ds.train(LinearRegression)
+      .loss(MeanSquaredError)
       .using(Adam(rate = 0.1f))
       .initWith(Tensor.zeros(_))
-      .on(ds)
       .batch(97)
       .each(1.epochs, logResult())
       .stopAfter(100.epochs)
-      .build
       .run()
     val loss = trained.loss.compile()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
-    loss(x, y).toScalar should be <= 4.9f
+    loss(x, y).toScalar should be <= 10f
   }
 
   it should "minimize logistic regression" in {
     val ds = logisticRegression.map(a => Array(a(0)/100, a(1)/100, a(2)))
-    val trained = Optimizer
-      .minimize(LogisticRegression[Float])
+    val trained = ds.train(LogisticRegression)
+      .loss(BinaryCrossentropy)
       .using(Adam(0.1f))
       .initWith(s => Tensor.zeros(s))
-      .on(ds)
       .batch(100)
       .each(1.epochs, logResult())
       .stopAfter(100.epochs)
-      .build
       .run()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 100).next()
     val loss = trained.loss.compile()

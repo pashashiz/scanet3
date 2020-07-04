@@ -12,21 +12,15 @@ import org.scanet.math.syntax._
   *
   * Model always has only one output
   */
-case class LinearRegression[E: Floating: Numeric: TensorType]() extends Model[E, E] {
+case object LinearRegression extends Model {
 
-  override def buildResult(x: Output[E], weights: Output[E]): Output[E] = {
+  override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: Output[A]): Output[A] =
     withBias(x) * reshape(weights).transpose
-  }
 
-  override def buildLoss(x: Output[E], y: Output[E], weights: Output[E]): Output[E] = {
-    val rows = x.shape.dims.head
-    (0.5f / rows).const.cast[E] :* (withBias(x) * reshape(weights).transpose - y).pow(2).sum
-  }
-
-  private def reshape(weights: Output[E]): Output[E] =
+  private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)
 
-  override def weightsShape(features: Int): Shape = Shape(features + 1)
+  override def shape(features: Int): Shape = Shape(features + 1)
 
   override def outputs(): Int = 1
 }

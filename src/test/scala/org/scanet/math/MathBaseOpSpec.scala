@@ -463,6 +463,33 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     tensor.const.sum(Seq(0, 1)).eval should be(Tensor.matrix(Array(1, 2), Array(3, 4)))
   }
 
+  "mean" should "calculate mean across all axises by default" in {
+    Tensor.matrix(Array(1f, 2f, 3f), Array(4f, 5f, 6f)).const.mean.eval should be(Tensor.scalar(3.5f))
+  }
+
+  it should "support reducing along matrix columns" in {
+    Tensor.matrix(Array(1f, 2f, 3f), Array(4f, 5f, 6f)).const.mean(Seq(0)).eval should be(Tensor.vector(2.5f, 3.5f, 4.5f))
+  }
+
+  it should "support reducing along matrix rows" in {
+    Tensor.matrix(Array(1f, 2f, 3f), Array(4f, 5f, 6f)).const.mean(Seq(1)).eval should be(Tensor.vector(2f, 5f))
+  }
+
+  it should "support reducing 4D tensors" in {
+    val tensor = Tensor(Array(1f, 0f, 0f, 0f, 0f, 2f, 0f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 0f, 4f), Shape(2, 2, 2, 2))
+    tensor.const.mean(Seq(0, 1)).eval should be(Tensor.matrix(Array(0.25f, 0.5f), Array(0.75f, 1f)))
+  }
+
+  it should "calculate gradient" in {
+    val x = Tensor.matrix(
+      Array(1f, 2f, 3f),
+      Array(4f, 5f, 6f)).const
+    val grad = Tensor.matrix(
+      Array(0.5f, 0.5f, 0.5f),
+      Array(0.5f, 0.5f, 0.5f))
+    x.mean(Seq(0)).sum.grad(x).returns[Float].eval should be(grad)
+  }
+
   "transpose" should "be identity op on a scalar" in {
     Tensor.scalar(5).const.transpose.eval should be(Tensor.scalar(5))
   }
@@ -496,10 +523,10 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     10.0.const.decayingAvg(5.0.const, 0.9.const).eval should be(Tensor.scalar(9.5))
   }
 
-  "rms" should "calculate root mean squared" in {
+  "sqrtZeroSafe" should "calculate square root with epsilon" in {
     val x = 8f.const
     val epsilon = 1f.const
-    x.rms(epsilon).eval should be(Tensor.scalar(3f))
+    x.sqrtZeroSafe(epsilon).eval should be(Tensor.scalar(3f))
   }
 
   "boost" should "increase value on low iterations" in {
