@@ -9,7 +9,7 @@ case class Dense(outputs: Int, activation: Activation) extends Model {
     (x: Output[E], weights: Output[E]): Output[E] = {
     // x:(n, m) w:(o, m) -> x * w.t -> (n, m) * (m, o) -> (n, o)
     // we have all outputs for each input sample which we will compare with y at the end
-    withBias(x) * weights.transpose
+    activation.build(withBias(x) * weights.transpose)
   }
 
   override def shape(features: Int): Shape =

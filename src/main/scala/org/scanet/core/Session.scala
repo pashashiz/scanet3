@@ -7,11 +7,14 @@ import org.scanet.core.Output.Compiled
 import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{Graph, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
 import simulacrum.typeclass
-
 import org.scanet.core.Session.syntax._
+
 import scala.language.existentials
 import scala.util.Try
 import scala.collection.JavaConverters._
+import TensorType.syntax._
+import ConstOp.syntax._
+import Slice.syntax._
 
 //import scala.util.Using // use with scala 2.13
 
@@ -33,7 +36,7 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
   }
 
   def evalXX[O: SessionInputX, T: SessionOutputX](out: O): T = {
-    import TFx.syntax._
+    import org.scanet.core.Session.syntaxX._
     val input: Seq[Output[_]] = out.toInput
     val output = evalUnsafe(input)
     SessionOutputX[T].fromOutput(output)
@@ -137,6 +140,7 @@ object Session {
     } finally if (session != null) session.close()
   }
 
+  // todo: remove
   trait Implicits {
 
     implicit def singleOutputIsSessionInput[A: TensorType]: SessionInput[Output[A]] =
@@ -163,18 +167,66 @@ object Session {
         Tensor.apply[A2](tensors(1).asInstanceOf[NativeTensor[A2]]),
         Tensor.apply[A3](tensors(2).asInstanceOf[NativeTensor[A3]])
       )
+
+  }
+
+  trait ImplicitsX {
+
+    implicit def seqIsArg: SeqLike[Seq] = new SeqLike[Seq] {
+      override def unit[P](seq: Seq[P]): Seq[P] = seq
+      override def asSeq[P](arg: Seq[P]): Seq[P] = arg
+    }
+
+    implicit def idIsArg: SeqLike[Id] = new SeqLike[Id] {
+      override def unit[P](seq: Seq[P]): Id[P] = seq.head
+      override def asSeq[P](arg: Id[P]): Seq[P] = Seq(arg)
+    }
+
+    implicit def singleOutputIsSessionInputX[SIn1[_]: SeqLike, A: TensorType]: SessionInputX[SIn1[Output[A]]] = {
+      (out: SIn1[Output[A]]) => {
+        import SeqLike.ops._
+        val outs = out.asSeq
+        Tensor.vector(outs.size).const +: outs
+      }
+    }
+
+    implicit def singleTensorIsSessionOutputX[SOut1[_]: SeqLike, A: TensorType]: SessionOutputX[SOut1[Tensor[A]]] = {
+      (tensors: Seq[NativeTensor[_]]) => {
+        val size = Tensor.apply[Int](tensors(0).asInstanceOf[NativeTensor[Int]]).slice(0).toScalar
+        val converted = tensors.slice(1, size + 1).map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
+        SeqLike[SOut1].unit(converted)
+      }
+    }
   }
 
   trait Syntax extends Implicits with SessionInput.ToSessionInputOps
 
+  trait SyntaxX extends ImplicitsX with SeqLike.ToSeqLikeOps with SessionInputX.ToSessionInputXOps with SessionOutputX.ToSessionOutputXOps
+
   object syntax extends Syntax
+
+  object syntaxX extends SyntaxX
 }
 
+// todo: remove
 @typeclass trait SessionInput[O] {
   def toInput(value: O): Seq[Output[_]]
 }
-
+// todo: remove
 @typeclass trait SessionOutput[T] {
+  def fromOutput(tensors: Seq[NativeTensor[_]]): T
+}
+
+@typeclass trait SeqLike[F[_]] {
+  def unit[P](seq: Seq[P]): F[P]
+  def asSeq[P](arg: F[P]): Seq[P]
+}
+
+@typeclass trait SessionInputX[O] {
+  def toInput(value: O): Seq[Output[_]]
+}
+
+@typeclass trait SessionOutputX[T] {
   def fromOutput(tensors: Seq[NativeTensor[_]]): T
 }
 
