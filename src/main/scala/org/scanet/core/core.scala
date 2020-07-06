@@ -4,6 +4,8 @@ import scala.collection.mutable
 
 package object core {
 
+  type Id[A] = A
+
   object syntax extends CoreSyntax
 
   def error(message: String): Nothing = throw new RuntimeException(message)

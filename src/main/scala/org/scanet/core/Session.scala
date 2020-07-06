@@ -32,6 +32,13 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
     SessionOutput[T].fromOutput(output)
   }
 
+  def evalXX[O: SessionInputX, T: SessionOutputX](out: O): T = {
+    import TFx.syntax._
+    val input: Seq[Output[_]] = out.toInput
+    val output = evalUnsafe(input)
+    SessionOutputX[T].fromOutput(output)
+  }
+
   def eval[A: TensorType](a: Output[A]): Tensor[A] = {
     val nTensor = session.eval(Seq(a), feed).head.asInstanceOf[NativeTensor[A]]
     Tensor.apply[A](nTensor)
