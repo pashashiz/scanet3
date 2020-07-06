@@ -4,16 +4,31 @@ import org.scanet.core.Session.syntaxX._
 import org.scanet.core.Session.withing
 import org.scanet.math.syntax.placeholder
 
-class TFx1[A1[_]: SeqLike, P1: TensorType, In: SessionInputX, Out: SessionOutputX]
+// Investigate with Shapeless:
+
+// OutputLike[T] = Output[T] | Seq[Output[T]] | Product[OutputLike[T]]
+// it has method toSeq: Seq[Output[T]]
+// it has method unit(Seq[Output[T]]): OutputLike[T]
+
+// OutputLike => (OutputLike, )
+
+// O: OutputLike[_], T: TensorType
+
+// At the other side we would need to
+// OutputsLike[T] ~> TensorsLike[T]
+
+class TFx1[
+  A1[_]: SeqLike, P1: TensorType,
+  In: SessionInputX, Out: SessionOutputX]
 (val builder: A1[Shape] => (Seq[Output[P1]], In)) {
 
   private val buildIfAbsent: A1[Shape] => (Seq[Output[P1]], In) = memoize(builder)
 
   def compile(session: Session): A1[Tensor[P1]] => Out = {
     a1 => {
-      val tensors = a1.asSeq
-      val (p1, out) = buildIfAbsent(SeqLike[A1].unit(tensors.map(_.shape)))
-      session.runner.feed(p1 zip tensors:_*).evalXX[In, Out](out)
+      val t1 = a1.asSeq
+      val (p1, out) = buildIfAbsent(SeqLike[A1].unit(t1.map(_.shape)))
+      session.runner.feed(p1 zip t1:_*).evalXX[In, Out](out)
     }
   }
 
@@ -30,9 +45,9 @@ object TFx1 {
   case class TFx1Builder[A1[_]: SeqLike, P1: TensorType, In: SessionInputX]
   (builder: A1[Output[P1]] => In) {
     def returns[Out: SessionOutputX]: TFx1[A1, P1, In, Out] = new TFx1[A1, P1, In, Out](shapes => {
-      val placeholders = shapes.asSeq.map(shape => placeholder[P1](shape))
-      val out = builder(SeqLike[A1].unit(placeholders))
-      (placeholders, out)
+      val p1 = shapes.asSeq.map(placeholder[P1](_))
+      val out = builder(SeqLike[A1].unit(p1))
+      (p1, out)
     })
   }
 
@@ -42,4 +57,265 @@ object TFx1 {
 
   def identity[A1[_]: SeqLike, P: TensorType]: TFx1[A1, P, A1[Output[P]], A1[Tensor[P]]] =
     TFx1[A1, P, A1[Output[P]]](arg => arg).returns[A1[Tensor[P]]]
+}
+
+class TFx2[
+  A1[_]: SeqLike, P1: TensorType,
+  A2[_]: SeqLike, P2: TensorType,
+  In: SessionInputX, Out: SessionOutputX]
+(val builder: (A1[Shape], A2[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], In)) {
+
+  private val buildIfAbsent: (A1[Shape], A2[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], In) = memoize(builder)
+
+  def compile(session: Session): (A1[Tensor[P1]], A2[Tensor[P2]]) => Out = {
+    (a1, a2) => {
+      val t1 = a1.asSeq
+      val t2 = a2.asSeq
+      val (p1, p2, out) = buildIfAbsent(
+        SeqLike[A1].unit(t1.map(_.shape)),
+        SeqLike[A2].unit(t2.map(_.shape)))
+      session.runner.feed(p1 zip t1:_*).feed(p2 zip t2:_*).evalXX[In, Out](out)
+    }
+  }
+
+  def compile(): (A1[Tensor[P1]], A2[Tensor[P2]])  => Out =
+    (p1, p2) => {
+      withing(session => {
+        compile(session).apply(p1, p2)
+      })
+    }
+}
+
+object TFx2 {
+
+  case class TF2xBuilder[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]]) => In) {
+    def returns[Out: SessionOutputX]: TFx2[A1, P1, A2, P2, In, Out] = new TFx2[A1, P1, A2, P2, In, Out](
+      (shapes1, shapes2) => {
+        val p1 = shapes1.asSeq.map(placeholder[P1](_))
+        val p2 = shapes2.asSeq.map(placeholder[P2](_))
+        val out = builder(SeqLike[A1].unit(p1), SeqLike[A2].unit(p2))
+        (p1, p2, out)
+      })
+  }
+
+  def apply[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]]) => In): TF2xBuilder[A1, P1, A2, P2, In] =
+    TF2xBuilder(builder)
+
+  def identity[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType]: TFx2[A1, P1, A2, P2, (A1[Output[P1]], A2[Output[P2]]), (A1[Tensor[P1]], A2[Tensor[P2]])] =
+    TFx2[A1, P1, A2, P2, (A1[Output[P1]], A2[Output[P2]])]((arg1, arg2) => (arg1, arg2)).returns[(A1[Tensor[P1]], A2[Tensor[P2]])]
+}
+
+class TFx3[
+  A1[_]: SeqLike, P1: TensorType,
+  A2[_]: SeqLike, P2: TensorType,
+  A3[_]: SeqLike, P3: TensorType,
+  In: SessionInputX,
+  Out: SessionOutputX]
+(val builder: (A1[Shape], A2[Shape], A3[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], In)) {
+
+  private val buildIfAbsent: (A1[Shape], A2[Shape], A3[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], In) = memoize(builder)
+
+  def compile(session: Session): (A1[Tensor[P1]], A2[Tensor[P2]], A3[Tensor[P3]]) => Out = {
+    (a1, a2, a3) => {
+      val (t1, t2, t3) = (a1.asSeq, a2.asSeq, a3.asSeq)
+      val (p1, p2, p3, out) = buildIfAbsent(
+        SeqLike[A1].unit(t1.map(_.shape)),
+        SeqLike[A2].unit(t2.map(_.shape)),
+        SeqLike[A3].unit(t3.map(_.shape)))
+      session.runner.feed(p1 zip t1:_*).feed(p2 zip t2:_*).feed(p3 zip t3:_*).evalXX[In, Out](out)
+    }
+  }
+
+  def compile(): (A1[Tensor[P1]], A2[Tensor[P2]], A3[Tensor[P3]]) => Out =
+    (p1, p2, p3) => {
+      withing(session => {
+        compile(session).apply(p1, p2, p3)
+      })
+    }
+
+  def compose[
+    A1Other[_]: SeqLike, P1Other: TensorType,
+    A2Other[_]: SeqLike, P2Other: TensorType,
+    InOther: SessionInputX, OutOther: SessionOutputX, InNew: SessionInputX]
+  (other: TFx2[A1Other, P1Other, A2Other, P2Other, InOther, OutOther])
+  (via: (In, InOther) => InNew): CompositionWithTF2x[A1Other, P1Other, A2Other, P2Other, InOther, OutOther, InNew] =
+    new CompositionWithTF2x(other, via)
+
+  class CompositionWithTF2x[
+    A1Other[_]: SeqLike, P1Other: TensorType,
+    A2Other[_]: SeqLike, P2Other: TensorType,
+    InOther: SessionInputX, OutOther: SessionOutputX, InNew: SessionInputX]
+  (private val other: TFx2[A1Other, P1Other, A2Other, P2Other, InOther, OutOther], private val via: (In, InOther) => InNew) {
+    def into[OutNew: SessionOutputX]: TFx5[A1, P1, A2, P2, A3, P3, A1Other, P1Other, A2Other, P2Other, InNew, OutNew] = {
+      new TFx5((a1, a2, a3, a4, a5) => {
+        val (p1, p2, p3, out) = builder(a1, a2, a3)
+        val (p4, p5, ouOutOther) = other.builder(a4, a5)
+        (p1, p2, p3, p4, p5, via(out, ouOutOther))
+      })
+    }
+  }
+}
+
+object TFx3 {
+
+  case class TF3xBuilder[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    A3[_]: SeqLike, P3: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]], A3[Output[P3]]) => In) {
+    def returns[Out: SessionOutputX]: TFx3[A1, P1, A2, P2, A3, P3, In, Out] = new TFx3[A1, P1, A2, P2, A3, P3, In, Out](
+      (shapes1, shapes2, shapes3) => {
+        val p1 = shapes1.asSeq.map(placeholder[P1](_))
+        val p2 = shapes2.asSeq.map(placeholder[P2](_))
+        val p3 = shapes3.asSeq.map(placeholder[P3](_))
+        val out = builder(SeqLike[A1].unit(p1), SeqLike[A2].unit(p2), SeqLike[A3].unit(p3))
+        (p1, p2, p3, out)
+      })
+  }
+
+  def apply[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    A3[_]: SeqLike, P3: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]], A3[Output[P3]]) => In): TF3xBuilder[A1, P1, A2, P2, A3, P3, In] =
+    TF3xBuilder(builder)
+}
+
+class TFx4[
+  A1[_]: SeqLike, P1: TensorType,
+  A2[_]: SeqLike, P2: TensorType,
+  A3[_]: SeqLike, P3: TensorType,
+  A4[_]: SeqLike, P4: TensorType,
+  In: SessionInputX,
+  Out: SessionOutputX]
+(val builder: (A1[Shape], A2[Shape], A3[Shape], A4[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], In)) {
+
+  private val buildIfAbsent: (A1[Shape], A2[Shape], A3[Shape], A4[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], In) = memoize(builder)
+
+  def compile(session: Session): (A1[Tensor[P1]], A2[Tensor[P2]], A3[Tensor[P3]], A4[Tensor[P4]]) => Out = {
+    (a1, a2, a3, a4) => {
+      val (t1, t2, t3, t4) = (a1.asSeq, a2.asSeq, a3.asSeq, a4.asSeq)
+      val (p1, p2, p3, p4, out) = buildIfAbsent(
+        SeqLike[A1].unit(t1.map(_.shape)),
+        SeqLike[A2].unit(t2.map(_.shape)),
+        SeqLike[A3].unit(t3.map(_.shape)),
+        SeqLike[A4].unit(t4.map(_.shape)))
+      session.runner.feed(p1 zip t1:_*).feed(p2 zip t2:_*).feed(p3 zip t3:_*).feed(p4 zip t4:_*).evalXX[In, Out](out)
+    }
+  }
+
+  def compile(): (A1[Tensor[P1]], A2[Tensor[P2]], A3[Tensor[P3]], A4[Tensor[P4]]) => Out =
+    (p1, p2, p3, p4) => {
+      withing(session => {
+        compile(session).apply(p1, p2, p3, p4)
+      })
+    }
+}
+
+object TFx4 {
+
+  case class TF4xBuilder[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    A3[_]: SeqLike, P3: TensorType,
+    A4[_]: SeqLike, P4: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]], A3[Output[P3]], A4[Output[P4]]) => In) {
+    def returns[Out: SessionOutputX]: TFx4[A1, P1, A2, P2, A3, P3, A4, P4, In, Out] = new TFx4[A1, P1, A2, P2, A3, P3, A4, P4, In, Out](
+      (shapes1, shapes2, shapes3, shapes4) => {
+        val p1 = shapes1.asSeq.map(placeholder[P1](_))
+        val p2 = shapes2.asSeq.map(placeholder[P2](_))
+        val p3 = shapes3.asSeq.map(placeholder[P3](_))
+        val p4 = shapes4.asSeq.map(placeholder[P4](_))
+        val out = builder(SeqLike[A1].unit(p1), SeqLike[A2].unit(p2), SeqLike[A3].unit(p3), SeqLike[A4].unit(p4))
+        (p1, p2, p3, p4, out)
+      })
+  }
+
+  def apply[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    A3[_]: SeqLike, P3: TensorType,
+    A4[_]: SeqLike, P4: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]], A3[Output[P3]], A4[Output[P4]]) => In): TF4xBuilder[A1, P1, A2, P2, A3, P3, A4, P4, In] =
+    TF4xBuilder(builder)
+}
+
+class TFx5[
+  A1[_]: SeqLike, P1: TensorType,
+  A2[_]: SeqLike, P2: TensorType,
+  A3[_]: SeqLike, P3: TensorType,
+  A4[_]: SeqLike, P4: TensorType,
+  A5[_]: SeqLike, P5: TensorType,
+  In: SessionInputX,
+  Out: SessionOutputX]
+(val builder: (A1[Shape], A2[Shape], A3[Shape], A4[Shape], A5[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], Seq[Output[P5]], In)) {
+
+  private val buildIfAbsent: (A1[Shape], A2[Shape], A3[Shape], A4[Shape], A5[Shape]) => (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], Seq[Output[P5]], In) = memoize(builder)
+
+  def compile(session: Session): (A1[Tensor[P1]], A2[Tensor[P2]], A3[Tensor[P3]], A4[Tensor[P4]], A5[Tensor[P5]]) => Out = {
+    (a1, a2, a3, a4, a5) => {
+      val (t1, t2, t3, t4, t5) = (a1.asSeq, a2.asSeq, a3.asSeq, a4.asSeq, a5.asSeq)
+      val (p1, p2, p3, p4, p5, out) = buildIfAbsent(
+        SeqLike[A1].unit(t1.map(_.shape)),
+        SeqLike[A2].unit(t2.map(_.shape)),
+        SeqLike[A3].unit(t3.map(_.shape)),
+        SeqLike[A4].unit(t4.map(_.shape)),
+        SeqLike[A5].unit(t5.map(_.shape)))
+      session.runner.feed(p1 zip t1:_*).feed(p2 zip t2:_*).feed(p3 zip t3:_*).feed(p4 zip t4:_*).feed(p5 zip t5:_*).evalXX[In, Out](out)
+    }
+  }
+
+  def compile(): (A1[Tensor[P1]], A2[Tensor[P2]], A3[Tensor[P3]], A4[Tensor[P4]], A5[Tensor[P5]]) => Out =
+    (p1, p2, p3, p4, p5) => {
+      withing(session => {
+        compile(session).apply(p1, p2, p3, p4, p5)
+      })
+    }
+}
+
+object TFx5 {
+
+  case class TF5xBuilder[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    A3[_]: SeqLike, P3: TensorType,
+    A4[_]: SeqLike, P4: TensorType,
+    A5[_]: SeqLike, P5: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]], A3[Output[P3]], A4[Output[P4]], A5[Output[P5]]) => In) {
+    def returns[Out: SessionOutputX]: TFx5[A1, P1, A2, P2, A3, P3, A4, P4, A5, P5, In, Out] = new TFx5[A1, P1, A2, P2, A3, P3, A4, P4, A5, P5, In, Out](
+      (shapes1, shapes2, shapes3, shapes4, shapes5) => {
+        val p1 = shapes1.asSeq.map(placeholder[P1](_))
+        val p2 = shapes2.asSeq.map(placeholder[P2](_))
+        val p3 = shapes3.asSeq.map(placeholder[P3](_))
+        val p4 = shapes4.asSeq.map(placeholder[P4](_))
+        val p5 = shapes5.asSeq.map(placeholder[P5](_))
+        val out = builder(SeqLike[A1].unit(p1), SeqLike[A2].unit(p2), SeqLike[A3].unit(p3), SeqLike[A4].unit(p4), SeqLike[A5].unit(p5))
+        (p1, p2, p3, p4, p5, out)
+      })
+  }
+
+  def apply[
+    A1[_]: SeqLike, P1: TensorType,
+    A2[_]: SeqLike, P2: TensorType,
+    A3[_]: SeqLike, P3: TensorType,
+    A4[_]: SeqLike, P4: TensorType,
+    A5[_]: SeqLike, P5: TensorType,
+    In: SessionInputX]
+  (builder: (A1[Output[P1]], A2[Output[P2]], A3[Output[P3]], A4[Output[P4]], A5[Output[P5]]) => In): TF5xBuilder[A1, P1, A2, P2, A3, P3, A4, P4, A5, P5, In] =
+    TF5xBuilder(builder)
 }

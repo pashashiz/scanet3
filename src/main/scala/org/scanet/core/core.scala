@@ -6,6 +6,8 @@ package object core {
 
   type Id[A] = A
 
+  def fromId[A](id: Id[A]): A = id
+
   object syntax extends CoreSyntax
 
   def error(message: String): Nothing = throw new RuntimeException(message)

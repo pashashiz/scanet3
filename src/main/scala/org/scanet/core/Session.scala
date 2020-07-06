@@ -20,7 +20,7 @@ import Slice.syntax._
 
 case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
 
-  def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = Map(elems: _*))
+  def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = feed ++ Map(elems: _*))
 
   def evalUnsafe(outs: Seq[Output[_]]): Seq[NativeTensor[_]] = {
     session.eval(outs, feed)
@@ -192,11 +192,63 @@ object Session {
 
     implicit def singleTensorIsSessionOutputX[SOut1[_]: SeqLike, A: TensorType]: SessionOutputX[SOut1[Tensor[A]]] = {
       (tensors: Seq[NativeTensor[_]]) => {
-        val size = Tensor.apply[Int](tensors(0).asInstanceOf[NativeTensor[Int]]).slice(0).toScalar
-        val converted = tensors.slice(1, size + 1).map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
-        SeqLike[SOut1].unit(converted)
+        val size = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]]).slice(0).toScalar
+        val t1 = tensors.slice(1, size + 1).map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
+        SeqLike[SOut1].unit(t1)
       }
     }
+
+    implicit def tuple2OfOutputsIsSessionInputX[
+      SIn1[_]: SeqLike, A1: TensorType,
+      SIn2[_]: SeqLike, A2: TensorType]
+    : SessionInputX[(SIn1[Output[A1]], SIn2[Output[A2]])] =
+      (out: (SIn1[Output[A1]], SIn2[Output[A2]])) => {
+        import SeqLike.ops._
+        val (o1, o2) = (out._1.asSeq, out._2.asSeq)
+        Tensor.vector(o1.size, o2.size).const +: o1 ++: o2
+      }
+
+    implicit def tuple2OfTensorsIsSessionOutputX[
+      SOut1[_]: SeqLike, A1: TensorType,
+      SOut2[_]: SeqLike, A2: TensorType]
+    : SessionOutputX[(SOut1[Tensor[A1]], SOut2[Tensor[A2]])] =
+      (tensors: Seq[NativeTensor[_]]) => {
+        val sizes = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]])
+        val pos0 = 1
+        val pos1 = pos0 + sizes.slice(0).toScalar
+        val pos2 = pos1 + sizes.slice(1).toScalar
+        val t1 = tensors.slice(pos0, pos1).map(nt => Tensor.apply[A1](nt.asInstanceOf[NativeTensor[A1]]))
+        val t2 = tensors.slice(pos1, pos2).map(nt => Tensor.apply[A2](nt.asInstanceOf[NativeTensor[A2]]))
+        (SeqLike[SOut1].unit(t1), SeqLike[SOut2].unit(t2))
+      }
+
+    implicit def tuple3OfOutputsIsSessionInputX[
+      SIn1[_]: SeqLike, A1: TensorType,
+      SIn2[_]: SeqLike, A2: TensorType,
+      SIn3[_]: SeqLike, A3: TensorType]
+    : SessionInputX[(SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])] =
+      (out: (SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])) => {
+        import SeqLike.ops._
+        val (o1, o2, o3) = (out._1.asSeq, out._2.asSeq, out._3.asSeq)
+        Tensor.vector(o1.size, o2.size, o3.size).const +: o1 ++: o2 ++: o3
+      }
+
+    implicit def tuple3OfTensorsIsSessionOutputX[
+      SOut1[_]: SeqLike, A1: TensorType,
+      SOut2[_]: SeqLike, A2: TensorType,
+      SOut3[_]: SeqLike, A3: TensorType]
+    : SessionOutputX[(SOut1[Tensor[A1]], SOut2[Tensor[A2]], SOut3[Tensor[A3]])] =
+      (tensors: Seq[NativeTensor[_]]) => {
+        val sizes = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]])
+        val pos0 = 1
+        val pos1 = pos0 + sizes.slice(0).toScalar
+        val pos2 = pos1 + sizes.slice(1).toScalar
+        val pos3 = pos2 + sizes.slice(2).toScalar
+        val t1 = tensors.slice(pos0, pos1).map(nt => Tensor.apply[A1](nt.asInstanceOf[NativeTensor[A1]]))
+        val t2 = tensors.slice(pos1, pos2).map(nt => Tensor.apply[A2](nt.asInstanceOf[NativeTensor[A2]]))
+        val t3 = tensors.slice(pos2, pos3).map(nt => Tensor.apply[A3](nt.asInstanceOf[NativeTensor[A3]]))
+        (SeqLike[SOut1].unit(t1), SeqLike[SOut2].unit(t2), SeqLike[SOut3].unit(t3))
+      }
   }
 
   trait Syntax extends Implicits with SessionInput.ToSessionInputOps
