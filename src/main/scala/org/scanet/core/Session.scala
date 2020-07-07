@@ -12,9 +12,6 @@ import org.scanet.core.Session.syntax._
 import scala.language.existentials
 import scala.util.Try
 import scala.collection.JavaConverters._
-import TensorType.syntax._
-import ConstOp.syntax._
-import Slice.syntax._
 
 //import scala.util.Using // use with scala 2.13
 
@@ -30,9 +27,10 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
   // ideally we can get rid of SessionInput and SessionOutput
   // and just make native transformation Product[Output[T]] ~> Product[Tensor[T]]
   def evalX[O: SessionInput, T: SessionOutput](out: O): T = {
-    val input: Seq[Output[_]] = out.toInput
-    val output = evalUnsafe(input)
-    SessionOutput[T].fromOutput(output)
+    val input: (Seq[Int], Seq[Output[_]]) = out.toInput
+    val (size, outputs) = input
+    val output = evalUnsafe(outputs)
+    SessionOutput[T].fromOutput(size, output)
   }
 
   def eval[A: TensorType](a: Output[A]): Tensor[A] = {
@@ -148,14 +146,13 @@ object Session {
     implicit def singleOutputIsSessionInputX[SIn1[_]: SeqLike, A: TensorType]: SessionInput[SIn1[Output[A]]] = {
       (out: SIn1[Output[A]]) => {
         val outs = SeqLike[SIn1].asSeq(out)
-        Tensor.vector(outs.size).const +: outs
+        (Seq(outs.size), outs)
       }
     }
 
     implicit def singleTensorIsSessionOutputX[SOut1[_]: SeqLike, A: TensorType]: SessionOutput[SOut1[Tensor[A]]] = {
-      (tensors: Seq[NativeTensor[_]]) => {
-        val size = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]]).slice(0).toScalar
-        val t1 = tensors.slice(1, size + 1).map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
+      (_: Seq[Int], tensors: Seq[NativeTensor[_]]) => {
+        val t1 = tensors.map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
         SeqLike[SOut1].unit(t1)
       }
     }
@@ -166,18 +163,17 @@ object Session {
     : SessionInput[(SIn1[Output[A1]], SIn2[Output[A2]])] =
       (out: (SIn1[Output[A1]], SIn2[Output[A2]])) => {
         val (o1, o2) = (SeqLike[SIn1].asSeq(out._1), SeqLike[SIn2].asSeq(out._2))
-        Tensor.vector(o1.size, o2.size).const +: o1 ++: o2
+        (Seq(o1.size, o2.size), o1 ++: o2)
       }
 
     implicit def tuple2OfTensorsIsSessionOutputX[
       SOut1[_]: SeqLike, A1: TensorType,
       SOut2[_]: SeqLike, A2: TensorType]
     : SessionOutput[(SOut1[Tensor[A1]], SOut2[Tensor[A2]])] =
-      (tensors: Seq[NativeTensor[_]]) => {
-        val sizes = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]])
-        val pos0 = 1
-        val pos1 = pos0 + sizes.slice(0).toScalar
-        val pos2 = pos1 + sizes.slice(1).toScalar
+      (sizes: Seq[Int], tensors: Seq[NativeTensor[_]]) => {
+        val pos0 = 0
+        val pos1 = pos0 + sizes(0)
+        val pos2 = pos1 + sizes(1)
         val t1 = tensors.slice(pos0, pos1).map(nt => Tensor.apply[A1](nt.asInstanceOf[NativeTensor[A1]]))
         val t2 = tensors.slice(pos1, pos2).map(nt => Tensor.apply[A2](nt.asInstanceOf[NativeTensor[A2]]))
         (SeqLike[SOut1].unit(t1), SeqLike[SOut2].unit(t2))
@@ -190,7 +186,7 @@ object Session {
     : SessionInput[(SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])] =
       (out: (SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])) => {
         val (o1, o2, o3) = (SeqLike[SIn1].asSeq(out._1), SeqLike[SIn2].asSeq(out._2), SeqLike[SIn3].asSeq(out._3))
-        Tensor.vector(o1.size, o2.size, o3.size).const +: o1 ++: o2 ++: o3
+        (Seq(o1.size, o2.size, o3.size), o1 ++: o2 ++: o3)
       }
 
     implicit def tuple3OfTensorsIsSessionOutputX[
@@ -198,12 +194,11 @@ object Session {
       SOut2[_]: SeqLike, A2: TensorType,
       SOut3[_]: SeqLike, A3: TensorType]
     : SessionOutput[(SOut1[Tensor[A1]], SOut2[Tensor[A2]], SOut3[Tensor[A3]])] =
-      (tensors: Seq[NativeTensor[_]]) => {
-        val sizes = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]])
-        val pos0 = 1
-        val pos1 = pos0 + sizes.slice(0).toScalar
-        val pos2 = pos1 + sizes.slice(1).toScalar
-        val pos3 = pos2 + sizes.slice(2).toScalar
+      (sizes: Seq[Int], tensors: Seq[NativeTensor[_]]) => {
+        val pos0 = 0
+        val pos1 = pos0 + sizes(0)
+        val pos2 = pos1 + sizes(1)
+        val pos3 = pos2 + sizes(2)
         val t1 = tensors.slice(pos0, pos1).map(nt => Tensor.apply[A1](nt.asInstanceOf[NativeTensor[A1]]))
         val t2 = tensors.slice(pos1, pos2).map(nt => Tensor.apply[A2](nt.asInstanceOf[NativeTensor[A2]]))
         val t3 = tensors.slice(pos2, pos3).map(nt => Tensor.apply[A3](nt.asInstanceOf[NativeTensor[A3]]))
@@ -222,11 +217,11 @@ object Session {
 }
 
 @typeclass trait SessionInput[O] {
-  def toInput(value: O): Seq[Output[_]]
+  def toInput(value: O): (Seq[Int], Seq[Output[_]])
 }
 
 @typeclass trait SessionOutput[T] {
-  def fromOutput(tensors: Seq[NativeTensor[_]]): T
+  def fromOutput(sizes: Seq[Int], tensors: Seq[NativeTensor[_]]): T
 }
 
 class LazySession {

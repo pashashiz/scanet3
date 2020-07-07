@@ -33,7 +33,6 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .using(SGD())
       .initWith(s => Tensor.zeros(s))
       .batch(97)
-      .each(1.epochs, logResult())
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile()
