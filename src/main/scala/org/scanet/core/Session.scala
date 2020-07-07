@@ -35,24 +35,17 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
     SessionOutput[T].fromOutput(output)
   }
 
-  def evalXX[O: SessionInputX, T: SessionOutputX](out: O): T = {
-    import org.scanet.core.Session.syntaxX._
-    val input: Seq[Output[_]] = out.toInput
-    val output = evalUnsafe(input)
-    SessionOutputX[T].fromOutput(output)
-  }
-
   def eval[A: TensorType](a: Output[A]): Tensor[A] = {
     val nTensor = session.eval(Seq(a), feed).head.asInstanceOf[NativeTensor[A]]
     Tensor.apply[A](nTensor)
   }
 
   def eval[A: TensorType, B: TensorType](a: Output[A], b: Output[B]): (Tensor[A], Tensor[B]) = {
-    evalX[(Output[A], Output[B]), (Tensor[A], Tensor[B])]((a, b))
+    evalX[(Id[Output[A]], Id[Output[B]]), (Id[Tensor[A]], Id[Tensor[B]])]((a, b))
   }
 
   def eval[A: TensorType, B: TensorType, C: TensorType](a: Output[A], b: Output[B], c: Output[C]): (Tensor[A], Tensor[B], Tensor[C]) = {
-    evalX[(Output[A], Output[B], Output[C]), (Tensor[A], Tensor[B], Tensor[C])]((a, b, c))
+    evalX[(Id[Output[A]], Id[Output[B]], Id[Output[C]]), (Id[Tensor[A]], Id[Tensor[B]], Id[Tensor[C]])]((a, b, c))
   }
 }
 
@@ -140,37 +133,7 @@ object Session {
     } finally if (session != null) session.close()
   }
 
-  // todo: remove
   trait Implicits {
-
-    implicit def singleOutputIsSessionInput[A: TensorType]: SessionInput[Output[A]] =
-      (out: Output[A]) => Seq(out)
-
-    implicit def singleTensorIsSessionOutput[A: TensorType]: SessionOutput[Tensor[A]] =
-      (tensors: Seq[NativeTensor[_]]) => Tensor.apply[A](tensors(0).asInstanceOf[NativeTensor[A]])
-
-    implicit def tuple2OfOutputsIsSessionInput[A1: TensorType, A2: TensorType]: SessionInput[(Output[A1], Output[A2])] =
-      (out: (Output[A1], Output[A2])) => Seq(out._1, out._2)
-
-    implicit def tuple2OfTensorsIsSessionOutput[A1: TensorType, A2: TensorType]: SessionOutput[(Tensor[A1], Tensor[A2])] =
-      (tensors: Seq[NativeTensor[_]]) => (
-        Tensor.apply[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
-        Tensor.apply[A2](tensors(1).asInstanceOf[NativeTensor[A2]])
-      )
-
-    implicit def tuple3OfOutputsIsSessionInput[A1: TensorType, A2: TensorType, A3: TensorType]: SessionInput[(Output[A1], Output[A2], Output[A3])] =
-      (out: (Output[A1], Output[A2], Output[A3])) => Seq(out._1, out._2, out._3)
-
-    implicit def tuple3OfTensorsIsSessionOutput[A1: TensorType, A2: TensorType, A3: TensorType]: SessionOutput[(Tensor[A1], Tensor[A2], Tensor[A3])] =
-      (tensors: Seq[NativeTensor[_]]) => (
-        Tensor.apply[A1](tensors(0).asInstanceOf[NativeTensor[A1]]),
-        Tensor.apply[A2](tensors(1).asInstanceOf[NativeTensor[A2]]),
-        Tensor.apply[A3](tensors(2).asInstanceOf[NativeTensor[A3]])
-      )
-
-  }
-
-  trait ImplicitsX {
 
     implicit def seqIsArg: SeqLike[Seq] = new SeqLike[Seq] {
       override def unit[P](seq: Seq[P]): Seq[P] = seq
@@ -182,15 +145,14 @@ object Session {
       override def asSeq[P](arg: Id[P]): Seq[P] = Seq(arg)
     }
 
-    implicit def singleOutputIsSessionInputX[SIn1[_]: SeqLike, A: TensorType]: SessionInputX[SIn1[Output[A]]] = {
+    implicit def singleOutputIsSessionInputX[SIn1[_]: SeqLike, A: TensorType]: SessionInput[SIn1[Output[A]]] = {
       (out: SIn1[Output[A]]) => {
-        import SeqLike.ops._
-        val outs = out.asSeq
+        val outs = SeqLike[SIn1].asSeq(out)
         Tensor.vector(outs.size).const +: outs
       }
     }
 
-    implicit def singleTensorIsSessionOutputX[SOut1[_]: SeqLike, A: TensorType]: SessionOutputX[SOut1[Tensor[A]]] = {
+    implicit def singleTensorIsSessionOutputX[SOut1[_]: SeqLike, A: TensorType]: SessionOutput[SOut1[Tensor[A]]] = {
       (tensors: Seq[NativeTensor[_]]) => {
         val size = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]]).slice(0).toScalar
         val t1 = tensors.slice(1, size + 1).map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
@@ -201,17 +163,16 @@ object Session {
     implicit def tuple2OfOutputsIsSessionInputX[
       SIn1[_]: SeqLike, A1: TensorType,
       SIn2[_]: SeqLike, A2: TensorType]
-    : SessionInputX[(SIn1[Output[A1]], SIn2[Output[A2]])] =
+    : SessionInput[(SIn1[Output[A1]], SIn2[Output[A2]])] =
       (out: (SIn1[Output[A1]], SIn2[Output[A2]])) => {
-        import SeqLike.ops._
-        val (o1, o2) = (out._1.asSeq, out._2.asSeq)
+        val (o1, o2) = (SeqLike[SIn1].asSeq(out._1), SeqLike[SIn2].asSeq(out._2))
         Tensor.vector(o1.size, o2.size).const +: o1 ++: o2
       }
 
     implicit def tuple2OfTensorsIsSessionOutputX[
       SOut1[_]: SeqLike, A1: TensorType,
       SOut2[_]: SeqLike, A2: TensorType]
-    : SessionOutputX[(SOut1[Tensor[A1]], SOut2[Tensor[A2]])] =
+    : SessionOutput[(SOut1[Tensor[A1]], SOut2[Tensor[A2]])] =
       (tensors: Seq[NativeTensor[_]]) => {
         val sizes = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]])
         val pos0 = 1
@@ -226,10 +187,9 @@ object Session {
       SIn1[_]: SeqLike, A1: TensorType,
       SIn2[_]: SeqLike, A2: TensorType,
       SIn3[_]: SeqLike, A3: TensorType]
-    : SessionInputX[(SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])] =
+    : SessionInput[(SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])] =
       (out: (SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])) => {
-        import SeqLike.ops._
-        val (o1, o2, o3) = (out._1.asSeq, out._2.asSeq, out._3.asSeq)
+        val (o1, o2, o3) = (SeqLike[SIn1].asSeq(out._1), SeqLike[SIn2].asSeq(out._2), SeqLike[SIn3].asSeq(out._3))
         Tensor.vector(o1.size, o2.size, o3.size).const +: o1 ++: o2 ++: o3
       }
 
@@ -237,7 +197,7 @@ object Session {
       SOut1[_]: SeqLike, A1: TensorType,
       SOut2[_]: SeqLike, A2: TensorType,
       SOut3[_]: SeqLike, A3: TensorType]
-    : SessionOutputX[(SOut1[Tensor[A1]], SOut2[Tensor[A2]], SOut3[Tensor[A3]])] =
+    : SessionOutput[(SOut1[Tensor[A1]], SOut2[Tensor[A2]], SOut3[Tensor[A3]])] =
       (tensors: Seq[NativeTensor[_]]) => {
         val sizes = Tensor.apply[Int](tensors.head.asInstanceOf[NativeTensor[Int]])
         val pos0 = 1
@@ -251,22 +211,9 @@ object Session {
       }
   }
 
-  trait Syntax extends Implicits with SessionInput.ToSessionInputOps
-
-  trait SyntaxX extends ImplicitsX with SeqLike.ToSeqLikeOps with SessionInputX.ToSessionInputXOps with SessionOutputX.ToSessionOutputXOps
+  trait Syntax extends Implicits with SeqLike.ToSeqLikeOps with SessionInput.ToSessionInputOps  with SessionOutput.ToSessionOutputOps
 
   object syntax extends Syntax
-
-  object syntaxX extends SyntaxX
-}
-
-// todo: remove
-@typeclass trait SessionInput[O] {
-  def toInput(value: O): Seq[Output[_]]
-}
-// todo: remove
-@typeclass trait SessionOutput[T] {
-  def fromOutput(tensors: Seq[NativeTensor[_]]): T
 }
 
 @typeclass trait SeqLike[F[_]] {
@@ -274,11 +221,11 @@ object Session {
   def asSeq[P](arg: F[P]): Seq[P]
 }
 
-@typeclass trait SessionInputX[O] {
+@typeclass trait SessionInput[O] {
   def toInput(value: O): Seq[Output[_]]
 }
 
-@typeclass trait SessionOutputX[T] {
+@typeclass trait SessionOutput[T] {
   def fromOutput(tensors: Seq[NativeTensor[_]]): T
 }
 
