@@ -23,6 +23,10 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
     session.eval(outs, feed)
   }
 
+  def evalU[A](value: A)(implicit ce: CanEval[A]): ce.Materialized = ce.eval(this, value)
+
+  // REMOVE
+
   // NOTE: try HList for this
   // ideally we can get rid of SessionInput and SessionOutput
   // and just make native transformation Product[Output[T]] ~> Product[Tensor[T]]
@@ -204,6 +208,73 @@ object Session {
         val t3 = tensors.slice(pos2, pos3).map(nt => Tensor.apply[A3](nt.asInstanceOf[NativeTensor[A3]]))
         (SeqLike[SOut1].unit(t1), SeqLike[SOut2].unit(t2), SeqLike[SOut3].unit(t3))
       }
+
+    // NEW
+
+    implicit def singleOutputIsContainer =
+      new OutputContainer[Output] {
+        type Materialized[λ] = Tensor[λ]
+        override def of[T](seq: Seq[Output[T]]): Output[T] = seq.head
+        override def outputToSeq[T](out: Output[T]): Seq[Output[T]] = Seq(out)
+        override def materializedToSeq[T](out: Tensor[T]): Seq[Tensor[T]] = Seq(out)
+        override def toMaterialized[T](seq: Seq[Tensor[T]]): Tensor[T] = seq.head
+      }
+
+    // IMPORTANT: Turned out scala compiler needs OutputSeq[λ] type to be
+    // specified explicitly instead of just using Seq[Output[λ]]
+    // that is kind of annoying, would be nice to fix it somehow
+    // ({type OutputSeq[A] = Seq[Output[A]]})#OutputSeq
+    implicit def outputSeqIsContainer =
+      new OutputContainer[OutputSeq] {
+        override type Materialized[λ] = Seq[Tensor[λ]]
+        override def of[T](seq: Seq[Output[T]]): OutputSeq[T] = seq
+        override def outputToSeq[T](out: OutputSeq[T]): Seq[Output[T]] = out
+        override def materializedToSeq[T](out: Seq[Tensor[T]]): Seq[Tensor[T]] = out
+        override def toMaterialized[T](seq: Seq[Tensor[T]]): Seq[Tensor[T]] = seq
+      }
+
+    implicit def canEvalOutputContainer[Out1[_], T1: TensorType](implicit out1: OutputContainer[Out1]) =
+      new CanEval[Out1[T1]] {
+        override type Materialized = out1.Materialized[T1]
+        override def eval(runner: Runner, value: Out1[T1]): out1.Materialized[T1] = {
+          val tensors = evalOutput(runner, out1, value)
+          out1.toMaterialized(tensors)
+        }
+      }
+
+    implicit def canEvalTuple2OfOutputContainers[
+      Out1[_], T1: TensorType, Out2[_], T2: TensorType]
+    (implicit out1: OutputContainer[Out1], out2: OutputContainer[Out2]) =
+      new CanEval[(Out1[T1], Out2[T2])] {
+        override type Materialized = (out1.Materialized[T1], out2.Materialized[T2])
+        override def eval(runner: Runner, value: (Out1[T1], Out2[T2]))
+        : (out1.Materialized[T1], out2.Materialized[T2]) = {
+          val tensors1 = evalOutput(runner, out1, value._1)
+          val tensors2 = evalOutput(runner, out2, value._2)
+          (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2))
+        }
+      }
+
+    implicit def canEvalTuple3OfOutputContainers[
+      Out1[_], T1: TensorType, Out2[_], T2: TensorType, Out3[_], T3: TensorType]
+    (implicit out1: OutputContainer[Out1], out2: OutputContainer[Out2], out3: OutputContainer[Out3]) =
+      new CanEval[(Out1[T1], Out2[T2], Out3[T3])] {
+        override type Materialized = (out1.Materialized[T1], out2.Materialized[T2], out3.Materialized[T3])
+        override def eval(runner: Runner, value: (Out1[T1], Out2[T2], Out3[T3]))
+        : (out1.Materialized[T1], out2.Materialized[T2], out3.Materialized[T3]) = {
+          val tensors1 = evalOutput(runner, out1, value._1)
+          val tensors2 = evalOutput(runner, out2, value._2)
+          val tensors3 = evalOutput(runner, out3, value._3)
+          (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2), out3.toMaterialized(tensors3))
+        }
+      }
+
+    private def evalOutput[Out[_], T: TensorType]
+    (runner: Runner, evidence: OutputContainer[Out], output: Out[T]): Seq[Tensor[T]] = {
+      val outputs = evidence.outputToSeq(output)
+      runner.evalUnsafe(outputs)
+        .map(n => Tensor.apply[T](n.asInstanceOf[NativeTensor[T]]))
+    }
   }
 
   trait Syntax extends Implicits with SeqLike.ToSeqLikeOps with SessionInput.ToSessionInputOps  with SessionOutput.ToSessionOutputOps
@@ -211,6 +282,7 @@ object Session {
   object syntax extends Syntax
 }
 
+// REMOVE START
 @typeclass trait SeqLike[F[_]] {
   def unit[P](seq: Seq[P]): F[P]
   def asSeq[P](arg: F[P]): Seq[P]
@@ -223,6 +295,21 @@ object Session {
 @typeclass trait SessionOutput[T] {
   def fromOutput(sizes: Seq[Int], tensors: Seq[NativeTensor[_]]): T
 }
+// REMOVE END
+
+trait OutputContainer[O[_]] {
+  type Materialized[_]
+  def of[T](seq: Seq[Output[T]]): O[T]
+  def outputToSeq[T](out: O[T]): Seq[Output[T]]
+  def materializedToSeq[T](out: Materialized[T]): Seq[Tensor[T]]
+  def toMaterialized[T](seq: Seq[Tensor[T]]): Materialized[T]
+}
+
+trait CanEval[In] {
+  type Materialized
+  def eval(runner: Runner, value: In): Materialized
+}
+
 
 class LazySession {
   lazy val get = new Session()

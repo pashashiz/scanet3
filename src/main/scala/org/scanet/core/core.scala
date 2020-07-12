@@ -6,6 +6,8 @@ package object core {
 
   type Id[A] = A
 
+  type OutputSeq[λ] = Seq[Output[λ]]
+
   def fromId[A](id: Id[A]): A = id
 
   object syntax extends CoreSyntax

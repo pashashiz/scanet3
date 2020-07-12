@@ -4,19 +4,6 @@ import org.scanet.core.Session.syntax._
 import org.scanet.core.Session.withing
 import org.scanet.math.syntax.placeholder
 
-// Investigate with Shapeless:
-
-// OutputLike[T] = Output[T] | Seq[Output[T]] | Product[OutputLike[T]]
-// it has method toSeq: Seq[Output[T]]
-// it has method unit(Seq[Output[T]]): OutputLike[T]
-
-// OutputLike => (OutputLike, )
-
-// O: OutputLike[_], T: TensorType
-
-// At the other side we would need to
-// OutputsLike[T] ~> TensorsLike[T]
-
 class TF1[
   A1[_]: SeqLike, P1: TensorType,
   In: SessionInput, Out: SessionOutput]
