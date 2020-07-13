@@ -19,8 +19,6 @@ case class Output[A: TensorType](
       compiler: CompileContext[A] => Operation,
       gradF: Grad[A]) {
 
-  def toId: Id[Output[A]] = this
-
   def withId(newId: String): Output[A] = copy(id = newId)
 
   def withId(newId: Option[String]): Output[A] = newId.map(withId).getOrElse(this)

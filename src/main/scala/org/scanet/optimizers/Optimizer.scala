@@ -79,20 +79,20 @@ case class Optimizer[
         lossModel.loss[A] compile session)
       val calcCompiled = tfCache.getOrCompute(
         s"$lossModel:$alg:calc[${TensorType[A].classTag}]]",
-        /*_*/
-        lossModel.weightsAndGrad[A].compose(TF2.identity[Id, A, Id, Int]) {
-          case ((w: Output[A], g: Output[A]), (meta: Output[A], iter: Output[Int])) =>
+        lossModel.weightsAndGrad[A].combine(TF2.identity[Output, A, Output, Int]) {
+          case ((w, g), (meta, iter)) =>
             val Delta(del, nextMeta) = alg.delta[A](g, meta, iter)
             val d = del.cast[A]
             val nw = if (minimizing) w - d else w + d
-            (nw.toId, nextMeta.toId)
-        }.into[(Id[Tensor[A]], Id[Tensor[A]])]) compile session
-        /*_*/
+            (nw, nextMeta)
+        } compile session)
 
       @tailrec
       def optimize(iter: Int, weights: Tensor[A], meta: Tensor[A]): (Int, Tensor[A], Tensor[A], A) = {
         val (x, y) = batches.next()
+        /*_*/
         val (nextWeights, nextMeta) = calcCompiled(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
+        /*_*/
         if (batches.hasNext) {
           optimize(iter + 1, nextWeights, nextMeta)
         } else {
@@ -119,15 +119,8 @@ case class Optimizer[
     })
   }
 
-  private def avg[X: Numeric: TensorType]
-  : TF2[Id, X, Id, X, Id[Output[X]], Id[Tensor[X]]] =
-    TF2[Id, X, Id, X, Id[Output[X]]](
-      (arg1, arg2) => {
-        val a1: Output[X] = arg1
-        val a2: Output[X] = arg2
-        (a1 + a2) / 2.0f.const.cast[X]
-      })
-      .returns[Id[Tensor[X]]]
+  private def avg[X: Numeric: TensorType] =
+    TF2[Output, X, Output, X, Output[X]]((arg1, arg2) => (arg1 + arg2) / 2.0f.const.cast[X])
 }
 
 object Optimizer {

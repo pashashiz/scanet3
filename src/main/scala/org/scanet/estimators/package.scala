@@ -2,9 +2,9 @@ package org.scanet
 
 import org.apache.spark.rdd.RDD
 import org.scanet.core.Session.withing
-import org.scanet.core.{Id, Output, TF2, Tensor, TensorType}
-import org.scanet.math.{Floating, Numeric}
+import org.scanet.core.{Output, TF2, TensorType}
 import org.scanet.math.syntax._
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.models.TrainedModel
 import org.scanet.optimizers.Tensor2Iterator
 
@@ -17,11 +17,11 @@ package object estimators {
       val model = brModel.value
       val batches = Tensor2Iterator(it, batchSize, splitAt = size => size - model.outputs(), withPadding = false)
       withing(session => {
-        val positive = TF2[Id, A, Id, A, Id[Output[Int]]](
-          (x: Output[A], y: Output[A]) => {
+        val positive = TF2[Output, A, Output, A, Output[Int]](
+          (x, y) => {
             val yPredicted = model.buildResult(x).round
             (y.cast[A] :== yPredicted).cast[Int].sum
-          }).returns[Id[Tensor[Int]]].compile(session)
+          }).compile(session)
         val result = batches.foldLeft((0, 0))((acc, next) => {
           val (x, y) = next
           val (positiveAcc, totalAcc) = acc

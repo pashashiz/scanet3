@@ -9,8 +9,7 @@ abstract class Model extends Serializable {
 
   def build[E: Numeric: Floating: TensorType](x: Output[E], weights: Output[E]): Output[E]
 
-  def result[E: Numeric: Floating: TensorType]: TF2[Id, E, Id, E, Id[Output[E]], Id[Tensor[E]]] =
-    TF2[Id, E, Id, E, Id[Output[E]]](build[E]).returns[Id[Tensor[E]]]
+  def result[E: Numeric: Floating: TensorType]: TF2[E, Tensor[E], E, Tensor[E], Output[E]] = TF2(build[E])
 
   /** @param features number of features in a edataset
    * @return shape of weights tensor
@@ -34,21 +33,16 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
   def build[E: Numeric: Floating: TensorType](x: Output[E], y: Output[E], weights: Output[E]): Output[E] =
     lossF.build(model.build(x, weights), y)
 
-  def loss[E: Numeric: Floating: TensorType]
-  : TF3[Id, E, Id, E, Id, E, Id[Output[E]], Id[Tensor[E]]] =
-    TF3[Id, E, Id, E, Id, E, Id[Output[E]]](build[E]).returns[Id[Tensor[E]]]
+  def loss[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Tensor[E], Output[E]] =
+    TF3(build[E])
 
-  def weightsAndGrad[E: Numeric: Floating: TensorType]
-  : TF3[Id, E, Id, E, Id, E, (Id[Output[E]], Id[Output[E]]), (Id[Tensor[E]], Id[Tensor[E]])] =
-    TF3[Id, E, Id, E, Id, E, (Id[Output[E]], Id[Output[E]])](
+  def weightsAndGrad[E: Numeric: Floating: TensorType] =
+    TF3[Output, E, Output, E, Output, E, (Output[E], Output[E])](
       (x, y, w) => (w, build(x, y, w).grad(w).returns[E]))
-      .returns[(Id[Tensor[E]], Id[Tensor[E]])]
 
-  def grad[E: Numeric: Floating: TensorType]
-  : TF3[Id, E, Id, E, Id, E, Id[Output[E]], Id[Tensor[E]]] =
-    TF3[Id, E, Id, E, Id, E, Id[Output[E]]](
+  def grad[E: Numeric: Floating: TensorType] =
+    TF3[Output, E, Output, E, Output, E, Output[E]](
       (x, y, w) => build(x, y, w).grad(w).returns[E])
-      .returns[Id[Tensor[E]]]
 
   def trained[E: Numeric: Floating: TensorType](weights: Tensor[E]) = new TrainedModel(this, weights)
 
@@ -59,15 +53,12 @@ class TrainedModel[E: Numeric : Floating: TensorType](val lossModel: LossModel, 
 
   def buildResult(x: Output[E]): Output[E] = lossModel.model.build(x, weights.const)
 
-  def result: TF1[Id, E, Id[Output[E]], Id[Tensor[E]]] =
-    TF1[Id, E, Id[Output[E]]](buildResult).returns[Id[Tensor[E]]]
+  def result: TF1[E, Tensor[E], Output[E]] = TF1(buildResult)
 
   def buildLoss(x: Output[E], y: Output[E]): Output[E] = lossModel.build(x, y, weights.const)
 
-  def loss: TF2[Id, E, Id, E, Id[Output[E]], Id[Tensor[E]]] =
-    TF2[Id, E, Id, E, Id[Output[E]]](
-      (x, y) => buildLoss(x, y))
-      .returns[Id[Tensor[E]]]
+  def loss: TF2[E, Tensor[E], E, Tensor[E], Output[E]] =
+    TF2[Output, E, Output, E, Output[E]]((x, y) => buildLoss(x, y))
 
   def outputs(): Int = lossModel.model.outputs()
 }

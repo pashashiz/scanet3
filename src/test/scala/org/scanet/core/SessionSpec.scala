@@ -11,7 +11,7 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
 
   "session" should "eval a single output" in {
     withing(session => {
-      session.runner.evalU(10.const) should be(scalar(10))
+      session.runner.eval(10.const) should be(scalar(10))
     })
   }
 
@@ -19,49 +19,29 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
     withing(session => {
       // NOTE: we need to explicitly pass OutputSeq[Int]
       // which is an alias for Seq[Output[Int]]
-      session.runner.evalU[OutputSeq[Int]](Seq(5.const, 10.const)) should
+      session.runner.eval[OutputSeq[Int]](Seq(5.const, 10.const)) should
         be(Seq(scalar(5), scalar(10)))
     })
   }
 
   it should "eval a tuple2 of outputs" in {
     withing(session => {
-      session.runner.evalU((5.const, 10.const)) should
+      session.runner.eval((5.const, 10.const)) should
         be((scalar(5), scalar(10)))
     })
   }
 
   it should "eval a tuple2 with one output and sequence of outputs" in {
     withing(session => {
-      session.runner.evalU[(Output[Int], OutputSeq[Int])]((1.const, Seq(5.const, 10.const))) should
+      session.runner.eval[(Output[Int], OutputSeq[Int])]((1.const, Seq(5.const, 10.const))) should
         be((scalar(1), Seq(scalar(5), scalar(10))))
     })
   }
 
   it should "eval a tuple3 of outputs" in {
     withing(session => {
-      session.runner.evalU((1.const, 5f.const, 10.const)) should
+      session.runner.eval((1.const, 5f.const, 10.const)) should
         be((scalar(1), scalar(5f), scalar(10)))
-    })
-  }
-
-  "session" should "eval generically when single output is used" in {
-    withing(session => {
-      session.runner.evalX[Id[Output[Int]], Id[Tensor[Int]]](10.const) should be(scalar(10))
-    })
-  }
-
-  it should "eval generically when tuple 2 is used" in {
-    withing(session => {
-      session.runner.evalX[(Id[Output[Int]], Id[Output[Int]]), (Id[Tensor[Int]], Id[Tensor[Int]])](
-        (10.const, 5.const)) should be((scalar(10), scalar(5)))
-    })
-  }
-
-  it should "eval generically when tuple 3 is used" in {
-    withing(session => {
-      session.runner.evalX[(Id[Output[Int]], Id[Output[Int]], Id[Output[Int]]), (Id[Tensor[Int]], Id[Tensor[Int]], Id[Tensor[Int]])](
-        (10.const, 5.const, 1.const)) should be((scalar(10), scalar(5), scalar(1)))
     })
   }
 

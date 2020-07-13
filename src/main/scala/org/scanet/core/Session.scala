@@ -6,8 +6,6 @@ import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
 import org.scanet.core.Output.Compiled
 import org.tensorflow.op.{Scope => NativeScope}
 import org.tensorflow.{Graph, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
-import simulacrum.typeclass
-import org.scanet.core.Session.syntax._
 
 import scala.language.existentials
 import scala.util.Try
@@ -23,32 +21,7 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
     session.eval(outs, feed)
   }
 
-  def evalU[A](value: A)(implicit ce: CanEval[A]): ce.Materialized = ce.eval(this, value)
-
-  // REMOVE
-
-  // NOTE: try HList for this
-  // ideally we can get rid of SessionInput and SessionOutput
-  // and just make native transformation Product[Output[T]] ~> Product[Tensor[T]]
-  def evalX[O: SessionInput, T: SessionOutput](out: O): T = {
-    val input: (Seq[Int], Seq[Output[_]]) = out.toInput
-    val (size, outputs) = input
-    val output = evalUnsafe(outputs)
-    SessionOutput[T].fromOutput(size, output)
-  }
-
-  def eval[A: TensorType](a: Output[A]): Tensor[A] = {
-    val nTensor = session.eval(Seq(a), feed).head.asInstanceOf[NativeTensor[A]]
-    Tensor.apply[A](nTensor)
-  }
-
-  def eval[A: TensorType, B: TensorType](a: Output[A], b: Output[B]): (Tensor[A], Tensor[B]) = {
-    evalX[(Id[Output[A]], Id[Output[B]]), (Id[Tensor[A]], Id[Tensor[B]])]((a, b))
-  }
-
-  def eval[A: TensorType, B: TensorType, C: TensorType](a: Output[A], b: Output[B], c: Output[C]): (Tensor[A], Tensor[B], Tensor[C]) = {
-    evalX[(Id[Output[A]], Id[Output[B]], Id[Output[C]]), (Id[Tensor[A]], Id[Tensor[B]], Id[Tensor[C]])]((a, b, c))
-  }
+  def eval[A](value: A)(implicit ce: CanEval[A]): ce.Materialized = ce.eval(this, value)
 }
 
 case class SessionState(scope: NativeScope, cache: Map[String, Compiled]) {
@@ -137,80 +110,6 @@ object Session {
 
   trait Implicits {
 
-    implicit def seqIsArg: SeqLike[Seq] = new SeqLike[Seq] {
-      override def unit[P](seq: Seq[P]): Seq[P] = seq
-      override def asSeq[P](arg: Seq[P]): Seq[P] = arg
-    }
-
-    implicit def idIsArg: SeqLike[Id] = new SeqLike[Id] {
-      override def unit[P](seq: Seq[P]): Id[P] = seq.head
-      override def asSeq[P](arg: Id[P]): Seq[P] = Seq(arg)
-    }
-
-    implicit def singleOutputIsSessionInputX[SIn1[_]: SeqLike, A: TensorType]: SessionInput[SIn1[Output[A]]] = {
-      (out: SIn1[Output[A]]) => {
-        val outs = SeqLike[SIn1].asSeq(out)
-        (Seq(outs.size), outs)
-      }
-    }
-
-    implicit def singleTensorIsSessionOutputX[SOut1[_]: SeqLike, A: TensorType]: SessionOutput[SOut1[Tensor[A]]] = {
-      (_: Seq[Int], tensors: Seq[NativeTensor[_]]) => {
-        val t1 = tensors.map(nt => Tensor.apply[A](nt.asInstanceOf[NativeTensor[A]]))
-        SeqLike[SOut1].unit(t1)
-      }
-    }
-
-    implicit def tuple2OfOutputsIsSessionInputX[
-      SIn1[_]: SeqLike, A1: TensorType,
-      SIn2[_]: SeqLike, A2: TensorType]
-    : SessionInput[(SIn1[Output[A1]], SIn2[Output[A2]])] =
-      (out: (SIn1[Output[A1]], SIn2[Output[A2]])) => {
-        val (o1, o2) = (SeqLike[SIn1].asSeq(out._1), SeqLike[SIn2].asSeq(out._2))
-        (Seq(o1.size, o2.size), o1 ++: o2)
-      }
-
-    implicit def tuple2OfTensorsIsSessionOutputX[
-      SOut1[_]: SeqLike, A1: TensorType,
-      SOut2[_]: SeqLike, A2: TensorType]
-    : SessionOutput[(SOut1[Tensor[A1]], SOut2[Tensor[A2]])] =
-      (sizes: Seq[Int], tensors: Seq[NativeTensor[_]]) => {
-        val pos0 = 0
-        val pos1 = pos0 + sizes(0)
-        val pos2 = pos1 + sizes(1)
-        val t1 = tensors.slice(pos0, pos1).map(nt => Tensor.apply[A1](nt.asInstanceOf[NativeTensor[A1]]))
-        val t2 = tensors.slice(pos1, pos2).map(nt => Tensor.apply[A2](nt.asInstanceOf[NativeTensor[A2]]))
-        (SeqLike[SOut1].unit(t1), SeqLike[SOut2].unit(t2))
-      }
-
-    implicit def tuple3OfOutputsIsSessionInputX[
-      SIn1[_]: SeqLike, A1: TensorType,
-      SIn2[_]: SeqLike, A2: TensorType,
-      SIn3[_]: SeqLike, A3: TensorType]
-    : SessionInput[(SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])] =
-      (out: (SIn1[Output[A1]], SIn2[Output[A2]], SIn3[Output[A3]])) => {
-        val (o1, o2, o3) = (SeqLike[SIn1].asSeq(out._1), SeqLike[SIn2].asSeq(out._2), SeqLike[SIn3].asSeq(out._3))
-        (Seq(o1.size, o2.size, o3.size), o1 ++: o2 ++: o3)
-      }
-
-    implicit def tuple3OfTensorsIsSessionOutputX[
-      SOut1[_]: SeqLike, A1: TensorType,
-      SOut2[_]: SeqLike, A2: TensorType,
-      SOut3[_]: SeqLike, A3: TensorType]
-    : SessionOutput[(SOut1[Tensor[A1]], SOut2[Tensor[A2]], SOut3[Tensor[A3]])] =
-      (sizes: Seq[Int], tensors: Seq[NativeTensor[_]]) => {
-        val pos0 = 0
-        val pos1 = pos0 + sizes(0)
-        val pos2 = pos1 + sizes(1)
-        val pos3 = pos2 + sizes(2)
-        val t1 = tensors.slice(pos0, pos1).map(nt => Tensor.apply[A1](nt.asInstanceOf[NativeTensor[A1]]))
-        val t2 = tensors.slice(pos1, pos2).map(nt => Tensor.apply[A2](nt.asInstanceOf[NativeTensor[A2]]))
-        val t3 = tensors.slice(pos2, pos3).map(nt => Tensor.apply[A3](nt.asInstanceOf[NativeTensor[A3]]))
-        (SeqLike[SOut1].unit(t1), SeqLike[SOut2].unit(t2), SeqLike[SOut3].unit(t3))
-      }
-
-    // NEW
-
     implicit def singleOutputIsContainer =
       new OutputContainer[Output] {
         type Materialized[λ] = Tensor[λ]
@@ -277,25 +176,10 @@ object Session {
     }
   }
 
-  trait Syntax extends Implicits with SeqLike.ToSeqLikeOps with SessionInput.ToSessionInputOps  with SessionOutput.ToSessionOutputOps
+  trait Syntax extends Implicits
 
   object syntax extends Syntax
 }
-
-// REMOVE START
-@typeclass trait SeqLike[F[_]] {
-  def unit[P](seq: Seq[P]): F[P]
-  def asSeq[P](arg: F[P]): Seq[P]
-}
-
-@typeclass trait SessionInput[O] {
-  def toInput(value: O): (Seq[Int], Seq[Output[_]])
-}
-
-@typeclass trait SessionOutput[T] {
-  def fromOutput(sizes: Seq[Int], tensors: Seq[NativeTensor[_]]): T
-}
-// REMOVE END
 
 trait OutputContainer[O[_]] {
   type Materialized[_]
