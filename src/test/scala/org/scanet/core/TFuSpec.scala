@@ -44,4 +44,78 @@ class TFuSpec extends AnyFlatSpec with CustomMatchers {
       func(scalar(5)) should be((scalar(5), Seq(scalar(5), scalar(5))))
     })
   }
+
+  it should "be combined with other 1 arg function" in {
+    val inc1 = TFu1((arg: Output[Int]) => arg + 1.const)
+    val inc2 = TFu1((arg: Output[Int]) => arg + 2.const)
+    val diff = inc1.combine(inc2)(_ - _)
+    withing(session => {
+      val func = diff compile session
+      func(scalar(2), scalar(2)) should be(scalar(-1))
+    })
+  }
+
+  it should "have an identity" in {
+    val identity1 = TFu1.identity[Output, Int]
+    val identity2 = TFu1.identity[Output, Int]
+    val sum = identity1.combine(identity2)(_ + _)
+    withing(session => {
+      val func = sum compile session
+      func(scalar(2), scalar(2)) should be(scalar(4))
+    })
+  }
+
+  "tensor function of 2 args" should "work" in {
+    val plus = TFu2((left: Output[Int], right: Output[Int]) => left + right)
+    withing(session => {
+      val func = plus compile session
+      func(scalar(1), scalar(2)) should be(scalar(3))
+    })
+  }
+
+  it should "have an identity" in {
+    val plus = TFu3((a1: Output[Int], a2: Output[Int], a3: Output[Int]) => a1 + a2 + a3)
+    val identity = TFu2.identity[Output, Int, Output, Int]
+    val sum = plus.combine(identity) {
+      case (p, (a1, a2)) => p + a1 + a2
+    }
+    withing(session => {
+      val func = sum compile session
+      func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(15))
+    })
+  }
+
+  "tensor function of 3 args" should "work" in {
+    val plus = TFu3((a1: Output[Int], a2: Output[Int], a3: Output[Int]) => a1 + a2 + a3)
+    withing(session => {
+      val func = plus compile session
+      func(scalar(1), scalar(2), scalar(3)) should be(scalar(6))
+    })
+  }
+
+  it should "be combined with other 2 arg function" in {
+    val plus1 = TFu3((a1: Output[Int], a2: Output[Int], a3: Output[Int]) => a1 + a2 + a3)
+    val plus2 = TFu2((a1: Output[Int], a2: Output[Int]) => a1 + a2)
+    val diff = plus1.combine(plus2)(_ - _)
+    withing(session => {
+      val func = diff compile session
+      func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(-3))
+    })
+  }
+
+  "tensor function of 4 args" should "work" in {
+    val plus = TFu4((a1: Output[Int], a2: Output[Int], a3: Output[Int], a4: Output[Int]) => a1 + a2 + a3 + a4)
+    withing(session => {
+      val func = plus compile session
+      func(scalar(1), scalar(2), scalar(3), scalar(4)) should be(scalar(10))
+    })
+  }
+
+  "tensor function of 5 args" should "work" in {
+    val plus = TFu5((a1: Output[Int], a2: Output[Int], a3: Output[Int], a4: Output[Int], a5: Output[Int]) => a1 + a2 + a3 + a4 + a5)
+    withing(session => {
+      val func = plus compile session
+      func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(15))
+    })
+  }
 }
