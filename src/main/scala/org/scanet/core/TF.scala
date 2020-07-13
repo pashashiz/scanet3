@@ -1,261 +1,220 @@
 package org.scanet.core
 
-import org.scanet.core.Session.withing
-import org.scanet.core.syntax._
+import org.scanet.math.syntax.placeholder
 
-class TF1[P1: TensorType, In: SessionInput, Out: SessionOutput]
-    (val builder: Shape => (Output[P1], In), val id: Option[String] = None) {
+trait TF1[P1, P1M, R] {
 
-  private val buildIfAbsent: Shape => (Output[P1], In) = memoize(builder)
+  private val buildMemoized = memoize(s => build(s))
 
-  def withId(id: String): TF1[P1, In, Out] = new TF1(builder, Some(id))
+  def materializedToSeq(in: P1M): Seq[Tensor[P1]]
 
-  def compile(session: Session): Tensor[P1] => Out = {
-    a1 => {
-      val (p1, out) = buildIfAbsent(a1.shape)
-      session.runner.feed(p1 -> a1).evalX[In, Out](out)
+  def build(shapes: Seq[Shape]): (Seq[Output[P1]], R)
+
+  def compile()(implicit res: CanEval[R]): P1M => res.Materialized = compile(new Session())(res)
+
+  def compile(session: Session)(implicit res: CanEval[R]): P1M => res.Materialized = {
+    in: P1M => {
+      val t1: Seq[Tensor[P1]] = materializedToSeq(in)
+      val (p1, out) = buildMemoized(t1.map(_.shape))
+      session.runner.feed(p1 zip t1: _*).eval(out)(res)
     }
   }
 
-  def compile(): Tensor[P1] => Out =
-    p1 => {
-      withing(session => {
-        compile(session).apply(p1)
-      })
-    }
+  def combine[P1Other, P1MOther, ROther, RNew](other: TF1[P1Other, P1MOther, ROther])(via: (R, ROther) => RNew): TF2[P1, P1M, P1Other, P1MOther, RNew] = new TF2[P1, P1M, P1Other, P1MOther, RNew] {
 
-  def compose[P2: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput, OutNew: SessionOutput]
-    (other: TF1[P2, InOther, OutOther])(via: (In, InOther) => InNew): TF2[P1, P2, InNew, OutNew] = {
-    new TF2((a1, a2) => {
-      val (p1, out) = builder(a1)
-      val (p2, ouOutOther) = other.builder(a2)
-      (p1, p2, via(out, ouOutOther))
-    })
-  }
+    override def materializedToSeq(in1: P1M, in2: P1MOther) =
+      (TF1.this.materializedToSeq(in1), other.materializedToSeq(in2))
 
-  def compose[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
-  (other: TF2[P1Other, P2Other, InOther, OutOther])(via: (In, InOther) => InNew): Composition[P1Other, P2Other, InOther, OutOther, InNew] =
-    new Composition(other, via)
-
-  class Composition[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
-  (private val other: TF2[P1Other, P2Other, InOther, OutOther], private val via: (In, InOther) => InNew) {
-    def into[OutNew: SessionOutput]: TF3[P1, P1Other, P2Other, InNew, OutNew] = {
-      new TF3((a1, a2, a3) => {
-        val (p1, out) = builder(a1)
-        val (p2, p3, ouOutOther) = other.builder(a2, a3)
-        (p1, p2, p3, via(out, ouOutOther))
-      })
+    override def build(s1: Seq[Shape], s2: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P1Other]], RNew) = {
+      val (p1, out) = TF1.this.build(s1)
+      val (p1Other, outOther) = other.build(s2)
+      (p1, p1Other, via(out, outOther))
     }
   }
 }
 
 object TF1 {
 
-  case class TF1Builder[P1: TensorType, In: SessionInput](builder: Output[P1] => In) {
-    def returns[Out: SessionOutput]: TF1[P1, In, Out] = new TF1[P1, In, Out](shape => {
-      val arg1 = placeholder[P1](shape)
-      (arg1, builder(arg1))
-    })
-  }
+  def apply[A1[_], P1: TensorType, R](func: A1[P1] => R)(implicit arg1: OutputContainer[A1]): TF1[P1, arg1.Materialized[P1], R] =
+    new TF1[P1, arg1.Materialized[P1], R] {
 
-  def apply[P1: TensorType, In: SessionInput](builder: Output[P1] => In): TF1Builder[P1, In] = TF1Builder(builder)
+      override def materializedToSeq(in: arg1.Materialized[P1]): Seq[Tensor[P1]] = arg1.materializedToSeq(in)
 
-  def identity[P: TensorType]: TF1[P, Output[P], Tensor[P]] = TF1[P, Output[P]](arg => arg).returns[Tensor[P]]
+      override def build(shapes: Seq[Shape]): (Seq[Output[P1]], R) = {
+        val p1 = shapes.map(placeholder[P1](_))
+        val out = func(arg1.of(p1))
+        (p1, out)
+      }
+    }
+
+  def identity[A1[_], P1: TensorType](implicit arg1: OutputContainer[A1]) =
+    TF1[A1, P1, A1[P1]](arg => arg)
 }
 
-class TF2[P1: TensorType, P2: TensorType, In: SessionInput, Out: SessionOutput]
-    (val builder: (Shape, Shape) => (Output[P1], Output[P2], In)) {
+trait TF2[P1, P1M, P2, P2M, R] {
 
-  private val buildIfAbsent: (Shape, Shape) => (Output[P1], Output[P2], In) = memoize(builder)
+  private val buildMemoized = memoize((s1, s2) => build(s1, s2))
 
-  def compile(session: Session): (Tensor[P1], Tensor[P2]) => Out = {
-    (a1, a2) => {
-      val (p1, p2, out) = buildIfAbsent(a1.shape, a2.shape)
-      session.runner.feed(p1 -> a1, p2 -> a2).evalX[In, Out](out)
+  def materializedToSeq(in1: P1M, in2: P2M): (Seq[Tensor[P1]], Seq[Tensor[P2]])
+
+  def build(s1: Seq[Shape], s2: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], R)
+
+  def compile()(implicit res: CanEval[R]): (P1M, P2M) => res.Materialized = compile(new Session())(res)
+
+  def compile(session: Session)(implicit res: CanEval[R]): (P1M, P2M) => res.Materialized = {
+    (in1: P1M, in2: P2M) => {
+      val (t1, t2) = materializedToSeq(in1, in2)
+      val (p1, p2, out) = buildMemoized(t1.map(_.shape), t2.map(_.shape))
+      session.runner.feed(p1 zip t1: _*).feed(p2 zip t2: _*).eval(out)(res)
     }
-  }
-
-  def compile(): (Tensor[P1], Tensor[P2])  => Out =
-    (p1, p2) => {
-      withing(session => {
-        compile(session).apply(p1, p2)
-      })
-    }
-
-  def compose[P1Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput, OutNew: SessionOutput]
-    (other: TF1[P1Other, InOther, OutOther])(via: (In, InOther) => InNew): TF3[P1, P2, P1Other, InNew, OutNew] = {
-    new TF3((a1, a2, a3) => {
-      val (p1, p2, out) = builder(a1, a2)
-      val (p3, ouOutOther) = other.builder(a3)
-      (p1, p2, p3, via(out, ouOutOther))
-    })
-  }
-
-  def compose[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
-  (other: TF2[P1Other, P2Other, InOther, OutOther])(via: (In, InOther) => InNew): CompositionWithTF2[P1Other, P2Other, InOther, OutOther, InNew] =
-    new CompositionWithTF2(other, via)
-
-  class CompositionWithTF2[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
-  (private val other: TF2[P1Other, P2Other, InOther, OutOther], private val via: (In, InOther) => InNew) {
-    def into[OutNew: SessionOutput]: TF4[P1, P2, P1Other, P2Other, InNew, OutNew] = {
-      new TF4((a1, a2, a3, a4) => {
-        val (p1, p2, out) = builder(a1, a2)
-        val (p3, p4, ouOutOther) = other.builder(a3, a4)
-        (p1, p2, p3, p4, via(out, ouOutOther))
-      })
-    }
-  }
-
-  def map[InNew: SessionInput, OutNew: SessionOutput](mapper: In => InNew): TF2[P1, P2, InNew, OutNew] = {
-    new TF2((a1, a2) => {
-      val (p1, p2, out) = builder(a1, a2)
-      (p1, p2, mapper(out))
-    })
   }
 }
 
 object TF2 {
 
-  case class TF2Builder[P1: TensorType, P2: TensorType, In: SessionInput](builder: (Output[P1], Output[P2]) => In) {
-    def returns[Out: SessionOutput]: TF2[P1, P2, In, Out] = new TF2[P1, P2, In, Out](
-      (shape1, shape2) => {
-        val arg1 = placeholder[P1](shape1)
-        val arg2 = placeholder[P2](shape2)
-        (arg1, arg2, builder(arg1, arg2))
-      })
-  }
+  def apply[A1[_], P1: TensorType, A2[_], P2: TensorType, R](func: (A1[P1], A2[P2]) => R)(implicit arg1: OutputContainer[A1], arg2: OutputContainer[A2]): TF2[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], R] =
+    new TF2[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], R] {
 
-  def apply[P1: TensorType, P2: TensorType, In: SessionInput](builder: (Output[P1], Output[P2]) => In): TF2Builder[P1, P2, In] = TF2Builder(builder)
+      override def materializedToSeq(in1: arg1.Materialized[P1], in2: arg2.Materialized[P2]) =
+        (arg1.materializedToSeq(in1), arg2.materializedToSeq(in2))
 
-  def identity[P1: TensorType, P2: TensorType]: TF2[P1, P2, (Output[P1], Output[P2]), (Tensor[P1], Tensor[P2])] =
-    TF2[P1, P2, (Output[P1], Output[P2])]((arg1, arg2) => (arg1, arg2)).returns[(Tensor[P1], Tensor[P2])]
+      override def build(s1: Seq[Shape], s2: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], R) = {
+        val p1 = s1.map(placeholder[P1](_))
+        val p2 = s2.map(placeholder[P2](_))
+        val out = func(arg1.of(p1), arg2.of(p2))
+        (p1, p2, out)
+      }
+    }
+
+  def identity[A1[_], P1: TensorType, A2[_], P2: TensorType](implicit arg1: OutputContainer[A1], arg2: OutputContainer[A2]) =
+    TF2[A1, P1, A2, P2, (A1[P1], A2[P2])]((arg1, arg2) => (arg1, arg2))
 }
 
-class TF3[P1: TensorType, P2: TensorType, P3: TensorType, In: SessionInput, Out: SessionOutput](
-    val builder: (Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], In)) {
+trait TF3[P1, P1M, P2, P2M, P3, P3M, R] {
 
-  private val buildIfAbsent: (Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], In) = memoize(builder)
+  private val buildMemoized = memoize((s1, s2, s3) => build(s1, s2, s3))
 
-  def compile(session: Session): (Tensor[P1], Tensor[P2], Tensor[P3]) => Out = {
-    (a1, a2, a3) => {
-      val (p1, p2, p3, out) = buildIfAbsent(a1.shape, a2.shape, a3.shape)
-      session.runner.feed(p1 -> a1, p2 -> a2, p3 -> a3).evalX[In, Out](out)
+  def materializedToSeq(in1: P1M, in2: P2M, in3: P3M): (Seq[Tensor[P1]], Seq[Tensor[P2]], Seq[Tensor[P3]])
+
+  def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], R)
+
+  def compile()(implicit res: CanEval[R]): (P1M, P2M, P3M) => res.Materialized = compile(new Session())(res)
+
+  def compile(session: Session)(implicit res: CanEval[R]): (P1M, P2M, P3M) => res.Materialized = {
+    (in1: P1M, in2: P2M, in3: P3M) => {
+      val (t1, t2, t3) = materializedToSeq(in1, in2, in3)
+      val (p1, p2, p3, out) = buildMemoized(t1.map(_.shape), t2.map(_.shape), t3.map(_.shape))
+      session.runner.feed(p1 zip t1: _*).feed(p2 zip t2: _*).feed(p3 zip t3: _*).eval(out)(res)
     }
   }
 
-  def compile(): (Tensor[P1], Tensor[P2], Tensor[P3]) => Out =
-    (p1, p2, p3) => {
-      withing(session => {
-        compile(session).apply(p1, p2, p3)
-      })
+  def combine[P1Other, P1MOther, P2Other, P2MOther, ROther, RNew](other: TF2[P1Other, P1MOther, P2Other, P2MOther, ROther])(via: (R, ROther) => RNew): TF5[P1, P1M, P2, P2M, P3, P3M, P1Other, P1MOther, P2Other, P2MOther, RNew] = new TF5[P1, P1M, P2, P2M, P3, P3M, P1Other, P1MOther, P2Other, P2MOther, RNew] {
+
+    override def materializedToSeq(in1: P1M, in2: P2M, in3: P3M, in4: P1MOther, in5: P2MOther): (Seq[Tensor[P1]], Seq[Tensor[P2]], Seq[Tensor[P3]], Seq[Tensor[P1Other]], Seq[Tensor[P2Other]]) = {
+      val (t1, t2, t3) = TF3.this.materializedToSeq(in1, in2, in3)
+      val (t4, t5) = other.materializedToSeq(in4, in5)
+      (t1, t2, t3, t4, t5)
     }
 
-  def compose[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
-  (other: TF2[P1Other, P2Other, InOther, OutOther])(via: (In, InOther) => InNew): CompositionWithTF2[P1Other, P2Other, InOther, OutOther, InNew] =
-    new CompositionWithTF2(other, via)
-
-  class CompositionWithTF2[P1Other: TensorType, P2Other: TensorType, InOther: SessionInput, OutOther: SessionOutput, InNew: SessionInput]
-  (private val other: TF2[P1Other, P2Other, InOther, OutOther], private val via: (In, InOther) => InNew) {
-    def into[OutNew: SessionOutput]: TF5[P1, P2, P3, P1Other, P2Other, InNew, OutNew] = {
-      new TF5((a1, a2, a3, a4, a5) => {
-        val (p1, p2, p3, out) = builder(a1, a2, a3)
-        val (p4, p5, ouOutOther) = other.builder(a4, a5)
-        (p1, p2, p3, p4, p5, via(out, ouOutOther))
-      })
+    override def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape], s4: Seq[Shape], s5: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P1Other]], Seq[Output[P2Other]], RNew) = {
+      val (p1, p2, p3, out) = TF3.this.build(s1, s2, s3)
+      val (p1Other, p2Other, outOther) = other.build(s4, s5)
+      (p1, p2, p3, p1Other, p2Other, via(out, outOther))
     }
   }
 }
 
 object TF3 {
 
-  case class TF3Builder[P1: TensorType, P2: TensorType, P3: TensorType, In: SessionInput]
-    (builder: (Output[P1], Output[P2], Output[P3]) => In) {
-    def returns[Out: SessionOutput]: TF3[P1, P2, P3, In, Out] = new TF3[P1, P2, P3, In, Out](
-      (shape1, shape2, shape3) => {
-        val arg1 = placeholder[P1](shape1)
-        val arg2 = placeholder[P2](shape2)
-        val arg3 = placeholder[P3](shape3)
-        (arg1, arg2, arg3, builder(arg1, arg2, arg3))
-      })
-  }
+  def apply[A1[_], P1: TensorType, A2[_], P2: TensorType, A3[_], P3: TensorType, R](func: (A1[P1], A2[P2], A3[P3]) => R)(implicit arg1: OutputContainer[A1], arg2: OutputContainer[A2], arg3: OutputContainer[A3]): TF3[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], P3, arg3.Materialized[P3], R] =
+    new TF3[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], P3, arg3.Materialized[P3], R] {
 
-  def apply[P1: TensorType, P2: TensorType, P3: TensorType, In: SessionInput]
-    (builder: (Output[P1], Output[P2], Output[P3]) => In): TF3Builder[P1, P2, P3, In] = TF3Builder(builder)
+      override def materializedToSeq(in1: arg1.Materialized[P1], in2: arg2.Materialized[P2], in3: arg3.Materialized[P3]) =
+        (arg1.materializedToSeq(in1), arg2.materializedToSeq(in2), arg3.materializedToSeq(in3))
+
+      override def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], R) = {
+        val p1 = s1.map(placeholder[P1](_))
+        val p2 = s2.map(placeholder[P2](_))
+        val p3 = s3.map(placeholder[P3](_))
+        val out = func(arg1.of(p1), arg2.of(p2), arg3.of(p3))
+        (p1, p2, p3, out)
+      }
+    }
 }
 
-class TF4[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, In: SessionInput, Out: SessionOutput](
-  val builder: (Shape, Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], Output[P4], In)) {
+trait TF4[P1, P1M, P2, P2M, P3, P3M, P4, P4M, R] {
 
-  private val buildIfAbsent: (Shape, Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], Output[P4], In) = memoize(builder)
+  private val buildMemoized = memoize((s1, s2, s3, s4) => build(s1, s2, s3, s4))
 
-  def compile(session: Session): (Tensor[P1], Tensor[P2], Tensor[P3], Tensor[P4]) => Out = {
-    (a1, a2, a3, a4) => {
-      val (p1, p2, p3, p4, out) = buildIfAbsent(a1.shape, a2.shape, a3.shape, a4.shape)
-      session.runner.feed(p1 -> a1, p2 -> a2, p3 -> a3, p4 -> a4).evalX[In, Out](out)
+  def materializedToSeq(in1: P1M, in2: P2M, in3: P3M, in4: P4M): (Seq[Tensor[P1]], Seq[Tensor[P2]], Seq[Tensor[P3]], Seq[Tensor[P4]])
+
+  def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape], s4: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], R)
+
+  def compile()(implicit res: CanEval[R]): (P1M, P2M, P3M, P4M) => res.Materialized = compile(new Session())(res)
+
+  def compile(session: Session)(implicit res: CanEval[R]): (P1M, P2M, P3M, P4M) => res.Materialized = {
+    (in1: P1M, in2: P2M, in3: P3M, in4: P4M) => {
+      val (t1, t2, t3, t4) = materializedToSeq(in1, in2, in3, in4)
+      val (p1, p2, p3, p4, out) = buildMemoized(t1.map(_.shape), t2.map(_.shape), t3.map(_.shape), t4.map(_.shape))
+      session.runner.feed(p1 zip t1: _*).feed(p2 zip t2: _*).feed(p3 zip t3: _*).feed(p4 zip t4: _*).eval(out)(res)
     }
   }
-
-  def compile(): (Tensor[P1], Tensor[P2], Tensor[P3], Tensor[P4]) => Out =
-    (p1, p2, p3, p4) => {
-      withing(session => {
-        compile(session).apply(p1, p2, p3, p4)
-      })
-    }
 }
 
 object TF4 {
 
-  case class TF4Builder[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, In: SessionInput]
-  (builder: (Output[P1], Output[P2], Output[P3], Output[P4]) => In) {
-    def returns[Out: SessionOutput]: TF4[P1, P2, P3, P4, In, Out] = new TF4[P1, P2, P3, P4, In, Out](
-      (shape1, shape2, shape3, shape4) => {
-        val arg1 = placeholder[P1](shape1)
-        val arg2 = placeholder[P2](shape2)
-        val arg3 = placeholder[P3](shape3)
-        val arg4 = placeholder[P4](shape4)
-        (arg1, arg2, arg3, arg4, builder(arg1, arg2, arg3, arg4))
-      })
-  }
+  def apply[A1[_], P1: TensorType, A2[_], P2: TensorType, A3[_], P3: TensorType, A4[_], P4: TensorType, R](func: (A1[P1], A2[P2], A3[P3], A4[P4]) => R)(implicit arg1: OutputContainer[A1], arg2: OutputContainer[A2], arg3: OutputContainer[A3], arg4: OutputContainer[A4]): TF4[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], P3, arg3.Materialized[P3], P4, arg4.Materialized[P4], R] =
+    new TF4[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], P3, arg3.Materialized[P3], P4, arg4.Materialized[P4], R] {
 
-  def apply[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, In: SessionInput]
-  (builder: (Output[P1], Output[P2], Output[P3], Output[P4]) => In): TF4Builder[P1, P2, P3, P4, In] = TF4Builder(builder)
+      override def materializedToSeq(in1: arg1.Materialized[P1], in2: arg2.Materialized[P2], in3: arg3.Materialized[P3], in4: arg4.Materialized[P4]) =
+        (arg1.materializedToSeq(in1), arg2.materializedToSeq(in2), arg3.materializedToSeq(in3), arg4.materializedToSeq(in4))
+
+      override def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape], s4: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], R) = {
+        val p1 = s1.map(placeholder[P1](_))
+        val p2 = s2.map(placeholder[P2](_))
+        val p3 = s3.map(placeholder[P3](_))
+        val p4 = s3.map(placeholder[P4](_))
+        val out = func(arg1.of(p1), arg2.of(p2), arg3.of(p3), arg4.of(p4))
+        (p1, p2, p3, p4, out)
+      }
+    }
 }
 
-class TF5[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, P5: TensorType, In: SessionInput, Out: SessionOutput](
-  val builder: (Shape, Shape, Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], Output[P4], Output[P5], In)) {
+trait TF5[P1, P1M, P2, P2M, P3, P3M, P4, P4M, P5, P5M, R] {
 
-  private val buildIfAbsent: (Shape, Shape, Shape, Shape, Shape) => (Output[P1], Output[P2], Output[P3], Output[P4], Output[P5], In) = memoize(builder)
+  private val buildMemoized = memoize((s1, s2, s3, s4, s5) => build(s1, s2, s3, s4, s5))
 
-  def compile(session: Session): (Tensor[P1], Tensor[P2], Tensor[P3], Tensor[P4], Tensor[P5]) => Out = {
-    (a1, a2, a3, a4, a5) => {
-      val (p1, p2, p3, p4, p5, out) = buildIfAbsent(a1.shape, a2.shape, a3.shape, a4.shape, a5.shape)
-      session.runner.feed(p1 -> a1, p2 -> a2, p3 -> a3, p4 -> a4, p5 -> a5).evalX[In, Out](out)
+  def materializedToSeq(in1: P1M, in2: P2M, in3: P3M, in4: P4M, in5: P5M): (Seq[Tensor[P1]], Seq[Tensor[P2]], Seq[Tensor[P3]], Seq[Tensor[P4]], Seq[Tensor[P5]])
+
+  def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape], s4: Seq[Shape], s5: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], Seq[Output[P5]], R)
+
+  def compile()(implicit res: CanEval[R]): (P1M, P2M, P3M, P4M, P5M) => res.Materialized = compile(new Session())(res)
+
+  def compile(session: Session)(implicit res: CanEval[R]): (P1M, P2M, P3M, P4M, P5M) => res.Materialized = {
+    (in1: P1M, in2: P2M, in3: P3M, in4: P4M, in5: P5M) => {
+      val (t1, t2, t3, t4, t5) = materializedToSeq(in1, in2, in3, in4, in5)
+      val (p1, p2, p3, p4, p5, out) = buildMemoized(t1.map(_.shape), t2.map(_.shape), t3.map(_.shape), t4.map(_.shape), t5.map(_.shape))
+      session.runner.feed(p1 zip t1: _*).feed(p2 zip t2: _*).feed(p3 zip t3: _*).feed(p4 zip t4: _*).feed(p5 zip t5: _*).eval(out)(res)
     }
   }
-
-  def compile(): (Tensor[P1], Tensor[P2], Tensor[P3], Tensor[P4], Tensor[P5]) => Out =
-    (p1, p2, p3, p4, p5) => {
-      withing(session => {
-        compile(session).apply(p1, p2, p3, p4, p5)
-      })
-    }
 }
 
 object TF5 {
 
-  case class TF5Builder[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, P5: TensorType, In: SessionInput]
-  (builder: (Output[P1], Output[P2], Output[P3], Output[P4], Output[P5]) => In) {
-    def returns[Out: SessionOutput]: TF5[P1, P2, P3, P4, P5, In, Out] = new TF5[P1, P2, P3, P4, P5, In, Out](
-      (shape1, shape2, shape3, shape4, shape5) => {
-        val arg1 = placeholder[P1](shape1)
-        val arg2 = placeholder[P2](shape2)
-        val arg3 = placeholder[P3](shape3)
-        val arg4 = placeholder[P4](shape4)
-        val arg5 = placeholder[P5](shape5)
-        (arg1, arg2, arg3, arg4, arg5, builder(arg1, arg2, arg3, arg4, arg5))
-      })
-  }
+  def apply[A1[_], P1: TensorType, A2[_], P2: TensorType, A3[_], P3: TensorType, A4[_], P4: TensorType, A5[_], P5: TensorType, R](func: (A1[P1], A2[P2], A3[P3], A4[P4], A5[P5]) => R)(implicit arg1: OutputContainer[A1], arg2: OutputContainer[A2], arg3: OutputContainer[A3], arg4: OutputContainer[A4], arg5: OutputContainer[A5]): TF5[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], P3, arg3.Materialized[P3], P4, arg4.Materialized[P4], P5, arg5.Materialized[P5], R] =
+    new TF5[P1, arg1.Materialized[P1], P2, arg2.Materialized[P2], P3, arg3.Materialized[P3], P4, arg4.Materialized[P4], P5, arg5.Materialized[P5], R] {
 
-  def apply[P1: TensorType, P2: TensorType, P3: TensorType, P4: TensorType, P5: TensorType, In: SessionInput]
-  (builder: (Output[P1], Output[P2], Output[P3], Output[P4], Output[P5]) => In): TF5Builder[P1, P2, P3, P4, P5, In] = TF5Builder(builder)
+      override def materializedToSeq(in1: arg1.Materialized[P1], in2: arg2.Materialized[P2], in3: arg3.Materialized[P3], in4: arg4.Materialized[P4], in5: arg5.Materialized[P5]) =
+        (arg1.materializedToSeq(in1), arg2.materializedToSeq(in2), arg3.materializedToSeq(in3), arg4.materializedToSeq(in4), arg5.materializedToSeq(in5))
+
+      override def build(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape], s4: Seq[Shape], s5: Seq[Shape]): (Seq[Output[P1]], Seq[Output[P2]], Seq[Output[P3]], Seq[Output[P4]], Seq[Output[P5]], R) = {
+        val p1 = s1.map(placeholder[P1](_))
+        val p2 = s2.map(placeholder[P2](_))
+        val p3 = s3.map(placeholder[P3](_))
+        val p4 = s3.map(placeholder[P4](_))
+        val p5 = s3.map(placeholder[P5](_))
+        val out = func(arg1.of(p1), arg2.of(p2), arg3.of(p3), arg4.of(p4), arg5.of(p5))
+        (p1, p2, p3, p4, p5, out)
+      }
+    }
 }
