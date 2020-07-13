@@ -49,3 +49,6 @@ class GradCalc[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A],
     leaf.map(gradRec).get
   }
 }
+
+
+// grad(layer1, layer2, )

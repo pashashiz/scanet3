@@ -11,7 +11,7 @@ abstract class Model extends Serializable {
 
   def result[E: Numeric: Floating: TensorType]: TF2[E, Tensor[E], E, Tensor[E], Output[E]] = TF2(build[E])
 
-  /** @param features number of features in a edataset
+  /** @param features number of features in a dataset
    * @return shape of weights tensor
    */
   def shape(features: Int): Shape

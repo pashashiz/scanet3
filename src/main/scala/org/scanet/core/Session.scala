@@ -134,10 +134,17 @@ object Session {
 
     implicit def canEvalOutputContainer[Out1[_], T1: TensorType](implicit out1: OutputContainer[Out1]) =
       new CanEval[Out1[T1]] {
+
         override type Materialized = out1.Materialized[T1]
+
         override def eval(runner: Runner, value: Out1[T1]): out1.Materialized[T1] = {
-          val tensors = evalOutput(runner, out1, value)
+          val outputs = out1.outputToSeq(value)
+          val tensors = runner.evalUnsafe(outputs)
+            .map(n => Tensor.apply[T1](n.asInstanceOf[NativeTensor[T1]]))
           out1.toMaterialized(tensors)
+        }
+        override def unwrap(value: Out1[T1]): Seq[Output[_]] = {
+          out1.outputToSeq(value)
         }
       }
 
@@ -145,12 +152,25 @@ object Session {
       Out1[_], T1: TensorType, Out2[_], T2: TensorType]
     (implicit out1: OutputContainer[Out1], out2: OutputContainer[Out2]) =
       new CanEval[(Out1[T1], Out2[T2])] {
+
         override type Materialized = (out1.Materialized[T1], out2.Materialized[T2])
+
         override def eval(runner: Runner, value: (Out1[T1], Out2[T2]))
         : (out1.Materialized[T1], out2.Materialized[T2]) = {
-          val tensors1 = evalOutput(runner, out1, value._1)
-          val tensors2 = evalOutput(runner, out2, value._2)
+          val seq1 = out1.outputToSeq(value._1)
+          val seq2 = out2.outputToSeq(value._2)
+          val results = runner.evalUnsafe(seq1 ++ seq2)
+          val tensors1 = results.take(seq1.size)
+            .map(n => Tensor.apply[T1](n.asInstanceOf[NativeTensor[T1]]))
+          val tensors2 = results.slice(seq1.size, seq1.size + seq2.size)
+            .map(n => Tensor.apply[T2](n.asInstanceOf[NativeTensor[T2]]))
           (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2))
+        }
+
+        override def unwrap(value: (Out1[T1], Out2[T2])): Seq[Output[_]] = {
+          val seq1 = out1.outputToSeq(value._1)
+          val seq2 = out2.outputToSeq(value._2)
+          seq1 ++ seq2
         }
       }
 
@@ -158,22 +178,31 @@ object Session {
       Out1[_], T1: TensorType, Out2[_], T2: TensorType, Out3[_], T3: TensorType]
     (implicit out1: OutputContainer[Out1], out2: OutputContainer[Out2], out3: OutputContainer[Out3]) =
       new CanEval[(Out1[T1], Out2[T2], Out3[T3])] {
+
         override type Materialized = (out1.Materialized[T1], out2.Materialized[T2], out3.Materialized[T3])
+
         override def eval(runner: Runner, value: (Out1[T1], Out2[T2], Out3[T3]))
         : (out1.Materialized[T1], out2.Materialized[T2], out3.Materialized[T3]) = {
-          val tensors1 = evalOutput(runner, out1, value._1)
-          val tensors2 = evalOutput(runner, out2, value._2)
-          val tensors3 = evalOutput(runner, out3, value._3)
+          val seq1 = out1.outputToSeq(value._1)
+          val seq2 = out2.outputToSeq(value._2)
+          val seq3 = out3.outputToSeq(value._3)
+          val results = runner.evalUnsafe(seq1 ++ seq2 ++ seq3)
+          val tensors1 = results.take(seq1.size)
+            .map(n => Tensor.apply[T1](n.asInstanceOf[NativeTensor[T1]]))
+          val tensors2 = results.slice(seq1.size, seq1.size + seq2.size)
+            .map(n => Tensor.apply[T2](n.asInstanceOf[NativeTensor[T2]]))
+          val tensors3 = results.slice(seq1.size + seq2.size, seq1.size + seq2.size + seq3.size)
+            .map(n => Tensor.apply[T3](n.asInstanceOf[NativeTensor[T3]]))
           (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2), out3.toMaterialized(tensors3))
         }
-      }
 
-    private def evalOutput[Out[_], T: TensorType]
-    (runner: Runner, evidence: OutputContainer[Out], output: Out[T]): Seq[Tensor[T]] = {
-      val outputs = evidence.outputToSeq(output)
-      runner.evalUnsafe(outputs)
-        .map(n => Tensor.apply[T](n.asInstanceOf[NativeTensor[T]]))
-    }
+        override def unwrap(value: (Out1[T1], Out2[T2], Out3[T3])): Seq[Output[_]] = {
+          val seq1 = out1.outputToSeq(value._1)
+          val seq2 = out2.outputToSeq(value._2)
+          val seq3 = out3.outputToSeq(value._3)
+          seq1 ++ seq2 ++ seq3
+        }
+      }
   }
 
   trait Syntax extends Implicits
@@ -192,8 +221,8 @@ trait OutputContainer[O[_]] {
 trait CanEval[In] {
   type Materialized
   def eval(runner: Runner, value: In): Materialized
+  def unwrap(value: In): Seq[Output[_]]
 }
-
 
 class LazySession {
   lazy val get = new Session()
