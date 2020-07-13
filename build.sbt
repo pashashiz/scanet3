@@ -9,7 +9,7 @@ addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.fu
 
 libraryDependencies ++= Seq(
   // "org.typelevel" %% "spire" % "0.14.1", // NOTE: use 0.17.0-M1 with scala 2.13 again
-   "org.typelevel" %% "cats-core" % "2.0.0",
+  //"org.typelevel" %% "cats-core" % "2.0.0",
   "org.scala-lang" % "scala-reflect" % "2.12.11", // NOTE: remove with scala 2.13
   "org.typelevel" %% "simulacrum" % "1.0.0",
   "org.tensorflow" % "tensorflow" % "1.15.0",

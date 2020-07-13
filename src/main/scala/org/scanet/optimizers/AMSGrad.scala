@@ -1,6 +1,6 @@
 package org.scanet.optimizers
 
-import org.scanet.core.{CanEval, _}
+import org.scanet.core._
 import org.scanet.math.{Floating, Numeric}
 import org.scanet.syntax._
 

@@ -83,8 +83,7 @@ case class Optimizer[
           case ((w, g), (meta, iter)) =>
             val Delta(del, nextMeta) = alg.delta[A](g, meta, iter)
             val d = del.cast[A]
-            val nw = if (minimizing) w - d else w + d
-            (nw, nextMeta)
+            (if (minimizing) w - d else w + d, nextMeta)
         } compile session)
 
       @tailrec
