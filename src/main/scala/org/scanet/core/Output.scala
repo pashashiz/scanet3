@@ -79,11 +79,21 @@ case class Output[A: TensorType](
     val fullName = if (label == name) s"$name" else s"$label:$name"
     val child = id(this) match {
       case Some(value) => s"($value)"
-      case None => if (inputs.nonEmpty) s"(${inputs.mkString(", ")})" else ""
+      case None =>
+        if (inputs.nonEmpty) {
+          val args = inputs.map(output => {
+            // we need to know which output we are taking
+            val suffix = if (output.index > 0) s"[$index]" else ""
+            output + suffix
+          }).mkString(", ")
+          s"($args)"
+        }
+        else {
+          ""
+        }
     }
     val deps = if (controls.nonEmpty) s".depends(${controls.mkString(", ")})" else ""
-    val i = if (index > 0) index.toString else ""
-    s"$fullName$child$deps[${TensorType[A].show}]$i:$shape"
+    s"$fullName$child$deps[${TensorType[A].show}]:$shape"
   }
 
   def address: String = super.hashCode().toString
@@ -227,6 +237,27 @@ object Output {
           }
         }))
     }
+
+    def build2(implicit ev: State =:= Complete): (Output[A], Output[A]) = {
+      // NOTE: Index is not a part of the cache for output
+      // so same operation will be reused
+      // however, index is a part of the argument which means that is 2 similar
+      // operations will refer to different indexes would be considered as differrent
+      // and cache will not work for them
+      val output = build
+      val first = Output.name[A]("Identity")
+        .inputs(output)
+        .shape(Shape())
+        .compileWithAllInputs
+        .build
+      val second = Output.name[A]("Identity")
+        .inputs(output.copy(index = 1))
+        .shape(Shape())
+        .compileWithAllInputs
+        .build
+      (first, second)
+    }
+
   }
 
   def name[A: TensorType](name: String): Builder[A, WithName] = {
