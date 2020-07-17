@@ -232,26 +232,34 @@ object CoreOp {
         require(falseCase.shape == trueCase.shape)
 
         // perform switch op that sends input to 0 output when condition is false and to 1 for true
-        val switch = Output.name[A]("Switch")
+        val falseBranch = Output.name[A]("Switch")
           .shape(Shape())
           .inputs(cond, cond)
+          .index(0)
+          .compileWithAllInputs
+          .build
+
+        val trueBranch = Output.name[A]("Switch")
+          .shape(Shape())
+          .inputs(cond, cond)
+          .index(1)
           .compileWithAllInputs
           .build
 
         // outputs are first wrapped into Identity ops to select input with proper index
         // TODO: this identity ops can be removed if we can set input index to prebuilt Output
-        val falseBranch = Output.name[A]("Identity")
-          .inputs(switch)
-          .shape(Shape())
-          .index(0)
-          .compileWithAllInputs
-          .build
-        val trueBranch = Output.name[A]("Identity")
-          .inputs(switch)
-          .shape(Shape())
-          .index(1)
-          .compileWithAllInputs
-          .build
+//        val falseBranch = Output.name[A]("Identity")
+//          .inputs(switch)
+//          .shape(Shape())
+//          .index(0)
+//          .compileWithAllInputs
+//          .build
+//        val trueBranch = Output.name[A]("Identity")
+//          .inputs(switch)
+//          .shape(Shape())
+//          .index(1)
+//          .compileWithAllInputs
+//          .build
 
         // merge branches into single output (it selects first available input)
         Output.name[A]("Merge")
