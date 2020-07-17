@@ -31,7 +31,7 @@ class GradCalc[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A],
     require(out.shape.isScalar, "gradient is supported on scalars only, " +
       "reduce the output with sum() or other operation")
     val graph = out.asGraph
-    val leaf = graph.find(withRespectTo.id)
+    val leaf = graph.find(withRespectTo.toString)
     require(leaf.isDefined, s"cannot find a gradient with respect to $withRespectTo " +
       s"cause that input is not a part of the computation graph")
     def gradRec(node: Node[Output[_]]): Output[R] = {

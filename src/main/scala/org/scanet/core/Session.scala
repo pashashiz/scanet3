@@ -60,7 +60,7 @@ class Session extends AutoCloseable {
   private def compile(out: Output[_]): NativeOutput[_] = {
     val (updatedState, (_, compiledOp)) = out.findOrCompile(state)
     state = updatedState
-    compiledOp.output(0)
+    compiledOp.output(out.index)
   }
 
   private[core] def toGraph(outs: Seq[Output[_]]): Graph = {
@@ -73,7 +73,7 @@ class Session extends AutoCloseable {
     val nativeOutputs = outs.map(out => compile(out))
     val fed = feed.foldLeft(nSession.runner)((runner, entry) => {
       val (output, tensor) = entry
-      state.cache.get(output.id) match {
+      state.cache.get(output.toString) match {
         case Some((_, output)) =>
           val nativeOutput = output.output(0)
           val nativeTensor = tensor.native

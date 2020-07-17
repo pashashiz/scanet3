@@ -2,8 +2,8 @@ package org.scanet.core
 
 import org.scanet.core.ConstOp.syntax._
 import org.scanet.core.Output.Grad
-import org.scanet.core.TensorType.syntax._
 import org.scanet.core.Slice.syntax._
+import org.scanet.core.TensorType.syntax._
 import org.scanet.math.{Floating, Numeric}
 import simulacrum.{op, typeclass}
 
@@ -129,7 +129,7 @@ object CoreOp {
       override def join[A: TensorType](op: Output[A], other: Output[A]): Output[A] = joinAlong(Seq(op, other), 0)
 
       override def cast[A: TensorType, B: TensorType](op: Output[A]): Output[B] = {
-        if (TensorType[A] == TensorType[B]) op.asInstanceOf[Output[B]]
+        if (TensorType[A].tag == TensorType[B].tag) op.asInstanceOf[Output[B]]
         else {
           Output.name[B]("Cast")
             .shape(op.shape)
@@ -177,6 +177,7 @@ object CoreOp {
     def placeholder[A: TensorType](shape: Shape): Output[A] = {
       Output.name[A]("Placeholder")
         .shape(shape)
+        .id(self => s"#${self.address}")
         .compileWithAttr("dtype", TensorType[A])
         .compileWithAttr("shape", shape)
         .build
@@ -242,12 +243,14 @@ object CoreOp {
         val falseBranch = Output.name[A]("Identity")
           .inputs(switch)
           .shape(Shape())
-          .compileWithAllInputsAtIndex(0)
+          .index(0)
+          .compileWithAllInputs
           .build
         val trueBranch = Output.name[A]("Identity")
           .inputs(switch)
           .shape(Shape())
-          .compileWithAllInputsAtIndex(1)
+          .index(1)
+          .compileWithAllInputs
           .build
 
         // merge branches into single output (it selects first available input)
@@ -277,7 +280,7 @@ object CoreOp {
         .shape(shape)
         .inputs(outputs :+ as(Tensor.scalar(axis.toLong).const, "axis"): _*)
         .compileWithTransformer((ctx, builder) => {
-          val compiledInputs = ctx.inputs.map(_.output(0))
+          val compiledInputs = ctx.inputs.map { case (op, index) => op.output(index) }
           builder
             .addInputList(compiledInputs.take(outputs.size).toArray)
             .addInput(compiledInputs.last)

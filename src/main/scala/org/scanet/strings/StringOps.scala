@@ -234,9 +234,12 @@ trait OutputStringMultiOps {
       .inputs(cond, format(template, ops: _*))
       .compileWithTransformer((ctx, builder) => {
         // add condition as input
-        builder.addInput(ctx.inputs.head.output(0))
+        val (hOp, hIndex) = ctx.inputs.head
+        builder.addInput(hOp.output(hIndex))
         // add formatted msg as value to print
-        builder.addInputList(ctx.inputs.tail.map(_.output(0)).toArray)
+        builder.addInputList(ctx.inputs.tail
+          .map { case (op, i) => op.output(i) }
+          .toArray)
       })
       .build
       .asVoid

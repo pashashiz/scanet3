@@ -2,12 +2,22 @@ package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.{Output, Shape, Tensor}
+import org.scanet.core.{Output, Session, Shape, Tensor, TensorBoard}
 import org.scanet.math.syntax._
 
 import scala.Array.range
 
 class MathBaseOpSpec extends AnyFlatSpec with Matchers {
+
+  "grad" should "work" in {
+    val a = 3f.const.as("a")
+    val b = 4f.const.as("b")
+    val c = a :* b
+    val c2 = c.sqr
+    val ga = c2.grad(a).returns[Float].as("grad_a")
+    val gb = c2.grad(b).returns[Float].as("grad_b")
+    TensorBoard().addGraph(ga, gb)
+  }
 
   "const" should "have ones gradient if input is same const" in {
     val a = 2.const
@@ -20,7 +30,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       val b = 3.const
       (a grad b).returns[Float]
     } should have message "requirement failed: " +
-      "cannot find a gradient with respect to Const[Int]:() cause that input is not a part of the computation graph"
+      "cannot find a gradient with respect to Const(3)[Int]:() cause that input is not a part of the computation graph"
   }
 
   "plus" should "add 2 scalars" in {

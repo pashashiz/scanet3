@@ -7,6 +7,31 @@ import org.scanet.syntax._
 
 class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
+  "scalar const" should "have toString which holds a scalar value" in {
+    5.0f.const.toString should be("Const(5.0)[Float]:()")
+  }
+
+  "small vector const" should "have toString which holds all elements" in {
+    Tensor.vector(1, 2).const.toString should be("Const(1, 2)[Int]:(2)")
+  }
+
+  "large tensor const" should "have toString which holds an address of a compacted tensor" in {
+    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
+    tensor.const.toString should be(s"Const(#${tensor.address})[Int]:(2, 2)")
+  }
+
+  "placeholder" should "have toString which holds an address of output object" in {
+    val pl = placeholder[Int]()
+    pl.toString should be(s"Placeholder(#${pl.address})[Int]:()")
+  }
+
+  "composite output" should "have toString which includes operators chain" in {
+    5.0f.const.reshape(1).toString should
+      be("Reshape(Const(5.0)[Float]:(), new_shape:Const(1)[Int]:(1))[Float]:(1)")
+  }
+
+  // todo
+
   "const" should "be evaluated" in {
     5.0f.const.eval should be(Tensor.scalar(5.0f))
   }
@@ -67,6 +92,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     val c = 2.const
 
     val ternary = when(a gt b) thenDo (a plus c) elseDo (a minus c)
+    println(ternary)
     ternary.eval should be(Tensor.scalar(3))
   }
 
