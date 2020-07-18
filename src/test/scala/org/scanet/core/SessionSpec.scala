@@ -3,9 +3,11 @@ package org.scanet.core
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Session.withing
 import org.scanet.core.Tensor.scalar
+import org.scanet.math.syntax._
 import org.scanet.syntax.placeholder
 import org.scanet.test.CustomMatchers
-import org.scanet.math.syntax._
+
+import scala.collection.JavaConverters._
 
 class SessionSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -77,6 +79,20 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
         pool.used should be(2)
         session1 should not be theSameInstanceAs(session2)
       })
+    })
+  }
+
+  "session" should "reuse the same already existing sub-graphs" in {
+    val a = 5f.const
+    // here a.sqrt should be done just once
+    // like _a = a.sqr; x = _a + _a
+    val x = a.sqr + a.sqr
+    x.eval should be(scalar(50f))
+    withing(session => {
+      val graph = session.toGraph(Seq(x))
+      val ops = graph.operations().asScala
+      // const(5), pow, const(2), add | NOTE: only 1 pow op
+      ops should have size 4
     })
   }
 }

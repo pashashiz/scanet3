@@ -1,13 +1,16 @@
 package org.scanet.math
 
-import org.scanet.core.{Node, Output, Shape, Tensor, TensorType}
-import org.scanet.core.syntax._
+import org.scanet.core.{Node, Output, Shape, TensorType}
 import org.scanet.math.MathBaseOp.syntax._
 import simulacrum.typeclass
 
 @typeclass trait MathGradOp[F[_]] {
+
   def grad[A: TensorType : Numeric, B: TensorType : Numeric](
     current: F[A], withRespectTo: Output[B]): GradCalc[A, B]
+
+  def grad[A: TensorType : Numeric, B: TensorType : Numeric](
+    current: F[A], withRespectTo: Seq[Output[B]]): GradCalcN[A, B]
 }
 
 object MathGradOp {
@@ -22,8 +25,17 @@ object MathGradOp {
 }
 
 class OutputIsMathGradOp extends MathGradOp[Output] {
+
   override def grad[A: TensorType : Numeric, B: TensorType : Numeric](
        out: Output[A], withRespectTo: Output[B]): GradCalc[A, B] = new GradCalc[A, B](out, withRespectTo)
+
+  override def grad[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A], withRespectTo: Seq[Output[B]]) =
+    new GradCalcN[A, B](out, withRespectTo)
+}
+
+class GradCalcN[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A], withRespectTo: Seq[Output[B]]) {
+  def returns[R: Floating: Numeric: TensorType]: Seq[Output[R]] =
+    withRespectTo.map(r => new GradCalc[A, B](out, r).returns[R])
 }
 
 class GradCalc[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A], withRespectTo: Output[B]) {
@@ -36,7 +48,7 @@ class GradCalc[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A],
       s"cause that input is not a part of the computation graph")
     def gradRec(node: Node[Output[_]]): Output[R] = {
       if (node.isRoot) {
-        Tensor.ones[R](Shape()).const
+        ones[R](Shape())
       } else {
         val grads = node.outputs.map(edge => {
           val parent = edge.to
@@ -49,6 +61,3 @@ class GradCalc[A: TensorType : Numeric, B: TensorType : Numeric](out: Output[A],
     leaf.map(gradRec).get
   }
 }
-
-
-// grad(layer1, layer2, )

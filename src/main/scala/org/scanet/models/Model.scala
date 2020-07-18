@@ -24,7 +24,7 @@ abstract class Model extends Serializable {
 
   def withBias[E: Numeric: Floating: TensorType](x: Output[E]): Output[E] = {
     val rows = x.shape.dims.head
-    Tensor.ones[E](rows, 1).const.joinAlong(x, 1)
+    ones[E](rows, 1).joinAlong(x, 1)
   }
 }
 

@@ -13,8 +13,8 @@ import org.scanet.syntax._
 case class Nadam(beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
-    val m = Tensor.zeros[T](shape).const
-    val v = Tensor.zeros[T](shape).const
+    val m = zeros[T](shape)
+    val v = zeros[T](shape)
     (m zip v).eval
   }
 

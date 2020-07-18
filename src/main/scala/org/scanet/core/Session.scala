@@ -63,7 +63,7 @@ class Session extends AutoCloseable {
     compiledOp.output(out.index)
   }
 
-  private[core] def toGraph(outs: Seq[Output[_]]): Graph = {
+  def toGraph(outs: Seq[Output[_]]): Graph = {
     outs.foreach(out => compile(out))
     nGraph
   }

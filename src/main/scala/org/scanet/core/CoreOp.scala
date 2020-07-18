@@ -4,7 +4,7 @@ import org.scanet.core.ConstOp.syntax._
 import org.scanet.core.Output.Grad
 import org.scanet.core.Slice.syntax._
 import org.scanet.core.TensorType.syntax._
-import org.scanet.math.{Floating, Numeric}
+import org.scanet.math.{Floating, Numeric, OutputIsMathBaseOp}
 import simulacrum.{op, typeclass}
 
 @typeclass trait CoreOp[F[_]] {
@@ -174,6 +174,8 @@ object CoreOp {
 
     def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
+    def placeholder[A: TensorType](shape: Int*): Output[A] = placeholder(Shape(shape: _*))
+
     def placeholder[A: TensorType](shape: Shape): Output[A] = {
       Output.name[A]("Placeholder")
         .shape(shape)
@@ -183,7 +185,51 @@ object CoreOp {
         .build
     }
 
-    def placeholder[A: TensorType](shape: Int*): Output[A] = placeholder(Shape(shape: _*))
+    def fill[A: TensorType](shape: Int*)(value: A): Output[A] = fillOutput(Shape(shape: _*))(value.const)
+
+    def fillOutput[A: TensorType](shape: Int*)(value: Output[A]): Output[A] = fillOutput(Shape(shape: _*))(value)
+
+    def fill[A: TensorType](shape: Shape)(value: A): Output[A] = fillOutput(shape)(value.const)
+
+    /**
+     * Creates a tensor filled with a scalar value.
+     *
+     * For example:
+     * {{{
+     * fill(2, 2)(1).eval should be(Tensor.matrix(Array(1, 1), Array(1, 1)))
+     * }}}
+     *
+     * `fill` differs from `const` in a few ways:
+     *  - `fill` only supports scalar contents, whereas `const` supports Tensor values
+     *  - `fill` creates an Op in the computation graph that constructs the actual
+     *     Tensor value at runtime. This is in contrast to `const` which embeds
+     *     the entire Tensor into the graph with a `Const` node.
+     *  - `fill` is a subject of caching and sub-graph reusing even with high rank cause
+     *     that is possible to check value equality when in contract to a large `const` tensor event when
+     *     filled with same value it is impossible to compare with other existing constants by value
+     *     during graph construction
+     *
+     * @param shape a shape to fill the tensor with
+     * @param value a value
+     * @return output
+     */
+    def fillOutput[A: TensorType](shape: Shape)(value: Output[A]): Output[A] = {
+      require(value.isScalar, s"value should be a scalar but has shape ${value.shape}")
+      if (shape.isScalar) {
+        value
+      } else {
+        Output.name[A]("Fill")
+          .shape(shape)
+          .inputs(as(Tensor.vector(shape.dims: _*).const, "shape"), value)
+          .compileWithAllInputs
+          .localGrad(new Grad[A] {
+            override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
+              List(null, new OutputIsMathBaseOp().sum(parentGrad))
+            }
+          })
+          .build
+      }
+    }
 
     /** Add operation which will be executed right after current operation and
      * return current operation as output to continue chaining.

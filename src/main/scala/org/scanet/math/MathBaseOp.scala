@@ -311,12 +311,12 @@ object MathBaseOp {
     implicit def outputIsMathOp: MathBaseOp[Output] = new OutputIsMathBaseOp
   }
 
-  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps with MathBaseMultiOp
+  trait Syntax extends Instances with MathBaseOp.ToMathBaseOpOps with MathBaseStandaloneOps
 
   object syntax extends Syntax
 }
 
-class OutputIsMathBaseOp extends MathBaseOp[Output] {
+class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
 
   override def plus[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
@@ -488,7 +488,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
         .inputs(out, Tensor.vector(axises.map(_.toLong) :_*).const.as("axises"))
         .localGrad(new Grad[A] {
           override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
-            List(multiplyElementWise(Tensor.ones[R](out.shape).const, parentGrad))
+            List(multiplyElementWise(ones[R](out.shape), parentGrad))
           }
         })
         .compileWithAllInputs
@@ -508,7 +508,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
         .localGrad(new Grad[A] {
           override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
             val size = out.shape.select(axises: _*).power
-            List(div(multiplyElementWise(Tensor.ones[R](out.shape).const, parentGrad), size.const.cast[R]))
+            List(div(multiplyElementWise(ones[R](out.shape), parentGrad), size.const.cast[R]))
           }
         })
         .compileWithAllInputs
@@ -600,7 +600,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] {
   }
 }
 
-trait MathBaseMultiOp {
+trait MathBaseStandaloneOps {
+
   def plus[A: TensorType](ops: Output[A]*): Output[A] = {
     if (ops.size == 1) {
       ops.head
@@ -619,4 +620,12 @@ trait MathBaseMultiOp {
         .build
     }
   }
+
+  def zeros[A: TensorType : Numeric](shape: Int*): Output[A] = fill(shape: _*)(Numeric[A].zero)
+
+  def zeros[A: TensorType : Numeric](shape: Shape): Output[A] = fill(shape)(Numeric[A].zero)
+
+  def ones[A: TensorType : Numeric](shape: Int*): Output[A] = fill(shape: _*)(Numeric[A].one)
+
+  def ones[A: TensorType : Numeric](shape: Shape): Output[A] = fill(shape)(Numeric[A].one)
 }

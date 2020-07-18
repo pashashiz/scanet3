@@ -19,7 +19,7 @@ object Effect {
   def plotResult[R: Numeric: TensorType]
     (name: String = "result", dir: String = "board")
     (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[R]] = {
-    Effect(new TensorBoard(dir), (board, step) => {
+    Effect(TensorBoard(dir), (board, step) => {
       board.addScalar(name, step.result.get, step.iter)
     })
   }

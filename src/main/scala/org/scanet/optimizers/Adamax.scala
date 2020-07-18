@@ -20,8 +20,8 @@ import org.scanet.syntax._
 case class Adamax(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
-    val m1 = Tensor.zeros[T](shape).const
-    val m2 = Tensor.zeros[T](shape).const
+    val m1 = zeros[T](shape)
+    val m2 = zeros[T](shape)
     (m1 zip m2).eval
   }
 
