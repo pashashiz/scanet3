@@ -19,9 +19,9 @@ import org.scanet.syntax._
 case class AMSGrad(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
-    val m = Tensor.zeros[T](shape).const
-    val vCurrent = Tensor.zeros[T](shape).const
-    val v = Tensor.zeros[T](shape).const
+    val m = zeros[T](shape)
+    val vCurrent = zeros[T](shape)
+    val v = zeros[T](shape)
     zip(m, vCurrent, v).eval
   }
 

@@ -20,6 +20,6 @@ class TensorBoardSpec extends AnyFlatSpec with Matchers {
   }
 
   "scalar" should "be displayed" ignore {
-    new TensorBoard("tmp").addScalar("a", 11.0f, 0)
+    TensorBoard("tmp").addScalar("a", 11.0f, 0)
   }
 }

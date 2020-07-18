@@ -24,8 +24,8 @@ import org.scanet.syntax._
 case class AdaDelta(rate: Float = 1.0f, rho: Float = 0.9f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
-    val avgGrad = Tensor.zeros[T](shape).const
-    val avgDelta = Tensor.zeros[T](shape).const
+    val avgGrad = zeros[T](shape)
+    val avgDelta = zeros[T](shape)
     (avgGrad zip avgDelta).eval
   }
 

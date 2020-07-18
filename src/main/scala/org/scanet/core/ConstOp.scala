@@ -11,15 +11,25 @@ class ConstOp[A: TensorType](val tensor: Tensor[A]) {
 
 object ConstOp {
 
-  def buildConst[A: TensorType](tensor: Tensor[A]): Output[A] =
+  def buildConst[A: TensorType](tensor: Tensor[A]): Output[A] = {
+    val compacted = tensor.compact
     Output.name[A]("Const")
-      .shape(tensor.shape)
-      .compileWithValue(tensor)
+      .shape(compacted.shape)
+      .id(_ => {
+        if (tensor.isScalar)
+          compacted.toScalar.toString
+        else if (tensor.rank == 1 && tensor.power <= 10)
+          tensor.toArray.mkString(", ")
+        else
+          s"#${compacted.address}"
+      })
+      .compileWithValue(compacted)
       .localGrad(new Grad[A] {
         override def calc[R: scanet.math.Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] =
           List()
       })
       .build
+  }
 
   trait Syntax {
 

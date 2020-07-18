@@ -126,6 +126,8 @@ class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
     }
   }
 
+  def address: String = super.hashCode().toString
+
   override def hashCode(): Int = view.hashCode() + toArray.foldLeft(1)((acc, a) => 31 * acc + a.hashCode())
 
   override def equals(obj: Any): Boolean = obj match {

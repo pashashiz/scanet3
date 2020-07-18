@@ -2,12 +2,23 @@ package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scanet.core.{Output, Shape, Tensor}
+import org.scanet.core.Session.withing
+import org.scanet.core.Tensor.scalar
+import org.scanet.core.{Output, OutputSeq, Shape, Tensor}
 import org.scanet.math.syntax._
 
 import scala.Array.range
+import scala.collection.JavaConverters._
 
 class MathBaseOpSpec extends AnyFlatSpec with Matchers {
+
+  "zeros" should "fill a tensor with zeros" in {
+    zeros[Int](2).eval should be(Tensor.vector(0, 0))
+  }
+
+  "ones" should "fill a tensor with ones" in {
+    ones[Int](2).eval should be(Tensor.vector(1, 1))
+  }
 
   "const" should "have ones gradient if input is same const" in {
     val a = 2.const
@@ -20,7 +31,7 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       val b = 3.const
       (a grad b).returns[Float]
     } should have message "requirement failed: " +
-      "cannot find a gradient with respect to Const[Int]:() cause that input is not a part of the computation graph"
+      "cannot find a gradient with respect to Const(3)[Int]:() cause that input is not a part of the computation graph"
   }
 
   "plus" should "add 2 scalars" in {
@@ -559,5 +570,29 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   "round" should "return element-wise integer closest to x" in {
     Tensor.vector(1.6f, 1.4f, -1.7f).const.round.eval should
       be(Tensor.vector(2f, 1f, -2f))
+  }
+
+  "grads of 2 inputs" should "reuse common operations" in {
+    val a = 3f.const.as("a")
+    val b = 4f.const.as("b")
+    val f = (a :* b).pow(3)
+    val ga = f.grad(a).returns[Float].as("grad_a")
+    val gb = f.grad(b).returns[Float].as("grad_b")
+    // in our case both grads will reuse
+    // 3 * (a * b)^2 sub-graph
+    (ga, gb).eval should be((scalar(1728f), scalar(1296f)))
+    withing(session => {
+      val graph = session.toGraph(Seq(ga, gb))
+      val ops = graph.operations().asScala
+      ops should have size 11
+    })
+  }
+
+  "grad with respect to multiple inputs" should "work" in {
+    val a = 3f.const.as("a")
+    val b = 4f.const.as("b")
+    val f = (a :* b).pow(3)
+    val grads: OutputSeq[Float] = f.grad(Seq(a, b)).returns[Float]
+    grads.eval should be(Seq(scalar(1728f), scalar(1296f)))
   }
 }

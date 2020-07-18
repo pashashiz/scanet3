@@ -7,6 +7,46 @@ import org.scanet.syntax._
 
 class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
+  "scalar const" should "have toString which holds a scalar value" in {
+    5.0f.const.toString should be("Const(5.0)[Float]:()")
+  }
+
+  "it" should "be equal to other scalar const which holds the same value" in {
+    5.0f.const should be(5.0f.const)
+  }
+
+  "small vector const" should "have toString which holds all elements" in {
+    Tensor.vector(1, 2).const.toString should be("Const(1, 2)[Int]:(2)")
+  }
+
+  "it" should "be equal to other small vector const which holds the same value" in {
+    Tensor.vector(1, 2).const should be(Tensor.vector(1, 2).const)
+  }
+
+  "large tensor const" should "have toString which holds an address of a compacted tensor" in {
+    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
+    tensor.const.toString should be(s"Const(#${tensor.address})[Int]:(2, 2)")
+  }
+
+  "it" should "be equal to other small vector const which holds the same tensor reference" in {
+    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
+    tensor.const should be(tensor.const)
+  }
+
+  "placeholder" should "have toString which holds an address of output object" in {
+    val pl = placeholder[Int]()
+    pl.toString should be(s"Placeholder(#${pl.address})[Int]:()")
+  }
+
+  "it" should "not be equal to any other placeholder" in {
+    placeholder[Int]() should not be placeholder[Int]()
+  }
+
+  "composite output" should "have toString which includes operators chain" in {
+    5.0f.const.reshape(1).toString should
+      be("Reshape(Const(5.0)[Float]:(), new_shape:Const(1)[Int]:(1))[Float]:(1)")
+  }
+
   "const" should "be evaluated" in {
     5.0f.const.eval should be(Tensor.scalar(5.0f))
   }
@@ -161,5 +201,15 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
       Array(1, 2, 3),
       Array(4, 5, 6)).const
     matrix.unzip.eval should be((Tensor.vector(1, 2, 3), Tensor.vector(4, 5, 6)))
+  }
+
+  "fill" should "fill a tensor with a given value" in {
+    fill(2, 2)(1).eval should be(Tensor.matrix(Array(1, 1), Array(1, 1)))
+  }
+
+  it should "have correct gradient" in {
+    val x = 5.const
+    val f = (fillOutput(2)(x) :* Tensor.vector(4, 5).const).sum
+    f.grad(x).returns[Float].eval should be(Tensor.scalar(9f))
   }
 }

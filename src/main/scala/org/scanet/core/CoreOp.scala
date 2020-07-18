@@ -2,9 +2,9 @@ package org.scanet.core
 
 import org.scanet.core.ConstOp.syntax._
 import org.scanet.core.Output.Grad
-import org.scanet.core.TensorType.syntax._
 import org.scanet.core.Slice.syntax._
-import org.scanet.math.{Floating, Numeric}
+import org.scanet.core.TensorType.syntax._
+import org.scanet.math.{Floating, Numeric, OutputIsMathBaseOp}
 import simulacrum.{op, typeclass}
 
 @typeclass trait CoreOp[F[_]] {
@@ -129,7 +129,7 @@ object CoreOp {
       override def join[A: TensorType](op: Output[A], other: Output[A]): Output[A] = joinAlong(Seq(op, other), 0)
 
       override def cast[A: TensorType, B: TensorType](op: Output[A]): Output[B] = {
-        if (TensorType[A] == TensorType[B]) op.asInstanceOf[Output[B]]
+        if (TensorType[A].tag == TensorType[B].tag) op.asInstanceOf[Output[B]]
         else {
           Output.name[B]("Cast")
             .shape(op.shape)
@@ -174,15 +174,62 @@ object CoreOp {
 
     def as[A: TensorType](out: Output[A], label: String): Output[A] = out.copy(label = label)
 
+    def placeholder[A: TensorType](shape: Int*): Output[A] = placeholder(Shape(shape: _*))
+
     def placeholder[A: TensorType](shape: Shape): Output[A] = {
       Output.name[A]("Placeholder")
         .shape(shape)
+        .id(self => s"#${self.address}")
         .compileWithAttr("dtype", TensorType[A])
         .compileWithAttr("shape", shape)
         .build
     }
 
-    def placeholder[A: TensorType](shape: Int*): Output[A] = placeholder(Shape(shape: _*))
+    def fill[A: TensorType](shape: Int*)(value: A): Output[A] = fillOutput(Shape(shape: _*))(value.const)
+
+    def fillOutput[A: TensorType](shape: Int*)(value: Output[A]): Output[A] = fillOutput(Shape(shape: _*))(value)
+
+    def fill[A: TensorType](shape: Shape)(value: A): Output[A] = fillOutput(shape)(value.const)
+
+    /**
+     * Creates a tensor filled with a scalar value.
+     *
+     * For example:
+     * {{{
+     * fill(2, 2)(1).eval should be(Tensor.matrix(Array(1, 1), Array(1, 1)))
+     * }}}
+     *
+     * `fill` differs from `const` in a few ways:
+     *  - `fill` only supports scalar contents, whereas `const` supports Tensor values
+     *  - `fill` creates an Op in the computation graph that constructs the actual
+     *     Tensor value at runtime. This is in contrast to `const` which embeds
+     *     the entire Tensor into the graph with a `Const` node.
+     *  - `fill` is a subject of caching and sub-graph reusing even with high rank cause
+     *     that is possible to check value equality when in contract to a large `const` tensor event when
+     *     filled with same value it is impossible to compare with other existing constants by value
+     *     during graph construction
+     *
+     * @param shape a shape to fill the tensor with
+     * @param value a value
+     * @return output
+     */
+    def fillOutput[A: TensorType](shape: Shape)(value: Output[A]): Output[A] = {
+      require(value.isScalar, s"value should be a scalar but has shape ${value.shape}")
+      if (shape.isScalar) {
+        value
+      } else {
+        Output.name[A]("Fill")
+          .shape(shape)
+          .inputs(as(Tensor.vector(shape.dims: _*).const, "shape"), value)
+          .compileWithAllInputs
+          .localGrad(new Grad[A] {
+            override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
+              List(null, new OutputIsMathBaseOp().sum(parentGrad))
+            }
+          })
+          .build
+      }
+    }
 
     /** Add operation which will be executed right after current operation and
      * return current operation as output to continue chaining.
@@ -229,27 +276,12 @@ object CoreOp {
     def when(cond: Output[Boolean]): ThenStep = new ThenStep {
       override def thenDo[A: TensorType](trueCase: Output[A]): ElseStep[A] = (falseCase: Output[A]) => {
         require(falseCase.shape == trueCase.shape)
-
         // perform switch op that sends input to 0 output when condition is false and to 1 for true
-        val switch = Output.name[A]("Switch")
+        val (falseBranch, trueBranch) = Output.name[A]("Switch")
           .shape(Shape())
           .inputs(cond, cond)
           .compileWithAllInputs
-          .build
-
-        // outputs are first wrapped into Identity ops to select input with proper index
-        // TODO: this identity ops can be removed if we can set input index to prebuilt Output
-        val falseBranch = Output.name[A]("Identity")
-          .inputs(switch)
-          .shape(Shape())
-          .compileWithAllInputsAtIndex(0)
-          .build
-        val trueBranch = Output.name[A]("Identity")
-          .inputs(switch)
-          .shape(Shape())
-          .compileWithAllInputsAtIndex(1)
-          .build
-
+          .build2
         // merge branches into single output (it selects first available input)
         Output.name[A]("Merge")
           .shape(trueCase.shape)
@@ -277,7 +309,7 @@ object CoreOp {
         .shape(shape)
         .inputs(outputs :+ as(Tensor.scalar(axis.toLong).const, "axis"): _*)
         .compileWithTransformer((ctx, builder) => {
-          val compiledInputs = ctx.inputs.map(_.output(0))
+          val compiledInputs = ctx.inputs.map { case (op, index) => op.output(index) }
           builder
             .addInputList(compiledInputs.take(outputs.size).toArray)
             .addInput(compiledInputs.last)

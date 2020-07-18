@@ -13,7 +13,7 @@ import org.tensorflow.util.Event
 
 import scala.reflect.io.Path._
 
-class TensorBoard(val dir: String = "") {
+case class TensorBoard(dir: String = "") {
 
   dir.toDirectory.createDirectory()
 
