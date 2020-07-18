@@ -239,11 +239,11 @@ object Output {
     }
 
     def build2(implicit ev: State =:= Complete): (Output[A], Output[A]) = {
-      // NOTE: Index is not a part of the cache for output
-      // so same operation will be reused
-      // however, index is a part of the argument which means that is 2 similar
-      // operations will refer to different indexes would be considered as differrent
-      // and cache will not work for them
+      // NOTE: Output index IS NOT a part of a unique id of the output
+      // so if the same output is referenced few times the same operation will be reused via session cache.
+      // However, output index IS a part of the argument which means that if 2 similar
+      // operations consume the same output but with different indexes
+      // they will have different unique ids and cache will not work for them which we expect
       val output = build
       val first = Output.name[A]("Identity")
         .inputs(output)
@@ -257,7 +257,6 @@ object Output {
         .build
       (first, second)
     }
-
   }
 
   def name[A: TensorType](name: String): Builder[A, WithName] = {

@@ -107,7 +107,6 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     val c = 2.const
 
     val ternary = when(a gt b) thenDo (a plus c) elseDo (a minus c)
-    println(ternary)
     ternary.eval should be(Tensor.scalar(3))
   }
 
