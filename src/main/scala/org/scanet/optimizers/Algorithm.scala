@@ -9,4 +9,5 @@ trait Algorithm {
 
   def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T]
 }
+
 case class Delta[T: Floating: Numeric: TensorType](delta: Output[T], meta: Output[T])
