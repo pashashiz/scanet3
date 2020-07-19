@@ -1,7 +1,7 @@
 package org.scanet.models
 
-import org.scanet.core.{Output, Shape, TensorType}
-import org.scanet.math.{Numeric, Floating}
+import org.scanet.core.{Output, OutputSeq, Shape, TensorType}
+import org.scanet.math.{Floating, Numeric}
 import org.scanet.math.syntax._
 
 /** Ordinary least squares Linear Regression.
@@ -14,13 +14,13 @@ import org.scanet.math.syntax._
   */
 case object LinearRegression extends Model {
 
-  override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: Output[A]): Output[A] =
-    withBias(x) * reshape(weights).transpose
+  override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: OutputSeq[A]): Output[A] =
+    withBias(x) * reshape(weights.head).transpose
 
   private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)
 
-  override def shape(features: Int): Shape = Shape(features + 1)
+  override def shapes(features: Int): Seq[Shape] = Seq(Shape(features + 1))
 
   override def outputs(): Int = 1
 }

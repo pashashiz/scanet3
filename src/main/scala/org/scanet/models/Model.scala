@@ -7,14 +7,15 @@ import org.scanet.math.syntax._
 
 abstract class Model extends Serializable {
 
-  def build[E: Numeric: Floating: TensorType](x: Output[E], weights: Output[E]): Output[E]
+  def build[E: Numeric: Floating: TensorType](x: Output[E], weights: OutputSeq[E]): Output[E]
 
-  def result[E: Numeric: Floating: TensorType]: TF2[E, Tensor[E], E, Tensor[E], Output[E]] = TF2(build[E])
+  def result[E: Numeric: Floating: TensorType]: TF2[E, Tensor[E], E, Seq[Tensor[E]], Output[E]] =
+    TF2[Output, E, OutputSeq, E, Output[E]](build[E])
 
   /** @param features number of features in a dataset
-   * @return shape of weights tensor
+   * @return shape of weights tensor for each layer
    */
-  def shape(features: Int): Shape
+  def shapes(features: Int): Seq[Shape]
 
   /** @return number of model outputs
    */
@@ -30,32 +31,32 @@ abstract class Model extends Serializable {
 
 case class LossModel(model: Model, lossF: Loss) extends Serializable {
 
-  def build[E: Numeric: Floating: TensorType](x: Output[E], y: Output[E], weights: Output[E]): Output[E] =
+  def build[E: Numeric: Floating: TensorType](x: Output[E], y: Output[E], weights: OutputSeq[E]): Output[E] =
     lossF.build(model.build(x, weights), y)
 
-  def loss[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Tensor[E], Output[E]] =
-    TF3(build[E])
+  def loss[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], Output[E]] =
+    TF3[Output, E, Output, E, OutputSeq, E, Output[E]](build[E])
 
-  def weightsAndGrad[E: Numeric: Floating: TensorType] =
-    TF3[Output, E, Output, E, Output, E, (Output[E], Output[E])](
+  def weightsAndGrad[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], (OutputSeq[E], OutputSeq[E])] =
+    TF3[Output, E, Output, E, OutputSeq, E, (OutputSeq[E], OutputSeq[E])](
       (x, y, w) => (w, build(x, y, w).grad(w).returns[E]))
 
-  def grad[E: Numeric: Floating: TensorType] =
-    TF3[Output, E, Output, E, Output, E, Output[E]](
+  def grad[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], OutputSeq[E]] =
+    TF3[Output, E, Output, E, OutputSeq, E, OutputSeq[E]](
       (x, y, w) => build(x, y, w).grad(w).returns[E])
 
-  def trained[E: Numeric: Floating: TensorType](weights: Tensor[E]) = new TrainedModel(this, weights)
+  def trained[E: Numeric: Floating: TensorType](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
 
   override def toString: String = s"$model:$lossF"
 }
 
-class TrainedModel[E: Numeric : Floating: TensorType](val lossModel: LossModel, val weights: Tensor[E]) {
+class TrainedModel[E: Numeric : Floating: TensorType](val lossModel: LossModel, val weights: Seq[Tensor[E]]) {
 
-  def buildResult(x: Output[E]): Output[E] = lossModel.model.build(x, weights.const)
+  def buildResult(x: Output[E]): Output[E] = lossModel.model.build(x, weights.map(_.const))
 
   def result: TF1[E, Tensor[E], Output[E]] = TF1(buildResult)
 
-  def buildLoss(x: Output[E], y: Output[E]): Output[E] = lossModel.build(x, y, weights.const)
+  def buildLoss(x: Output[E], y: Output[E]): Output[E] = lossModel.build(x, y, weights.map(_.const))
 
   def loss: TF2[E, Tensor[E], E, Tensor[E], Output[E]] =
     TF2[Output, E, Output, E, Output[E]]((x, y) => buildLoss(x, y))

@@ -37,6 +37,8 @@ case class Optimizer[
      @transient doOnEach: Effects[Step[A]])
    (implicit c: Convertible[Int, A]) {
 
+  case class IterResult(iter: Int, weights: Seq[Tensor[A]], meta: Seq[Tensor[A]], loss: A)
+
   private val lossModel = model.withLoss(loss)
 
   def run(): TrainedModel[A] = {
@@ -44,82 +46,95 @@ case class Optimizer[
     val sc = ds.sparkContext
 
     @tailrec
-    def optimize(prevStep: Step[A], effectState: Seq[_], weights: Tensor[A], meta: Tensor[A]): Tensor[A] = {
+    def optimize(prevStep: Step[A], effectState: Seq[_], weights: Seq[Tensor[A]], meta: Seq[Tensor[A]]): Seq[Tensor[A]] = {
       val weightsBr = sc.broadcast(weights)
       val metaBr = sc.broadcast(meta)
-      val (iter, newWeights, newMeta, result) = ds
+      val result = ds
         .mapPartitions(it => Iterator(optimizeOnPartition(
           it, prevStep.iter, weightsBr.value, metaBr.value)))
         .treeReduce(averageMetaAndWeights)
-      val step: Step[A] = prevStep.nextEpoch.incIter(iter).withResult(result)
+      val step: Step[A] = prevStep.nextEpoch.incIter(result.iter).withResult(result.loss)
       val nextEffectState = doOnEach.action(effectState, step)
       if (stop(step)) {
-        newWeights
+        result.weights
       } else {
-        optimize(step, nextEffectState, newWeights, newMeta)
+        optimize(step, nextEffectState, result.weights, result.meta)
       }
     }
-    val weights = optimize(Step(), doOnEach.unit, Tensor.zeros(), Tensor.zeros())
+    val weights = optimize(Step(), doOnEach.unit, Seq(), Seq())
     lossModel.trained(weights)
   }
 
   private def optimizeOnPartition(
-    it: scala.Iterator[Array[A]], globalIter: Int, weights: Tensor[A], meta: Tensor[A]): (Int, Tensor[A], Tensor[A], A) = {
+    it: scala.Iterator[Array[A]], globalIter: Int, weights: Seq[Tensor[A]], meta: Seq[Tensor[A]]): IterResult = {
     val result = sessionsPool.withing(session => {
       val batches = Tensor2Iterator(it, batchSize, splitAt = size => size - model.outputs())
       val (weightsInitialized, metaInitialized) = if (globalIter == 0) {
         val features = batches.columns - model.outputs()
-        val shape = model.shape(features)
-        (initArgs(shape), alg.initMeta[A](shape))
+        val shapes = model.shapes(features)
+        (shapes.map(initArgs(_)), shapes.map(alg.initMeta[A](_)))
       } else {
         (weights, meta)
       }
-      val lossCompiled = tfCache.getOrCompute(
-        s"$lossModel:loss[${TensorType[A].classTag}]",
-        lossModel.loss[A] compile session)
-      val calcCompiled = tfCache.getOrCompute(
-        s"$lossModel:$alg:calc[${TensorType[A].classTag}]]",
-        lossModel.weightsAndGrad[A].combine(TF2.identity[Output, A, Output, Int]) {
-          case ((w, g), (meta, iter)) =>
-            val Delta(del, nextMeta) = alg.delta[A](g, meta, iter)
-            val d = del.cast[A]
-            (if (minimizing) w - d else w + d, nextMeta)
-        } compile session)
-
+      val loss = compileLoss(session)
+      val calc = compileCalc(session)
       @tailrec
-      def optimize(iter: Int, weights: Tensor[A], meta: Tensor[A]): (Int, Tensor[A], Tensor[A], A) = {
+      def optimize(iter: Int, weights: Seq[Tensor[A]], meta: Seq[Tensor[A]]): IterResult = {
         val (x, y) = batches.next()
         /*_*/
-        val (nextWeights, nextMeta) = calcCompiled(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
+        val (nextWeights, nextMeta) = calc(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
         /*_*/
         if (batches.hasNext) {
           optimize(iter + 1, nextWeights, nextMeta)
         } else {
-          (iter + 1, nextWeights, nextMeta, lossCompiled(x, y, nextWeights).toScalar)
+          IterResult(iter + 1, nextWeights, nextMeta, loss(x, y, nextWeights).toScalar)
         }
       }
-
       optimize(0, weightsInitialized, metaInitialized)
     })
     result
   }
 
-  // todo: tuple3 -> case class
-  private def averageMetaAndWeights
-  (left: (Int, Tensor[A], Tensor[A], A),
-   right: (Int, Tensor[A], Tensor[A], A)): (Int, Tensor[A], Tensor[A], A) = {
+  private def compileLoss(session: Session) = {
+    tfCache.getOrCompute(
+      s"$lossModel:loss[${TensorType[A].classTag}]",
+      lossModel.loss[A] compile session)
+  }
+
+  private def compileCalc(session: Session) = {
+    def newOutputSeq: OutputSeq[A] = Seq[Output[A]]()
+    tfCache.getOrCompute(
+      s"$lossModel:$alg:calc[${TensorType[A].classTag}]]",
+      lossModel.weightsAndGrad[A].combine(TF2.identity[OutputSeq, A, Output, Int]) {
+        case ((ws, gs), (metas, iter)) =>
+          (ws, gs, metas).zipped.foldLeft((newOutputSeq, newOutputSeq))((acc, next) => {
+            val (gAcc, metaAcc) = acc
+            val (w, g, meta) = next
+            val Delta(del, metaNext) = alg.delta[A](g, meta, iter)
+            val d = del.cast[A]
+            val gNext = if (minimizing) w - d else w + d
+            (gAcc :+ gNext, metaAcc :+ metaNext)
+          })
+      } compile session)
+  }
+
+  private def averageMetaAndWeights(left: IterResult, right: IterResult): IterResult = {
     sessionsPool.withing(session => {
-      val (leftIter, leftWeights, leftMeta, leftResult) = left
-      val (rightIter, rightWeights, rightMeta, rightResult) = right
       val weightsAvg = tfCache.getOrCompute("weightsAvg", avg[A]) compile session
       val metaAvg = tfCache.getOrCompute("metaAvg", avg[A]) compile session
-      val resultAvg = (leftResult plus rightResult) / c.convert(2)
-      (leftIter + rightIter, weightsAvg(leftWeights, rightWeights), metaAvg(leftMeta, rightMeta), resultAvg)
+      val lossAvg = (left.loss plus right.loss) / c.convert(2)
+      IterResult(
+        left.iter + right.iter,
+        weightsAvg(left.weights, right.weights),
+        metaAvg(left.meta, right.meta),
+        lossAvg)
     })
   }
 
-  private def avg[X: Numeric: TensorType] =
-    TF2[Output, X, Output, X, Output[X]]((arg1, arg2) => (arg1 + arg2) / 2.0f.const.cast[X])
+  private def avg[X: Numeric: TensorType]: TF2[X, Seq[Tensor[X]], X, Seq[Tensor[X]], OutputSeq[X]] =
+    TF2[OutputSeq, X, OutputSeq, X, OutputSeq[X]]((arg1, arg2) => {
+      (arg1 zip arg2).map { case (l, r) => (l + r) / 2.0f.const.cast[X] }
+    })
 }
 
 object Optimizer {
