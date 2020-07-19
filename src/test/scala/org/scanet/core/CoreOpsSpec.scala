@@ -187,6 +187,17 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
       "all inputs should have same dimensions except the axis, but was (2, 3), (2, 2)"
   }
 
+  it should "have valid gradient" in {
+    val a = Tensor.matrix(
+      Array(1, 2, 3),
+      Array(4, 5, 6)).const
+    val b = Tensor.matrix(
+      Array(7, 8, 9)).const
+    val f = ((a join b) :* 2.const).sum
+    f.grad(a).returns[Float].eval should be(Tensor.fill(2, 3)(2))
+    f.grad(b).returns[Float].eval should be(Tensor.fill(1, 3)(2))
+  }
+
   "zip" should "pack 2 vectors into a matrix" in {
     val first = Tensor.vector(1, 2, 3).const
     val second = Tensor.vector(4, 5, 6).const
