@@ -3,6 +3,12 @@ package org.scanet.models.nn
 import org.scanet.core.{Output, OutputSeq, TensorType}
 import org.scanet.math.{Floating, Numeric}
 
+/**
+ * Layer which composes 2 other layers
+ *
+ * @param left layer
+ * @param right layer
+ */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
   override def build[E: Numeric : Floating : TensorType](x: Output[E], weights: OutputSeq[E]) = {

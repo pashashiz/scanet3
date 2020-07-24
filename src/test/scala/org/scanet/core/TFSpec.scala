@@ -65,6 +65,11 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     })
   }
 
+  it should "display a graph with given argument shape" ignore {
+    val inc = TF1((arg: Output[Int]) => arg + 1.const)
+    inc.display(Seq(Shape()), label = "inc")
+  }
+
   "tensor function of 2 args" should "work" in {
     val plus = TF2((left: Output[Int], right: Output[Int]) => left + right)
     withing(session => {
@@ -83,6 +88,11 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
       val func = sum compile session
       func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(15))
     })
+  }
+
+  it should "display a graph with given argument shapes" ignore {
+    val plus = TF2((left: Output[Int], right: Output[Int]) => left + right)
+    plus.display(Seq(Shape()), Seq(Shape()), label = "plus")
   }
 
   "tensor function of 3 args" should "work" in {
