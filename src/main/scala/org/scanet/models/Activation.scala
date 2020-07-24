@@ -8,6 +8,6 @@ trait Activation {
   def build[A: Numeric: Floating: TensorType](in: Output[A]): Output[A]
 }
 
-object Sigmoid extends Activation {
+case object Sigmoid extends Activation {
   override def build[A: Numeric : Floating : TensorType](in: Output[A]): Output[A] = in.sigmoid
 }

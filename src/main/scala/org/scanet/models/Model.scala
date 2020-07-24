@@ -27,6 +27,20 @@ abstract class Model extends Serializable {
     val rows = x.shape.dims.head
     ones[E](rows, 1).joinAlong(x, 1)
   }
+
+  def inferShapeOfY(x: Shape) = {
+    val samples = x.dims.head
+    Shape(samples, outputs())
+  }
+
+  def inferShapeOfWeights(x: Shape) = {
+    val features = x.dims(1)
+    shapes(features)
+  }
+
+  def displayResult[E: Numeric: Floating: TensorType](x: Shape, dir: String = ""): Unit = {
+    result[E].display(Seq(x), inferShapeOfWeights(x), label = "result", dir = dir)
+  }
 }
 
 case class LossModel(model: Model, lossF: Loss) extends Serializable {
@@ -46,6 +60,14 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
       (x, y, w) => build(x, y, w).grad(w).returns[E])
 
   def trained[E: Numeric: Floating: TensorType](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
+
+  def displayLoss[E: Numeric: Floating: TensorType](x: Shape, dir: String = ""): Unit = {
+    loss[E].display(Seq(x), Seq(model.inferShapeOfY(x)), model.inferShapeOfWeights(x), label = "loss", dir = dir)
+  }
+
+  def displayGrad[E: Numeric: Floating: TensorType](x: Shape, dir: String = ""): Unit = {
+    grad[E].display(Seq(x), Seq(model.inferShapeOfY(x)), model.inferShapeOfWeights(x), label = "loss_grad", dir = dir)
+  }
 
   override def toString: String = s"$model:$lossF"
 }

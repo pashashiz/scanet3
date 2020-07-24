@@ -104,25 +104,7 @@ object CoreOp {
 
     implicit def coreOps: CoreOp[Output] = new CoreOp[Output] with CoreStandaloneOps {
 
-      override def slice[A: TensorType](out: Output[A], projection: Projection): Output[A] = {
-        val adjusted = projection.adjustTo(out.shape)
-        val (offsets, lengths) = adjusted.asOffsetAndLength
-        val sliced = Output.name[A]("Slice")
-          .shape(adjusted.shapeFull)
-          .inputs(
-            out,
-            as(Tensor.vector(offsets).const, "offsets"),
-            as(Tensor.vector(lengths).const, "lengths"))
-          .compileWithAllInputs
-          .build
-        // in case there is indexing and not really a slicing, like tensor.slice(1)
-        // we would need to prune first dimensions
-        if (adjusted.canPrune > 0) {
-          reshape(sliced, adjusted.shapePruned)
-        } else {
-          sliced
-        }
-      }
+      override def slice[A: TensorType](out: Output[A], projection: Projection): Output[A] = super.slice(out, projection)
 
       override def joinAlong[A: TensorType](op: Output[A], other: Output[A], dim: Int): Output[A] = joinAlong(Seq(op, other), dim)
 
@@ -291,6 +273,26 @@ object CoreOp {
       }
     }
 
+    def slice[A: TensorType](out: Output[A], projection: Projection): Output[A] = {
+      val adjusted = projection.adjustTo(out.shape)
+      val (offsets, lengths) = adjusted.asOffsetAndLength
+      val sliced = Output.name[A]("Slice")
+        .shape(adjusted.shapeFull)
+        .inputs(
+          out,
+          as(Tensor.vector(offsets).const, "offsets"),
+          as(Tensor.vector(lengths).const, "lengths"))
+        .compileWithAllInputs
+        .build
+      // in case there is indexing and not really a slicing, like tensor.slice(1)
+      // we would need to prune first dimensions
+      if (adjusted.canPrune > 0) {
+        reshape(sliced, adjusted.shapePruned)
+      } else {
+        sliced
+      }
+    }
+
     def zip[A: TensorType](outputs: Output[A]*): Output[A] = {
       require(outputs.map(_.shape).distinct.size == 1, s"shapes should be equal but was ${outputs.map(_.shape)}")
       val shape = Shape(1 :: outputs.head.shape.dims)
@@ -313,6 +315,21 @@ object CoreOp {
           builder
             .addInputList(compiledInputs.take(outputs.size).toArray)
             .addInput(compiledInputs.last)
+        })
+        .localGrad(new Grad[A] {
+          override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]) = {
+            val ranges = outputs
+              .map(output => output.shape.dims(axis))
+              .scanLeft(0 until 0)((prevRange, dimSize) => {
+                prevRange.end until (prevRange.end + dimSize)
+              }).tail
+            val unbounded = parentGrad.shape.dims
+              .map(dimSize => Slice(0, dimSize, isRange = true))
+            ranges.map(range => {
+              val slices = unbounded.updated(axis, Slice(range.start, range.end, isRange = true))
+              slice(parentGrad, Projection(slices))
+            }).toList
+          }
         })
         .build
     }

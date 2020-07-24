@@ -18,7 +18,11 @@ case class Output[A: TensorType](
       compiler: CompileContext[A] => Operation,
       gradF: Grad[A]) {
 
+  val `type`: TensorType[A] = TensorType[A]
+
   def rank: Int = shape.rank
+
+  def withLabel(label: String) = copy(label = label)
 
   def isScalar: Boolean = shape.isScalar
 

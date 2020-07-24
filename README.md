@@ -21,21 +21,22 @@ The input data is expected to be `RDD[Array[TensorType]`.
 Usually, `TensorType` is choosen to be  `Float` since it performs best on GPU, but that is not
 limited to it.
 
-Example of solving a linear regression model:
+Example of a simple classifier based on fully connected NN with 1 hidden layer:
 
 ``` scala
-val ds = facebookComments // RDD[Array[Float]]
-val trained = ds.train(LinearRegression)
-  .loss(MeanSquaredError)
-  .using(Adam(rate = 0.1f))
-  .batch(1000)
+val ds = readDataset()
+val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
+val trained = ds.train(model)
+  .loss(BinaryCrossentropy)
+  .using(Adam(0.1f))
+  .batch(100)
   .each(1.epochs, logResult())
-  .each(1.iterations, plotResult(name = "Error", dir = "board/Adam"))
-  .stopAfter(10.epochs)
+  .stopAfter(50.epochs)
   .run()
+val (x, y) = Tensor2Iterator(ds.collect.iterator, 100).next()
 val loss = trained.loss.compile()
-val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
-loss(x, y).toScalar should be <= 1f
+loss(x, y).toScalar should be <= 0.4f
+accuracy(trained, ds) should be >= 0.9f
 ```
 
 Here, `loss` will be logged as well as added to `TensorBoard`. 
@@ -76,7 +77,7 @@ tensorboard --logdir board
 - [x] Linear Regression
 - [ ] Simple math models for benchmarks
 - [x] Binary Logistic Regression
-- [ ] ANN (Multilayer Perceptron NN)
+- [x] ANN (Multilayer Perceptron NN)
 - [ ] Layers Dropout, Regularization, Normalization
 - [ ] Convolutional NN
 - [ ] Recurent NN
