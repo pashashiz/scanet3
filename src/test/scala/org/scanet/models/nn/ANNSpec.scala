@@ -2,6 +2,7 @@ package org.scanet.models.nn
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.{Shape, Tensor}
+import org.scanet.datasets.MNIST
 import org.scanet.estimators.accuracy
 import org.scanet.models.{BinaryCrossentropy, Sigmoid}
 import org.scanet.optimizers.Effect.logResult
@@ -48,5 +49,19 @@ class ANNSpec extends AnyFlatSpec with CustomMatchers  with SharedSpark with Dat
   it should "produce right graph of loss gradient given x shape" ignore {
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
     model.withLoss(BinaryCrossentropy).displayGrad[Float](x = Shape(4, 3))
+  }
+
+  "MNIST dataset" should "be trained" in {
+    val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 10000, testSize = 100)
+    val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
+    val trained = trainingDs.train(model)
+      .loss(BinaryCrossentropy)
+      .using(Adam(0.01f))
+      .initWith(s => Tensor.zeros(s))
+      .batch(100)
+      .each(1.epochs, logResult())
+      .stopAfter(100.epochs)
+      .run()
+    println(accuracy(trained, testDs))
   }
 }

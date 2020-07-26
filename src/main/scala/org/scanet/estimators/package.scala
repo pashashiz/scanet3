@@ -20,7 +20,8 @@ package object estimators {
         val positive = TF2[Output, A, Output, A, Output[Int]](
           (x, y) => {
             val yPredicted = model.buildResult(x).round
-            (y.cast[A] :== yPredicted).cast[Int].sum
+            val matchedOutputs = (y.cast[A] :== yPredicted).cast[Int].sum(Seq(1))
+            (matchedOutputs :== model.outputs().const).cast[Int].sum
           }).compile(session)
         val result = batches.foldLeft((0, 0))((acc, next) => {
           val (x, y) = next
