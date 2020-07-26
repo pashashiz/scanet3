@@ -58,7 +58,7 @@ There is still a lot of work to make it better before we can move to more advanc
  - evaluate accuracy on each epoch
  - visualize weights in runtime as a heatmap
  - benchmark a similar Python neural network on MNIST and check if we can achieve same performance
- - ran on GPU
+ - run on GPU
  
 ## Road Map
 
