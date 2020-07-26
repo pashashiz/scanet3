@@ -11,7 +11,7 @@ import org.scanet.optimizers.{Adam, Tensor2Iterator}
 import org.scanet.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-class ANNSpec extends AnyFlatSpec with CustomMatchers  with SharedSpark with Datasets {
+class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  with SharedSpark with Datasets {
 
   "fully connected neural network with 2 layers (4, 1)" should "minimize logistic regression" in {
     val ds = logisticRegression.map(a => Array(a(0)/100, a(1)/100, a(2)))
@@ -51,17 +51,17 @@ class ANNSpec extends AnyFlatSpec with CustomMatchers  with SharedSpark with Dat
     model.withLoss(BinaryCrossentropy).displayGrad[Float](x = Shape(4, 3))
   }
 
-  "MNIST dataset" should "be trained" in {
-    val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 10000, testSize = 100)
+  "MNIST dataset" should "be trained" ignore {
+    val (trainingDs, testDs) = MNIST.load(sc, testSize = 10000)
     val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
     val trained = trainingDs.train(model)
       .loss(BinaryCrossentropy)
       .using(Adam(0.01f))
       .initWith(s => Tensor.zeros(s))
-      .batch(100)
+      .batch(1000)
       .each(1.epochs, logResult())
-      .stopAfter(100.epochs)
+      .stopAfter(300.epochs)
       .run()
-    println(accuracy(trained, testDs))
+    accuracy(trained, testDs) should be >= 0.87f
   }
 }

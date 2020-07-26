@@ -2,7 +2,7 @@ package org.scanet.native
 
 import java.util.concurrent.Executors
 
-import scala.collection.mutable
+import scala.collection._
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.ref.{PhantomReference, Reference, ReferenceQueue}
 import scala.util.control.NonFatal
@@ -17,7 +17,7 @@ abstract class Disposable(deallocator: () => Unit) {
 }
 
 object Disposable {
-  val dealocators: mutable.Map[Reference[Disposable], () => Unit] = mutable.Map()
+  val dealocators: concurrent.Map[Reference[Disposable], () => Unit] = concurrent.TrieMap()
   val refs = new ReferenceQueue[Disposable]
   implicit val executor: ExecutionContextExecutor =
     ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())

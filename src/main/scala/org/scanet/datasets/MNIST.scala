@@ -17,7 +17,7 @@ object MNIST {
     (loadTrainingSet(sc, trainingSize), loadTestSet(sc, testSize))
   }
 
-  def load(sc: SparkContext, trainingSize: Int, testSize: Int): (RDD[Array[Float]], RDD[Array[Float]]) =
+  def load(sc: SparkContext, trainingSize: Int = 60000, testSize: Int = 10000): (RDD[Array[Float]], RDD[Array[Float]]) =
     (loadTrainingSet(sc, trainingSize), loadTestSet(sc, testSize))
 
   def loadTrainingSet(sc: SparkContext, size: Int): RDD[Array[Float]] =
@@ -27,8 +27,8 @@ object MNIST {
     loadDataSetFrom(sc, images = "t10k-images-idx3-ubyte.gz", labels = "t10k-labels-idx1-ubyte.gz", size)
 
   def loadDataSetFrom(sc: SparkContext, images: String, labels: String, size: Int): RDD[Array[Float]] = {
-    val imagesRdd = sc.makeRDD(loadImages(images, size), 1)
-    val labelsRdd = sc.makeRDD(loadLabels(labels, size), 1)
+    val imagesRdd = sc.makeRDD(loadImages(images, size))
+    val labelsRdd = sc.makeRDD(loadLabels(labels, size))
     imagesRdd.join(labelsRdd).map {
       case (_, (images, labels)) => images ++ labels
     }
@@ -76,7 +76,7 @@ object MNIST {
 
   private def downloadOrCached(name: String): Path = {
     val resource = Channels.newChannel(new URL(s"http://yann.lecun.com/exdb/mnist/$name").openStream())
-    val dir = Paths.get(System.getProperty("user.home"), "mnist")
+    val dir = Paths.get(System.getProperty("user.home"), ".scanet", "cache", "mnist")
     Files.createDirectories(dir)
     val file = dir.resolve(name)
     if (!Files.exists(file)) {
