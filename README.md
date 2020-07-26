@@ -45,6 +45,21 @@ To check live optimization process you can:
 tensorboard --logdir board
 ```
 
+## What we are doing right now
+
+Finally, we added a fully connected neural network which we can benchmark on MNIST dataset.
+Even though right now we can get 87% accuracy that is pretty small, fully connected NN can do up to 95%.
+
+There is still a lot of work to make it better before we can move to more advanced neural networks (like convolutional):
+ - add `Softmax` loss function
+ - add `L1`, `L2` regularization
+ - figure out why on random weights we still get `NAN`
+ - test the rest of the optimizers
+ - evaluate accuracy on each epoch
+ - visualize weights in runtime as a heatmap
+ - benchmark a similar Python neural network on MNIST and check if we can achieve same performance
+ - run on GPU
+ 
 ## Road Map
 
 ### Tensor Flow Low Level API
@@ -82,6 +97,14 @@ tensorboard --logdir board
 - [ ] Convolutional NN
 - [ ] Recurent NN
 - [ ] others
+
+### Loss functions
+- [x] RMSE (Mean Squared Error)
+- [x] Binary Crossentropy
+- [ ] Softmax
+
+### Benchmark Datasets
+- [x] MNIST
 
 ### Preprocessing
 - [ ] Auto-converting into `RDD[Array[TensorType]]`

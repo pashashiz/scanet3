@@ -1,5 +1,6 @@
 package org.scanet.optimizers
 
+import scala.collection._
 import org.apache.spark.rdd.RDD
 import org.scanet.core.{Tensor, _}
 import org.scanet.math.syntax._
@@ -140,7 +141,7 @@ case class Optimizer[
 object Optimizer {
 
   class Cache {
-    private val map = mutable.Map[String, Any]()
+    private val map = concurrent.TrieMap[String, Any]()
     def getOrCompute[A](key: String, op: => A): A = {
       map.get(key) match {
         case Some(v) => v.asInstanceOf[A]

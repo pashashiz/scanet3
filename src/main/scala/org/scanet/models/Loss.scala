@@ -25,8 +25,15 @@ case object BinaryCrossentropy extends Loss {
   override def build[A: Numeric: Floating: TensorType]
   (predicted: Output[A], expected: Output[A]): Output[A] = {
     val one = 1.0f.const.cast[A]
-    val left = expected :* predicted.log
-    val right = (one - expected) :* (one - predicted).log
+    val epsilon = 1e-8f.const.cast[A]
+    // if we expect 1 and
+    // - predicted 1 - then loss 0
+    // - predicted 0 - then loss -indefinite (need epsilon here)
+    val left = expected :* (predicted + epsilon).log
+    // if we expect 0 and
+    // - predicted 0 - then loss 0
+    // - predicted 1 - then loss -indefinite (need epsilon here)
+    val right = (one - expected) :* (one - (predicted - epsilon)).log
     (left.negate - right).mean
   }
 }
