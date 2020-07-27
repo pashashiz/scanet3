@@ -63,6 +63,9 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
       .each(1.epochs, logResult())
       .stopAfter(300.epochs)
       .run()
+    TensorBoard("board")
+      .addImage("layer-1", trained.weights(0).reshape(50, 785, 1), Grayscale())
+      .addImage("layer-2", trained.weights(1).reshape(10, 51, 1), Grayscale())
     accuracy(trained, testDs) should be >= 0.87f
   }
 }

@@ -25,6 +25,20 @@ case class Grayscale() extends Channel {
 
 object Image {
 
+  /**
+   * Encode 3-D tensor as an image.
+   *
+   * A tensor should have 3 dimensions and the last dimension should:
+   * - have appropriate size (1 for greyscale, 3 for RGB, 4 for RGBS color scheme)
+   * - have float values in a range `[-1, 1]`
+   *   where `-1` is absence of color (i.e. black for grayscale)
+   *   and `1` is max value (i.e. white for grayscale)
+   *
+   * @param tensor 3-D tensor (height, width, channels)
+   * @param channel color scheme
+   * @param format image format (`png`, `jpeg`, `gif`, `bmp`)
+   * @return encoded image
+   */
   def encode(tensor: Tensor[Float], channel: Channel, format: String = "png"): Array[Byte] = {
     val dims = tensor.shape.dims
     val (height, width) = (dims(0), dims(1))
