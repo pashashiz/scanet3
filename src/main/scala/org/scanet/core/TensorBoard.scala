@@ -6,6 +6,7 @@ import java.nio.file.{Files, Paths}
 import java.time.Instant
 
 import com.google.protobuf.ByteString
+import org.scanet.images.{Channel, Image}
 import org.scanet.math.Convertible
 import org.scanet.native.TfRecords
 import org.tensorflow.framework.Summary
@@ -34,6 +35,26 @@ case class TensorBoard(dir: String = "") {
       .setSummary(summary)
       .setWallTime(currentTimeMillis() / 1000)
       .setStep(step)
+      .build()
+    writeEvents(event)
+  }
+
+  def addImage(tag: String, value: Tensor[Float], channel: Channel): TensorBoard = {
+    val dims = value.shape.dims
+    val image = Summary.Image.newBuilder()
+      .setHeight(dims(0))
+      .setWidth(dims(1))
+      .setColorspace(dims(2))
+      .setEncodedImageString(ByteString.copyFrom(Image.encode(value, channel)))
+      .build()
+    val summary = Summary.newBuilder()
+      .addValue(Summary.Value.newBuilder()
+        .setTag(tag)
+        .setImage(image)
+        .build())
+      .build()
+    val event = Event.newBuilder()
+      .setSummary(summary)
       .build()
     writeEvents(event)
   }

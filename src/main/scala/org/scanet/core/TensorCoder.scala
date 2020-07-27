@@ -77,7 +77,7 @@ class StringTensorCoder extends TensorCoder[String] {
    override def read(src: ByteBuffer, pos: Int, bufSize: Int): String = {
       @tailrec
       def loop(idx: Int, offset: Int, dst: Array[Byte]): String =
-         if (idx == dst.length) new String(dst)
+         if (idx == dst.length) new String(dst, "UTF-8")
          else {
             dst(idx) = src.get(offset + idx)
             loop(idx + 1, offset, dst)

@@ -3,6 +3,7 @@ package org.scanet.test
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scanet.core.{Shape, Tensor}
+import scala.reflect.io.Path._
 
 trait CustomMatchers extends Matchers {
 
@@ -19,4 +20,13 @@ trait CustomMatchers extends Matchers {
 
   def beWithinTolerance(mean: Float, tolerance: Float): Matcher[Float] =
     be >= (mean - tolerance) and be <= (mean + tolerance)
+
+  def haveTensorBoardFiles: Matcher[String] =
+    dir => {
+      MatchResult(
+        dir.toDirectory.files.map(_.path).exists(_ matches ".*events.out.tfevents.*"),
+        s"directory '$dir' does not contain tf events",
+        "",
+        Vector(dir))
+    }
 }

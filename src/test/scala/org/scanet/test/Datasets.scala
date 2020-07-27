@@ -39,7 +39,7 @@ trait Datasets {
       .map(row => row.toSeq.map(v => v.asInstanceOf[String].toFloat).toArray)
   }
 
-  private def resource(path: String): String = {
+  def resource(path: String): String = {
     getClass.getClassLoader.getResource(path).toString
   }
 }
