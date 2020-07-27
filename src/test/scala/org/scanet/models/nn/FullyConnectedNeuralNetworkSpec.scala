@@ -1,9 +1,10 @@
 package org.scanet.models.nn
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.{Shape, Tensor}
+import org.scanet.core.{Shape, Tensor, TensorBoard}
 import org.scanet.datasets.MNIST
 import org.scanet.estimators.accuracy
+import org.scanet.images.Grayscale
 import org.scanet.models.{BinaryCrossentropy, Sigmoid}
 import org.scanet.optimizers.Effect.logResult
 import org.scanet.optimizers.syntax._
@@ -52,7 +53,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
   }
 
   "MNIST dataset" should "be trained" ignore {
-    val (trainingDs, testDs) = MNIST.load(sc, testSize = 10000)
+    val (trainingDs, testDs) = MNIST.load(sc)
     val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
     val trained = trainingDs.train(model)
       .loss(BinaryCrossentropy)

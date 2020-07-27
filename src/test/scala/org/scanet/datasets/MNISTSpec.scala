@@ -2,7 +2,10 @@ package org.scanet.datasets
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scanet.core.{Shape, Tensor, TensorBoard}
+import org.scanet.images.Grayscale
 import org.scanet.test.SharedSpark
+import org.scanet.core.syntax._
 
 import scala.collection.mutable
 
@@ -44,6 +47,15 @@ class MNISTSpec extends AnyFlatSpec with Matchers with SharedSpark {
     labels should be(Array(0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f))
   }
 
+  "10 MNIST images" should "be shown on a tensorboard" ignore {
+    val set = MNIST.loadTrainingSet(sc, 10)
+    set.collect().foldLeft(TensorBoard("board"))((board, image) => {
+      val label = image.slice(784, 794).takeWhile(_ == 0f).length
+      val tensor = Tensor(image.take(784), Shape(28, 28, 1))
+      board.addImage(s"image $label", tensor, Grayscale())
+    })
+  }
+
   def renderImageAsASCII(data: Array[Float]): String = {
     val acc = mutable.Buffer[String]()
     for {
@@ -60,4 +72,6 @@ class MNISTSpec extends AnyFlatSpec with Matchers with SharedSpark {
     }
     acc.mkString("")
   }
+
+
 }
