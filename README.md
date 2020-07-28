@@ -48,7 +48,6 @@ Finally, we added a fully connected neural network which we can benchmark on MNI
 Even though right now we can get 87% accuracy that is pretty small, fully connected NN can do up to 95%.
 
 There is still a lot of work to make it better before we can move to more advanced neural networks (like convolutional):
- - add `Softmax` loss function
  - add `L1`, `L2` regularization
  - figure out why on random weights we still get `NAN`
  - test the rest of the optimizers
