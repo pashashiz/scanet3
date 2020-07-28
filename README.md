@@ -21,22 +21,19 @@ The input data is expected to be `RDD[Array[TensorType]`.
 Usually, `TensorType` is choosen to be  `Float` since it performs best on GPU, but that is not
 limited to it.
 
-Example of a simple classifier based on fully connected NN with 1 hidden layer:
+Example of a simple classifier based on fully connected NN with 1 hidden layer training on MNIST dataset:
 
 ``` scala
-val ds = readDataset()
-val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-val trained = ds.train(model)
-  .loss(BinaryCrossentropy)
-  .using(Adam(0.1f))
-  .batch(100)
+val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 30000)
+val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
+val trained = trainingDs.train(model)
+  .loss(CategoricalCrossentropy)
+  .using(Adam(0.01f))
+  .batch(1000)
   .each(1.epochs, logResult())
-  .stopAfter(50.epochs)
+  .stopAfter(200.epochs)
   .run()
-val (x, y) = Tensor2Iterator(ds.collect.iterator, 100).next()
-val loss = trained.loss.compile()
-loss(x, y).toScalar should be <= 0.4f
-accuracy(trained, ds) should be >= 0.9f
+accuracy(trained, testDs) should be >= 0.95f
 ```
 
 Here, `loss` will be logged as well as added to `TensorBoard`. 

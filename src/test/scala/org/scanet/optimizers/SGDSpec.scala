@@ -1,7 +1,7 @@
 package org.scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.Tensor
+import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
 import org.scanet.models.{Identity, LinearRegression, MeanSquaredError}
 import org.scanet.optimizers.syntax._
