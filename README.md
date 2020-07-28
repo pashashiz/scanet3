@@ -31,6 +31,7 @@ val trained = trainingDs.train(model)
   .using(Adam(0.01f))
   .batch(1000)
   .each(1.epochs, logResult())
+  .each(1.iterations, plotResult(name = "loss", dir = "board"))
   .stopAfter(200.epochs)
   .run()
 accuracy(trained, testDs) should be >= 0.95f
