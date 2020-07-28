@@ -55,7 +55,6 @@ import scala.Ordering.Implicits._
    * @tparam C type which can be converted into output
    * @return a result of multiplication
    */
-  @op("*", alias = true)
   def matmul[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Subtract two tensors. Supports broadcasting.
@@ -100,8 +99,8 @@ import scala.Ordering.Implicits._
    * @param right side
    * @return a result of multiplication
    */
-  @op(":*", alias = true)
-  def multiplyElementWise[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
+  @op("*", alias = true)
+  def multiply[A: TensorType: Numeric, C](left: F[A], right: C)(implicit c: Convertible[C, F[A]]): F[A]
 
   /** Raises the tensor to the power of the exponent
    *
@@ -404,8 +403,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
             sum(div(parentGrad, rightOut.cast[R]), shrinkLeftAxises).reshape(left.shape),
             sum(
               negate(div(
-                multiplyElementWise(left.cast[R], parentGrad),
-                multiplyElementWise(rightOut, rightOut).cast[R]
+                multiply(left.cast[R], parentGrad),
+                multiply(rightOut, rightOut).cast[R]
               )),
               shrinkRightAxises
             ).reshape(rightOut.shape)
@@ -423,8 +422,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
       .localGrad(new Grad[A] {
         override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
           val p = pow(out.cast[R], minus(exponent, 1f.const))
-          val local = multiplyElementWise(p, exponent.cast[R])
-          List(multiplyElementWise(local, parentGrad))
+          val local = multiply(p, exponent.cast[R])
+          List(multiply(local, parentGrad))
         }
       })
       .compileWithAllInputs
@@ -437,7 +436,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
       .inputs(out)
       .localGrad(new Grad[A] {
         override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
-          List(multiplyElementWise(exp(out).cast[R], parentGrad))
+          List(multiply(exp(out).cast[R], parentGrad))
         }
       })
       .compileWithAllInputs
@@ -450,8 +449,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
       .inputs(out)
       .localGrad(new Grad[A] {
         override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
-          val local = multiplyElementWise(pow(out.cast[R], -0.5f), 0.5f.const.cast[R])
-          List(multiplyElementWise(local, parentGrad))
+          val local = multiply(pow(out.cast[R], -0.5f), 0.5f.const.cast[R])
+          List(multiply(local, parentGrad))
         }
       })
       .compileWithAllInputs
@@ -474,7 +473,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
             // we need to recover reduced axises with 1, cause broadcasting will not always work
             val parentShape = axises.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
             val size = out.shape.select(axises: _*).power
-            List(div(multiplyElementWise(ones[R](out.shape), parentGrad.reshape(parentShape)), size.const.cast[R]))
+            List(div(multiply(ones[R](out.shape), parentGrad.reshape(parentShape)), size.const.cast[R]))
           }
         })
         .compileWithAllInputs
@@ -506,7 +505,7 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
   }
 
   override def decayingAvg[A: TensorType : Numeric](avg: Output[A], next: Output[A], decay: Output[A]): Output[A] = {
-    plus(multiplyElementWise(decay, avg), multiplyElementWise(minus(1.0f.const.cast[A], decay), next))
+    plus(multiply(decay, avg), multiply(minus(1.0f.const.cast[A], decay), next))
   }
 
   override def boost[A: TensorType : Numeric](out: Output[A], rate: Output[A], iter: Output[Int]): Output[A] = {
@@ -536,8 +535,8 @@ class OutputIsMathBaseOp extends MathBaseOp[Output] with MathBaseStandaloneOps {
       .localGrad(new Grad[A] {
         override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
           val s = sigmoid(out)
-          val grad = multiplyElementWise(s, minus(1.0f.const.cast[A], s))
-          List(multiplyElementWise(grad.cast[R], parentGrad))
+          val grad = multiply(s, minus(1.0f.const.cast[A], s))
+          List(multiply(grad.cast[R], parentGrad))
         }
       })
       .compileWithAllInputs
@@ -595,10 +594,10 @@ trait MathBaseStandaloneOps {
 
   def ones[A: TensorType : Numeric](shape: Shape): Output[A] = fill(shape)(Numeric[A].one)
 
-  def multiplyElementWise[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
+  def multiply[A: TensorType: Numeric, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
     val rightOut: Output[A] = c.convert(right)
     require(left.broadcastableAny(rightOut),
-      s"cannot multiply tensors with shapes ${left.shape} :* ${rightOut.shape}")
+      s"cannot multiply tensors with shapes ${left.shape} * ${rightOut.shape}")
     Output.name[A]("Mul")
       .shape(left.shape max rightOut.shape)
       .inputs(left, rightOut)
@@ -609,8 +608,8 @@ trait MathBaseStandaloneOps {
           val shrinkRightAxises = parentShape.broadcastableAxises(rightOut.shape)
           val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape)
           List(
-            sum(multiplyElementWise(rightOut.cast[R], parentGrad), shrinkLeftAxises).reshape(left.shape),
-            sum(multiplyElementWise(left.cast[R], parentGrad), shrinkRightAxises).reshape(rightOut.shape)
+            sum(multiply(rightOut.cast[R], parentGrad), shrinkLeftAxises).reshape(left.shape),
+            sum(multiply(left.cast[R], parentGrad), shrinkRightAxises).reshape(rightOut.shape)
           )
         }
       })
@@ -628,7 +627,7 @@ trait MathBaseStandaloneOps {
           override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
             // we need to recover reduced axises with 1, cause broadcasting will not always work
             val parentShape = axises.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
-            List(multiplyElementWise(ones[R](out.shape), parentGrad.reshape(parentShape)))
+            List(multiply(ones[R](out.shape), parentGrad.reshape(parentShape)))
           }
         })
         .compileWithAllInputs
@@ -649,8 +648,8 @@ trait MathBaseStandaloneOps {
         override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
           import org.scanet.math.MathLogicalOp.syntax._
           List(
-            multiplyElementWise((left > right).cast[R], parentGrad),
-            multiplyElementWise((left < right).cast[R], parentGrad),
+            multiply((left > right).cast[R], parentGrad),
+            multiply((left < right).cast[R], parentGrad),
           )
         }
       })
@@ -669,8 +668,8 @@ trait MathBaseStandaloneOps {
         override def calc[R: Numeric : Floating : TensorType](current: Output[A], parentGrad: Output[R]): List[Output[R]] = {
           import org.scanet.math.MathLogicalOp.syntax._
           List(
-            multiplyElementWise((left < right).cast[R], parentGrad),
-            multiplyElementWise((left > right).cast[R], parentGrad),
+            multiply((left < right).cast[R], parentGrad),
+            multiply((left > right).cast[R], parentGrad),
           )
         }
       })

@@ -29,11 +29,11 @@ case object BinaryCrossentropy extends Loss {
     // if we expect 1 and
     // - predicted 1 - then loss 0
     // - predicted 0 - then loss -indefinite (need epsilon here)
-    val left = expected :* (predicted + epsilon).log
+    val left = expected * (predicted + epsilon).log
     // if we expect 0 and
     // - predicted 0 - then loss 0
     // - predicted 1 - then loss -indefinite (need epsilon here)
-    val right = (one - expected) :* (one - (predicted - epsilon)).log
+    val right = (one - expected) * (one - (predicted - epsilon)).log
     (left.negate - right).mean
   }
 }
@@ -47,6 +47,6 @@ case object CategoricalCrossentropy extends Loss {
     // - predicted 0 - then loss -indefinite (need epsilon here)
     // if we expect 0
     // - ignore result
-    (expected :* (predicted + epsilon).log).sum.negate
+    (expected * (predicted + epsilon).log).sum.negate
   }
 }

@@ -30,7 +30,7 @@ case class AMSGrad(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.
     val m = prevM.decayingAvg(grad, beta1.const.cast[T])
     val vCurrent = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
     val v = max(prevCorrectedVelocity, vCurrent)
-    val delta = rate.const.cast[T] :* m / (v.sqrt + epsilon.const.cast[T])
+    val delta = rate.const.cast[T] * m / (v.sqrt + epsilon.const.cast[T])
     Delta(delta, zip(m, vCurrent, v))
   }
 }

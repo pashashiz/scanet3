@@ -15,7 +15,7 @@ import org.scanet.math.syntax._
 case object LogisticRegression extends Model {
 
   override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: OutputSeq[A]): Output[A] =
-    (withBias(x) * reshape(weights.head).transpose).sigmoid
+    (withBias(x) matmul reshape(weights.head).transpose).sigmoid
 
   private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)

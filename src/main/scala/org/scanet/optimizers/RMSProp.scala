@@ -22,7 +22,7 @@ case class RMSProp(rate: Float = 0.001f, rho: Float = 0.9f, epsilon: Float = 1e-
 
   override def delta[T: Floating: Numeric: TensorType](grad: Output[T], prevAvgGrad: Output[T], iter: Output[Int]): Delta[T] = {
     val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const.cast[T])
-    val delta = (rate.const.cast[T] / avgGrad.sqrtZeroSafe(epsilon.const.cast[T])) :* grad
+    val delta = (rate.const.cast[T] / avgGrad.sqrtZeroSafe(epsilon.const.cast[T])) * grad
     Delta(delta, avgGrad)
   }
 }

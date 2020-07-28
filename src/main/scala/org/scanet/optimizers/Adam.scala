@@ -25,7 +25,7 @@ case class Adam(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999
     val (prevM, prevV) = meta.unzip
     val m = prevM.decayingAvg(grad, beta1.const.cast[T])
     val v = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
-    val delta = (rate.const.cast[T] / (v.boost(beta2.const.cast[T], iter) + epsilon.const.cast[T]).sqrt) :* m.boost(beta1.const.cast[T], iter)
+    val delta = (rate.const.cast[T] / (v.boost(beta2.const.cast[T], iter) + epsilon.const.cast[T]).sqrt) * m.boost(beta1.const.cast[T], iter)
     Delta(delta, m zip v)
   }
 }

@@ -193,7 +193,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
       Array(4, 5, 6)).const
     val b = Tensor.matrix(
       Array(7, 8, 9)).const
-    val f = ((a join b) :* 2.const).sum
+    val f = ((a join b) * 2.const).sum
     f.grad(a).returns[Float].eval should be(Tensor.fill(2, 3)(2))
     f.grad(b).returns[Float].eval should be(Tensor.fill(1, 3)(2))
   }
@@ -220,7 +220,7 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
 
   it should "have correct gradient" in {
     val x = 5.const
-    val f = (fillOutput(2)(x) :* Tensor.vector(4, 5).const).sum
+    val f = (fillOutput(2)(x) * Tensor.vector(4, 5).const).sum
     f.grad(x).returns[Float].eval should be(Tensor.scalar(9f))
   }
 }

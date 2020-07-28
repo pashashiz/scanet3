@@ -28,8 +28,8 @@ case class Adamax(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.9
   override def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T] = {
     val (prevM1, prevM2) = meta.unzip
     val m1 = prevM1.decayingAvg(grad, beta1.const.cast[T])
-    val m2 = max(beta2.const.cast[T] :* prevM2, (1f.const.cast[T] - beta2.const.cast[T]) :* grad.abs)
-    val delta = rate.const.cast[T] :* m1.boost(beta1.const.cast[T], iter) / (m2 + epsilon.const.cast[T])
+    val m2 = max(beta2.const.cast[T] * prevM2, (1f.const.cast[T] - beta2.const.cast[T]) * grad.abs)
+    val delta = rate.const.cast[T] * m1.boost(beta1.const.cast[T], iter) / (m2 + epsilon.const.cast[T])
     Delta(delta, m1 zip m2)
   }
 }
