@@ -5,11 +5,11 @@ import simulacrum.typeclass
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
-class Random[A: Dist](val gen: Generator) {
+class Random[A: Dist](val gen: Generator, range: Option[(A, A)]) {
 
   def next: (Random[A], A) = {
-    val (nextGen, value) = Dist[A].generate(gen)
-    (new Random[A](nextGen), value)
+    val (nextGen, value) = Dist[A].generate(gen, range)
+    (new Random[A](nextGen, range), value)
   }
 
   def next[B >: A : ClassTag: Dist](n: Int): (Random[B], Array[B]) = {
@@ -19,7 +19,7 @@ class Random[A: Dist](val gen: Generator) {
       if (index == acc.length) {
         (gen, acc, index)
       } else {
-        val (nextGen, value) = dist.generate(gen)
+        val (nextGen, value) = dist.generate(gen, range)
         acc(index) = value
         fill(nextGen, acc, index + 1)
       }
@@ -30,7 +30,7 @@ class Random[A: Dist](val gen: Generator) {
 }
 
 object Random {
-  def apply[A: Dist](gen: Generator): Random[A] = new Random(gen)
+  def apply[A: Dist](gen: Generator, range: Option[(A, A)] = None): Random[A] = new Random(gen, range)
 }
 
 class Generator(val seed: Long, val next: Long => Long) {
@@ -63,7 +63,7 @@ object Generator {
 }
 
 @typeclass trait Dist[A] {
-  def generate(from: Generator): (Generator, A)
+  def generate(from: Generator, range: Option[(A, A)]): (Generator, A)
 }
 
 object Dist {
@@ -83,46 +83,95 @@ object Dist {
 }
 
 trait DistDouble extends Dist[Double] {
-  override def generate(gen: Generator): (Generator, Double) = {
-    val (nextGen1, value1) = gen.generate
-    val (nextGen2, value2) = nextGen1.generate
-    (nextGen2, (((value1 >>> 22).longValue() << 27).longValue()
-      + (value2 >>> 21).longValue()).toDouble / (1L << 53))
+
+  override def generate(gen: Generator, range: Option[(Double, Double)]): (Generator, Double) = {
+    val (nextGen1, seed1) = gen.generate
+    val (nextGen2, seed2) = nextGen1.generate
+    val value = (((seed1 >>> 22).longValue() << 27).longValue()
+      + (seed2 >>> 21).longValue()).toDouble / (1L << 53)
+    val scaled = range match {
+      case Some((from, until)) =>
+        val scale = until - from
+        val shift = from - 0
+        value * scale + shift
+      case None => value
+    }
+    (nextGen2, scaled)
   }
 }
 
 trait DistFloat extends Dist[Float] {
-  override def generate(gen: Generator): (Generator, Float) = {
-    val (nextGen, value) = gen.generate
-    (nextGen, (value >>> 24).toInt / (1 << 24).toFloat)
+  override def generate(gen: Generator, range: Option[(Float, Float)]): (Generator, Float) = {
+    val (nextGen, seed) = gen.generate
+    val value = (seed >>> 24).toInt / (1 << 24).toFloat
+    val scaled = range match {
+      case Some((from, until)) =>
+        val scale = until - from
+        val shift = from - 0
+        value * scale + shift
+      case None => value
+    }
+    (nextGen, scaled)
   }
 }
 
 trait DistLong extends Dist[Long] {
-  override def generate(gen: Generator): (Generator, Long) = {
-    val (nextGen1, value1) = gen.generate
-    val (nextGen2, value2) = nextGen1.generate
-    (nextGen2, ((value1 >>> 16).longValue() << 32).longValue() + (value2 >>> 16).longValue())
+  override def generate(gen: Generator, range: Option[(Long, Long)]): (Generator, Long) = {
+    val (nextGen1, seed1) = gen.generate
+    val (nextGen2, seed2) = nextGen1.generate
+    val value = ((seed1 >>> 16).longValue() << 32).longValue() + (seed2 >>> 16).longValue()
+    val scaled = range match {
+      case Some((from, until)) =>
+        val scale = (until - from) / Long.MaxValue
+        val shift = from - 0
+        value * scale + shift
+      case None => value
+    }
+    (nextGen2, scaled)
   }
 }
 
 trait DistInt extends Dist[Int] {
-  override def generate(gen: Generator): (Generator, Int) = {
-    val (nextGen, value) = gen.generate
-    (nextGen, (value >>> 16).toInt)
+  override def generate(gen: Generator, range: Option[(Int, Int)]): (Generator, Int) = {
+    val (nextGen, seed) = gen.generate
+    val value = (seed >>> 16).toInt
+    val scaled = range match {
+      case Some((from, until)) =>
+        val scale = (until - from) / Int.MaxValue
+        val shift = from - 0
+        value * scale + shift
+      case None => value
+    }
+    (nextGen, scaled)
   }
 }
 
 trait DistShort extends Dist[Short] {
-  override def generate(gen: Generator): (Generator, Short) = {
-    val (nextGen, value) = gen.generate
-    (nextGen, (value >>> 16).toShort)
+  override def generate(gen: Generator, range: Option[(Short, Short)]): (Generator, Short) = {
+    val (nextGen, seed) = gen.generate
+    val value = (seed >>> 16).toShort
+    val scaled = range match {
+      case Some((from, until)) =>
+        val scale = (until - from) / Short.MaxValue
+        val shift = from - 0
+        (value * scale + shift).toShort
+      case None => value
+    }
+    (nextGen, scaled)
   }
 }
 
 trait DistByte extends Dist[Byte] {
-  override def generate(gen: Generator): (Generator, Byte) = {
-    val (nextGen, value) = gen.generate
-    (nextGen, (value >>> 16).toByte)
+  override def generate(gen: Generator, range: Option[(Byte, Byte)]): (Generator, Byte) = {
+    val (nextGen, seed) = gen.generate
+    val value = (seed >>> 16).toByte
+    val scaled = range match {
+      case Some((from, until)) =>
+        val scale = (until - from) / Byte.MaxValue
+        val shift = from - 0
+        (value * scale + shift).toByte
+      case None => value
+    }
+    (nextGen, scaled)
   }
 }

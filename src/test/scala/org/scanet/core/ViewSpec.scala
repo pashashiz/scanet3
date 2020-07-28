@@ -149,8 +149,12 @@ class ViewSpec extends AnyFlatSpec with Matchers {
     } should have message "requirement failed: cannot (2, 3, 4) - (2, 5, 4)"
   }
 
-  "broadcastable axises" should "leave higher dimensions from first shape if it is bigger" in {
-    Shape(2, 3, 4) broadcastableAxises Shape(3, 4) should be(Seq(0))
+  "shape (2, 5)" should "not be broadcastable by shape (2) or wise versa" in {
+    Shape(2, 5) broadcastableAny Shape(2) should be(false)
+  }
+
+  it should "return dimension index with size one" in {
+    Shape(2, 3, 4) broadcastableAxises Shape(2, 3, 1) should be(Seq(2))
   }
 
   it should "return empty shape if both are equal" in {
@@ -169,5 +173,20 @@ class ViewSpec extends AnyFlatSpec with Matchers {
     the [IllegalArgumentException] thrownBy {
       Shape(2, 3, 4) broadcastableAxises Shape(2, 5, 4)
     } should have message "requirement failed: cannot find broadcastable axises for (2, 3, 4) and (2, 5, 4)"
+  }
+
+  "broadcastable axises" should "leave higher dimensions from first shape if it is bigger" in {
+    Shape(2, 3, 4) broadcastableAxises Shape(3, 4) should be(Seq(0))
+  }
+
+  "insert" should "place new dimension between existing and shift all right dimensions" in {
+    Shape(2, 3, 4).insert(1, 5) should be(Shape(2, 5, 3, 4))
+    Shape(2, 3, 4).insert(3, 5) should be(Shape(2, 3, 4, 5))
+  }
+
+  it should "fail when insert introduces a gap" in {
+    the [IllegalArgumentException] thrownBy {
+      Shape(2, 3, 4).insert(4, 5)
+    } should have message "requirement failed: couldn't insert dimension 4 cause rank is 3"
   }
 }

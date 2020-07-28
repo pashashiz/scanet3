@@ -1,6 +1,5 @@
 package org.scanet.optimizers
 
-import scala.collection._
 import org.apache.spark.rdd.RDD
 import org.scanet.core.{Tensor, _}
 import org.scanet.math.syntax._
@@ -11,7 +10,7 @@ import org.scanet.optimizers.Optimizer.BuilderState._
 import org.scanet.optimizers.Optimizer.{sessionsPool, tfCache}
 
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.collection._
 
 case class Step[A: Numeric: TensorType](
     epoch: Int = 0, iter: Int = 0, result: Option[A] = None) {
@@ -219,9 +218,9 @@ object Optimizer {
 
   def minimize[R: Numeric: Floating : TensorType: Dist]
   (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
-    Builder(Optimizer(null, model, null, s => Tensor.rand(s), null, 1, 10000, minimizing = true, always, Effects.empty))
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some(Numeric[R].one.negate, Numeric[R].one)), null, 1, 10000, minimizing = true, always, Effects.empty))
 
   def maximize[R: Numeric: Floating : TensorType: Dist]
   (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
-    Builder(Optimizer(null, model, null, s => Tensor.rand(s), null, 1, 10000, minimizing = false, always, Effects.empty))
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some(Numeric[R].one.negate, Numeric[R].one)), null, 1, 10000, minimizing = false, always, Effects.empty))
 }

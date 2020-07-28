@@ -22,7 +22,7 @@ case class Nadam(beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1
     val (prevM, prevV) = meta.unzip
     val m = prevM.decayingAvg(grad, beta1.const.cast[T])
     val v = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
-    val mNesterov = beta1.const.cast[T] * m.boost(beta1.const.cast[T], iter) + (1f.const.cast[T] - beta1.const.cast[T]) * grad.boost(beta1.const.cast[T], iter)
+    val mNesterov = beta1.const.cast[T] :* m.boost(beta1.const.cast[T], iter) + (1f.const.cast[T] - beta1.const.cast[T]) :* grad.boost(beta1.const.cast[T], iter)
     val delta = mNesterov / (v.boost(beta2.const.cast[T], iter).sqrt + epsilon.const.cast[T])
     Delta(delta, m zip v)
   }

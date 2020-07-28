@@ -5,7 +5,7 @@ import org.scanet.core.{Shape, Tensor, TensorBoard}
 import org.scanet.datasets.MNIST
 import org.scanet.estimators.accuracy
 import org.scanet.images.Grayscale
-import org.scanet.models.{BinaryCrossentropy, Sigmoid}
+import org.scanet.models.{BinaryCrossentropy, CategoricalCrossentropy, Sigmoid, Softmax}
 import org.scanet.optimizers.Effect.logResult
 import org.scanet.optimizers.syntax._
 import org.scanet.optimizers.{Adam, Tensor2Iterator}
@@ -52,20 +52,32 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
     model.withLoss(BinaryCrossentropy).displayGrad[Float](x = Shape(4, 3))
   }
 
-  "MNIST dataset" should "be trained" ignore {
+  "MNIST dataset" should "be trained with Softmax" ignore  {
+    val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 30000)
+    val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
+    val trained = trainingDs.train(model)
+      .loss(CategoricalCrossentropy)
+      .using(Adam(0.01f))
+      .batch(1000)
+      .each(1.epochs, logResult())
+      .stopAfter(200.epochs)
+      .run()
+    accuracy(trained, testDs) should be >= 0.95f
+  }
+
+  "MNIST dataset" should "be trained with Sigmoid" ignore {
     val (trainingDs, testDs) = MNIST.load(sc)
     val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
     val trained = trainingDs.train(model)
       .loss(BinaryCrossentropy)
-      .using(Adam(0.01f))
-      .initWith(s => Tensor.zeros(s))
+      .using(Adam(0.005f))
       .batch(1000)
       .each(1.epochs, logResult())
-      .stopAfter(300.epochs)
+      .stopAfter(100.epochs)
       .run()
+    accuracy(trained, testDs) should be >= 0.9f
     TensorBoard("board")
       .addImage("layer-1", trained.weights(0).reshape(50, 785, 1), Grayscale())
       .addImage("layer-2", trained.weights(1).reshape(10, 51, 1), Grayscale())
-    accuracy(trained, testDs) should be >= 0.87f
   }
 }

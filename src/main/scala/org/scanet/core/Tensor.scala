@@ -245,8 +245,8 @@ object Tensor {
     tabulate(size.toInt)(i => start plus (step * i))
   }
 
-  def rand[A: TensorType: Numeric: Dist](shape: Shape, gen: Generator = uniform): Tensor[A] = {
-    val (_, arr) = Random[A](gen).next(shape.power)(TensorType[A].classTag, Dist[A])
+  def rand[A: TensorType: Numeric: Dist](shape: Shape, gen: Generator = uniform, range: Option[(A, A)] = None): Tensor[A] = {
+    val (_, arr) = Random[A](gen, range).next(shape.power)(TensorType[A].classTag, Dist[A])
     Tensor[A](arr, shape)
   }
 }

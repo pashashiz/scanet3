@@ -1,5 +1,7 @@
 package org.scanet.datasets
 
+import java.util
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.{Shape, Tensor, TensorBoard}

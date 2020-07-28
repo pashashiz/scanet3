@@ -64,7 +64,8 @@ object MNIST {
   }
 
   def readImage(stream: DataInputStream, size: Int): Array[Float] = {
-    Array.range(0, size).map(_ => stream.readUnsignedByte().toFloat / 256f)
+    // Array.range(0, size).map(_ => (stream.readUnsignedByte().toFloat / 127.5f) - 1f)
+    Array.range(0, size).map(_ => (stream.readUnsignedByte().toFloat + 1f) / 256f)
   }
 
   def readLabel(stream: DataInputStream, size: Int): Array[Float] = {

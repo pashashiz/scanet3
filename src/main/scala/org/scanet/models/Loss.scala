@@ -37,3 +37,16 @@ case object BinaryCrossentropy extends Loss {
     (left.negate - right).mean
   }
 }
+
+case object CategoricalCrossentropy extends Loss {
+  override def build[A: Numeric : Floating : TensorType]
+  (predicted: Output[A], expected: Output[A]): Output[A] = {
+    val epsilon = 1e-8f.const.cast[A]
+    // if we expect 1 and
+    // - predicted 1 - then loss 0
+    // - predicted 0 - then loss -indefinite (need epsilon here)
+    // if we expect 0
+    // - ignore result
+    (expected :* (predicted + epsilon).log).sum.negate
+  }
+}

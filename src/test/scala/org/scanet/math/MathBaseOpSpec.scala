@@ -157,29 +157,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     (a.const * b.const).eval should be(c)
   }
 
-  it should "produce dot product of vector and matrix" in {
-    val a = Tensor.vector(1, 2, 3)
-    val b = Tensor.matrix(
-      Array(1, 2),
-      Array(1, 2),
-      Array(1, 2))
-    (a.const * b.const).eval should be(Tensor.vector(6, 12))
-  }
-
-  it should "multiply 2 scalars" in {
-    (2.const * 3.const).eval should be(Tensor.scalar(6))
-  }
-
-  it should "multiply scalar and vector" in {
-    (2.const * Tensor.vector(1, 2, 3).const).eval should be(Tensor.vector(2, 4, 6))
-  }
-
-  it should "fail to multiply vector and scalar" in {
-    the [IllegalArgumentException] thrownBy {
-      (Tensor.vector(1, 2, 3).const * 2.const).eval
-    } should have message "requirement failed: cannot multiply tensors with shapes (1, 3) * (1, 1)"
-  }
-
   it should "fail to multiply 3D tensors" in {
     the [IllegalArgumentException] thrownBy {
       val tensor = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
@@ -216,51 +193,6 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(15, 35, 55),
       Array(15, 35, 55))
     ((x * a).sum grad x).returns[Float].eval should be(grad)
-  }
-
-  it should "calculate gradient when vector and matrix are given and left side is a differentiable variable" in {
-    val x = Tensor.vector(1, 2, 3).const
-    val a = Tensor.matrix(
-      Array(5, 10),
-      Array(15, 20),
-      Array(25, 30)).const
-    (x * a).sum.grad(x).returns[Float].eval should be(Tensor.vector(15, 35, 55))
-  }
-
-  it should "calculate gradient when vector and matrix are given and right side is a differentiable variable" in {
-    val a = Tensor.vector(1, 2, 3).const
-    val x = Tensor.matrix(
-      Array(5, 10),
-      Array(15, 20),
-      Array(25, 30)).const
-    (a * x).sum.grad(x).returns[Float].eval should be(Tensor.matrix(
-      Array(1, 1),
-      Array(2, 2),
-      Array(3, 3)))
-  }
-
-  it should "calculate gradient when scalar and vector are given and left side is a differentiable variable" in {
-    val x = 2.const
-    val a = Tensor.vector(1, 2, 3).const
-    (x * a).sum.grad(x).returns[Float].eval should be(Tensor.scalar(6))
-  }
-
-  it should "calculate gradient when scalar and vector are given and right side is a differentiable variable" in {
-    val a = 2.const
-    val x = Tensor.vector(1, 2, 3).const
-    (a * x).sum.grad(x).returns[Float].eval should be(Tensor.vector(2, 2, 2))
-  }
-
-  it should "calculate gradient when 2 scalars are given and left side is a differentiable variable" in {
-    val x = 2.const
-    val a = 3.const
-    (x * a).grad(x).returns[Float].eval should be(Tensor.scalar(3))
-  }
-
-  it should "calculate gradient when 2 scalars are given and right side is a differentiable variable" in {
-    val a = 2.const
-    val x = 3.const
-    (a * x).grad(x).returns[Float].eval should be(Tensor.scalar(2))
   }
 
   "minus" should "subtract 2 scalars" in {
@@ -329,8 +261,15 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     (Tensor.vector(2.0f, 4.0f, 6.0f).const / Tensor.vector(10.0f, 10.0f, 10.0f).const).eval should be(Tensor.vector(0.2f, 0.4f, 0.6f))
   }
 
-  it should "support broadcasting" in {
+  it should "support broadcasting with vector divided by scalar" in {
     (Tensor.vector(5, 10, 15).const / 5.const).eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  it should "support broadcasting with matrix divided by matrix with last dimension 1" in {
+    val left = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30))
+    val right = Tensor.matrix(Array(1), Array(5))
+    val expected = Tensor.matrix(Array(5, 10, 15), Array(4, 5, 6))
+    (left.const / right.const).eval should be(expected)
   }
 
   it should "fail when tensors have incompatible dimensions" in {
@@ -376,6 +315,12 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
       Array(-0.013888889f, -0.015625f, -0.02f),
       Array(-0.0034722222f, -0.0051020407f, -0.0078125f))
     (x div a).sum.grad(a).returns[Float].eval should be(grad)
+  }
+
+  it should "calculate gradient for matrices with broadcasting second matrix has last dimension 1" in {
+    val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
+    val x = Tensor.matrix(Array(1), Array(5)).const
+    (a div x).sum.grad(x).returns[Float].eval should be(Tensor.matrix(Array(-30.0f), Array(-3.0f)))
   }
 
   "element-wise multiplication" should "work on tensors with same dimensions" in {
@@ -446,6 +391,15 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
   it should "calculate a gradient" in {
     val x = Tensor.vector(5, 10, 15).const
     x.pow(3).sum.grad(x).returns[Float].eval should be(Tensor.vector(75.0f, 300.0f, 675.0f))
+  }
+
+  "exp" should "compute the exponent of a tensor element wise" in {
+    Tensor.vector(1.0f, 2.0f, 3.0f).const.exp.eval should be(Tensor.vector(2.7182817f, 7.389056f, 20.085537f))
+  }
+
+  it should "have identity gradient" in {
+    val x = Tensor.vector(1.0f, 2.0f, 3.0f).const
+    x.exp.sum.grad(x).returns[Float].eval should be(Tensor.vector(2.7182817f, 7.389056f, 20.085537f))
   }
 
   "sqrt" should "compute square root of tensor" in {
@@ -594,5 +548,31 @@ class MathBaseOpSpec extends AnyFlatSpec with Matchers {
     val f = (a :* b).pow(3)
     val grads: OutputSeq[Float] = f.grad(Seq(a, b)).returns[Float]
     grads.eval should be(Seq(scalar(1728f), scalar(1296f)))
+  }
+
+  "max" should "return maximum value" in {
+    max(Tensor.vector(1, 2, 3).const, Tensor.vector(4, 5, 6).const).eval should be(Tensor.vector(4, 5, 6))
+  }
+
+  it should "support broadcasting" in {
+    max(Tensor.vector(1, 2).const, Tensor.vector(4).const).eval should be(Tensor.vector(4, 4))
+  }
+
+  it should "propagate gradient if derived against max branch" in {
+    val left = Tensor.vector(1, 5).const
+    val right = Tensor.vector(3, 4).const
+    val y = max(left, right).sum
+    (y grad left).returns[Float].eval should be(Tensor.vector(0f, 1f))
+  }
+
+  "min" should "return minimum value" in {
+    min(Tensor.vector(1, 2, 3).const, Tensor.vector(4, 5, 6).const).eval should be(Tensor.vector(1, 2, 3))
+  }
+
+  it should "propagate gradient if derived against min branch" in {
+    val left = Tensor.vector(1, 5).const
+    val right = Tensor.vector(3, 4).const
+    val y = min(left, right).sum
+    (y grad left).returns[Float].eval should be(Tensor.vector(1f, 0f))
   }
 }

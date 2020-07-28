@@ -15,9 +15,18 @@ class RandomTest extends AnyFlatSpec with Matchers {
     v2 should be(-1151252339)
   }
 
-  "uniform distribution" should "work for Int with multiple next" in {
+  it should "work for Int with multiple next" in {
     val (_, values) = Random[Int](uniform(1L)).next(3)
     values should be(Array(384748, -1151252339, -549383847))
   }
 
+  it should "work for Float with default [0, 1] range" in {
+    val (_, values) = Random[Float](uniform(1L)).next(3)
+    values should be(Array(8.952618E-5f, 0.73195314f, 0.8720866f))
+  }
+
+  it should "work for Float with custom [-1, 1] range" in {
+    val (_, values) = Random[Float](uniform(1L), range = Some((-1f, 1f))).next(3)
+    values should be(Array(-0.99982095f, 0.4639063f, 0.74417317f))
+  }
 }

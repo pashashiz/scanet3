@@ -32,7 +32,7 @@ case class AdaDelta(rate: Float = 1.0f, rho: Float = 0.9f, epsilon: Float = 1e-7
   override def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T] = {
     val (prevAvgGrad, prevAvgDelta) = meta.unzip
     val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const.cast[T])
-    val delta = rate.const.cast[T] * ((prevAvgDelta.sqrtZeroSafe(epsilon.const.cast[T]) / avgGrad.sqrtZeroSafe(epsilon.const.cast[T])) :* grad)
+    val delta = rate.const.cast[T] :* ((prevAvgDelta.sqrtZeroSafe(epsilon.const.cast[T]) / avgGrad.sqrtZeroSafe(epsilon.const.cast[T])) :* grad)
     val avgDelta = prevAvgDelta.decayingAvg(delta.sqr, rho.const.cast[T])
     Delta(delta, avgGrad zip avgDelta)
   }
