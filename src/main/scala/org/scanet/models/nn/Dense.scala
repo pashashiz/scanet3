@@ -26,7 +26,7 @@ case class Dense(outputs: Int, activation: Activation) extends Layer {
     // x:(samples, features)
     // w:(outputs, features)
     // x * w.t -> (samples, features) * (features, outputs) -> (samples, outputs)
-    activation.build(withBias(x) * weights.head.transpose)
+    activation.build(withBias(x) matmul weights.head.transpose)
   }
 
   override def shapes(features: Int) = Seq(Shape(outputs, features  + 1))

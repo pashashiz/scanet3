@@ -42,6 +42,21 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def last: Int = dims.last
 
+  def prepend(dim: Int) = Shape(dim +: dims: _*)
+  def +:(dim: Int) = prepend(dim)
+
+  def append(dim: Int) = Shape(dims :+ dim: _*)
+  def :+(dim: Int) = append(dim)
+
+  def insert(dim: Int, size: Int): Shape = {
+    require(dim >= 0 && dim <= rank, s"couldn't insert dimension $dim cause rank is $rank")
+    if (dim < rank) {
+      Shape((dims.take(dim) :+ size) ++ dims.slice(dim, dims.size + 1))
+    } else {
+      Shape(dims :+ size)
+    }
+  }
+
   def alignLeft(size: Int, using: Int): Shape = align(size, using, left = true)
   def alignRight(size: Int, using: Int): Shape = align(size, using, left = false)
   def align(size: Int, using: Int, left: Boolean): Shape = {
@@ -81,9 +96,13 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def endsWith(other: Shape): Boolean = dims.endsWith(other.dims)
 
-  def broadcastableBy(smaller: Shape): Boolean = {
-    val alignedSmaller = smaller.alignLeft(rank, 1)
-    dims.zip(alignedSmaller.dims).forall {case (g, s) => s == 1 || g == s}
+  def broadcastableBy(other: Shape): Boolean = {
+    if (rank < other.rank) {
+      false
+    } else {
+      val alignedOther = other.alignLeft(rank, 1)
+      dims.zip(alignedOther.dims).forall {case (g, s) => s == 1 || g == s}
+    }
   }
 
   def broadcastableAny(other: Shape): Boolean =
@@ -91,10 +110,13 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def broadcastableAxises(other: Shape): Seq[Int] = {
     require(broadcastableAny(other), s"cannot find broadcastable axises for $this and $other")
-    if (rank <= other.rank) {
+    if (rank < other.rank) {
       Seq()
     } else {
-      0 until rank - other.rank
+      val alignedOther = other.alignLeft(rank, 1)
+      alignedOther.dims.zipWithIndex
+        .filter { case (dim, _) => dim == 1 }
+        .map { case (_, index) => index }
     }
   }
 

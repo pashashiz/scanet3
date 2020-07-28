@@ -1,5 +1,6 @@
 package org.scanet.math
 
+import org.scanet.core.Output.Grad
 import org.scanet.core.syntax._
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Logical.syntax._
@@ -182,23 +183,9 @@ object MathLogicalOp {
     implicit def outputIsMathLogicalOp: MathLogicalOp[Output] = new OutputIsMathLogicalOp
   }
 
-  trait Syntax extends Instances with MathLogicalOp.ToMathLogicalOpOps with MathLogicalMultiOp
+  trait Syntax extends Instances with MathLogicalOp.ToMathLogicalOpOps
 
   object syntax extends Syntax
-}
-
-trait MathLogicalMultiOp {
-
-  def max[A: TensorType, C](left: Output[A], right: C)(implicit c: Convertible[C, Output[A]]): Output[A] = {
-    val rightOut: Output[A] = c.convert(right)
-    require(left.broadcastableAny(rightOut),
-      s"cannot compare tensors with shapes ${left.shape} <> ${rightOut.shape}")
-    Output.name[A]("Maximum")
-      .shape(left.shape max rightOut.shape)
-      .inputs(left, rightOut)
-      .compileWithAllInputs
-      .build
-  }
 }
 
 class OutputIsMathLogicalOp extends MathLogicalOp[Output] {

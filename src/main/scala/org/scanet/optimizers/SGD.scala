@@ -13,8 +13,8 @@ case class SGD(rate: Float = 0.01f, momentum: Float = 0.0f, nesterov: Boolean = 
   override def delta[T: Floating: Numeric: TensorType](grad: Output[T], meta: Output[T], iter: Output[Int]): Delta[T] = {
     val m = momentum.const.cast[T]
     val r = rate.const.cast[T]
-    val v = r * grad - m * meta
-    val d = if (nesterov) r * grad - m * v else v
-    Delta(d, v)
+    val v = (r * grad) - (m * meta)
+    val delta = if (nesterov) (r * grad) - (m * v) else v
+    Delta(delta, v)
   }
 }

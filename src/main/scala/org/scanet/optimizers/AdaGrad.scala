@@ -23,7 +23,7 @@ case class AdaGrad(rate: Float = 1.0f, epsilon: Float = 1e-7f) extends Algorithm
     val gradAcc = prevGradAcc + grad.sqr
     // the larger gradient is accumulated the lower rate is applied for a given weight
     val rates = rate.const.cast[T] / (gradAcc.sqrt + epsilon.const.cast[T])
-    val delta = rates :* grad
+    val delta = rates * grad
     Delta(delta, gradAcc)
   }
 }
