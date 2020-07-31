@@ -6,7 +6,7 @@ import org.scanet.datasets.MNIST
 import org.scanet.estimators.accuracy
 import org.scanet.images.Grayscale
 import org.scanet.models.{BinaryCrossentropy, CategoricalCrossentropy, Sigmoid, Softmax}
-import org.scanet.optimizers.Effect.logResult
+import org.scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import org.scanet.optimizers.syntax._
 import org.scanet.optimizers.{Adam, Tensor2Iterator}
 import org.scanet.syntax._
@@ -22,7 +22,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
       .using(Adam(0.1f))
       .initWith(s => Tensor.zeros(s))
       .batch(100)
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .stopAfter(50.epochs)
       .run()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 100).next()
@@ -59,7 +59,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
       .loss(CategoricalCrossentropy)
       .using(Adam(0.01f))
       .batch(1000)
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .stopAfter(200.epochs)
       .run()
     accuracy(trained, testDs) should be >= 0.95f
@@ -70,10 +70,11 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
     val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
     val trained = trainingDs.train(model)
       .loss(BinaryCrossentropy)
-      .using(Adam(0.005f))
+      .using(Adam(0.002f))
       .batch(1000)
-      .each(1.epochs, logResult())
-      .stopAfter(100.epochs)
+      .each(1.epochs, RecordLoss(tensorboard = true))
+      .each(10.epochs, RecordAccuracy(testDs.sample(withReplacement = false, fraction = 0.1), tensorboard = true))
+      .stopAfter(200.epochs)
       .run()
     accuracy(trained, testDs) should be >= 0.9f
     TensorBoard("board")

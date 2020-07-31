@@ -13,15 +13,18 @@ Scala used to build computation graphs and compile them into native tensor graph
 Compiled graphs are fully calculated in native code (on CPU, GPU or TPU) 
 and only result is returned back via `DirectBuffer`which points into native memory. 
 
-`DirectBuffer` is wrapped with `Tensor` object which allows 
+`DirectBuffer` is wrapped with `Tensor` read-only object which allows 
 to slice and read data in a convenient way (just like `Breeze` or `Numpy` does).
 
-The optimizer is built on `Spark` and can optimize the model in a distributed/parallel way.
-The input data is expected to be `RDD[Array[TensorType]`. 
-Usually, `TensorType` is choosen to be  `Float` since it performs best on GPU, but that is not
-limited to it.
+The optimizer is built on top of `Spark` and can optimize the model in a distributed/parallel way.
+The chosen algorithm - `Data parallelism with synchronous model averaging`. The dataset is split between
+the workers and each epoch is run independently on each data split, at the end of each epoch
+parameters are averaged and broadcasted back to each worker.
 
-Example of a simple classifier based on fully connected NN with 1 hidden layer training on MNIST dataset:
+The input data is expected to be `RDD[Array[TensorType]`. 
+Usually, `TensorType` is choosen to be `Float` since it performs best on GPU, also `Double` can be used.
+
+Example of a simple MNIST dataset classifier:
 
 ``` scala
 val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 30000)
@@ -30,15 +33,14 @@ val trained = trainingDs.train(model)
   .loss(CategoricalCrossentropy)
   .using(Adam(0.01f))
   .batch(1000)
-  .each(1.epochs, logResult())
-  .each(1.iterations, plotResult(name = "loss", dir = "board"))
+  .each(1.epochs, RecordLoss(tensorboard = true))
+  .each(10.epochs, RecordAccuracy(testDs, tensorboard = true))
   .stopAfter(200.epochs)
   .run()
 accuracy(trained, testDs) should be >= 0.95f
 ```
 
-Here, `loss` will be logged as well as added to `TensorBoard`. 
-To check live optimization process you can:
+Here, `loss` and `accuracy` will be logged and added to `TensorBoard` as live trends. To run tensorboard execute:
 ```sh
 tensorboard --logdir board
 ```
@@ -46,14 +48,12 @@ tensorboard --logdir board
 ## What we are doing right now
 
 Finally, we added a fully connected neural network which we can benchmark on MNIST dataset.
-Even though right now we can get 87% accuracy that is pretty small, fully connected NN can do up to 95%.
+On such a simple network we can get up to 95% accuracy.
 
-There is still a lot of work to make it better before we can move to more advanced neural networks (like convolutional):
- - add `L1`, `L2` regularization
- - figure out why on random weights we still get `NAN`
+There is still some work to make it better before we can move to more advanced neural networks (like convolutional):
  - test the rest of the optimizers
- - evaluate accuracy on each epoch
- - visualize weights in runtime as a heatmap
+ - add `L1`, `L2` regularization
+ - add more activation functions
  - benchmark a similar Python neural network on MNIST and check if we can achieve same performance
  - run on GPU
  
@@ -95,10 +95,20 @@ There is still a lot of work to make it better before we can move to more advanc
 - [ ] Recurent NN
 - [ ] others
 
+### Activation functions
+- [x] Sigmoid
+- [ ] Tanh
+- [ ] Exp
+- [ ] RELU
+- [ ] SELU
+- [ ] ELU
+- [x] Softmax
+- [ ] Sofplus
+
 ### Loss functions
 - [x] RMSE (Mean Squared Error)
 - [x] Binary Crossentropy
-- [ ] Softmax
+- [x] Categorical Crossentropy
 
 ### Benchmark Datasets
 - [x] MNIST
@@ -122,3 +132,9 @@ There is still a lot of work to make it better before we can move to more advanc
 - [ ] Compare with existing implementations using local CPU
 - [ ] Compare with existing implementations using one GPU
 - [ ] Compare with existing implementations using distributed mode on GCP DataProc
+
+If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 
+ 
+ Please, contact:
+- `ppoh@softserveinc.com`
+- `yatam@softserveinc.com`

@@ -1,44 +1,47 @@
 package org.scanet.optimizers
 
-import org.scanet.core._
-import org.scanet.math.{Convertible, Numeric}
+import org.apache.spark.rdd.RDD
+import org.scanet.core.{Session, TensorBoard, TensorType}
+import org.scanet.estimators._
+import org.scanet.math.{Convertible, Floating, Numeric}
+import org.scanet.math.syntax._
 
-case class Effect[S, E](zero: S, action: (S, E) => S) {
-  def conditional(cond: E => Boolean): Effect[S, E] = {
-    copy(action = (a, s) => {
-      if (cond(s)) action(a, s) else a
-    })
+trait Effect[E] extends (E => Unit){
+  private val self = this
+  def apply(next: E): Unit
+  def onClose(): Unit = {}
+  def conditional(cond: E => Boolean): Effect[E] = new Effect[E] {
+    override def apply(next: E) = if (cond(next)) self(next)
+    override def onClose() = self.onClose()
   }
 }
 
 object Effect {
 
-  def stateless[E](action: E => Unit): Effect[Unit, E] =
-    Effect((), (_, element) => action(element))
-
-  def plotResult[R: Numeric: TensorType]
-    (name: String = "result", dir: String = "board")
-    (implicit c: Convertible[R, Float]): Effect[TensorBoard, Step[R]] = {
-    Effect(TensorBoard(dir), (board, step) => {
-      board.addScalar(name, step.result.get, step.iter)
-    })
+  case class RecordLoss[E: Numeric: TensorType]
+  (console: Boolean = true, tensorboard: Boolean = false, dir: String = "board")
+  (implicit c: Convertible[E, Float]) extends Effect[StepContext[E]] {
+    val board = TensorBoard(dir)
+    override def apply(ctx: StepContext[E]) = {
+      val loss = ctx.result.loss
+      if (console)
+        println(s"#${ctx.step.epoch}:${ctx.step.iter} loss: $loss")
+      if (tensorboard)
+        board.addScalar("loss", loss, ctx.step.iter)
+    }
   }
 
-  def logResult[R: Numeric: TensorType]()
-    (implicit c: Convertible[R, Float]): Effect[Unit, Step[R]] =
-    Effect.stateless(step => println(
-      s"#${step.epoch}:${step.iter} loss: ${step.result.map(_.toString).getOrElse("")}"))
-}
-
-case class Effects[S](all: Seq[Effect[_, S]]) {
-  def unit: Seq[_] = all.map(_.zero)
-  def action(acc: Seq[_], next: S): Seq[_] = acc.zip(all) map {
-    case (a, Effect(_, action)) => action(a, next)
+  case class RecordAccuracy[E: Numeric : Floating : TensorType]
+  (ds: RDD[Array[E]], console: Boolean = true, tensorboard: Boolean = false, dir: String = "board")
+  (implicit c: Convertible[E, Float]) extends Effect[StepContext[E]] {
+    val board = TensorBoard(dir)
+    override def apply(ctx: StepContext[E]) = {
+      val trained = ctx.lossModel.trained(ctx.result.weights)
+      val a = accuracy(trained, ds)
+      if (console)
+        println(s"accuracy: $a")
+      if (tensorboard)
+        board.addScalar("accuracy", a, ctx.step.iter)
+    }
   }
-  def :+ (effect: Effect[_, S]): Effects[S] = Effects(all :+ effect)
-}
-
-object Effects {
-
-  def empty[S]: Effects[S] = Effects(Seq())
 }
