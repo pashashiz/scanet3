@@ -1,13 +1,13 @@
 package org.scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.core.{Shape, Tensor}
+import org.scanet.core.Tensor
 import org.scanet.math.syntax._
+import org.scanet.models.Math.`x^2`
 import org.scanet.models.{Identity, LinearRegression, MeanSquaredError}
+import org.scanet.optimizers.Effect.RecordLoss
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
-import org.scanet.models.Math.`x^2`
-import org.scanet.optimizers.Effect.logResult
 
 class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
 
@@ -17,7 +17,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .loss(Identity)
       .using(SGD(rate = 0.1f))
       .initWith(_ => Tensor.scalar(5.0f))
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .on(zero)
       .stopAfter(100.epochs)
       .run()
@@ -33,7 +33,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .loss(MeanSquaredError)
       .using(SGD())
       .initWith(s => Tensor.zeros(s))
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .batch(97)
       .stopAfter(100.epochs)
       .run()
@@ -66,7 +66,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .initWith(s => Tensor.zeros(s))
       .batch(97)
       .stopAfter(100.epochs)
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .run()
     val loss = trained.loss.compile()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()

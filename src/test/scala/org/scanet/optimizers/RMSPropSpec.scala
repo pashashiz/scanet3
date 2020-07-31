@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
 import org.scanet.models.{LinearRegression, MeanSquaredError}
+import org.scanet.optimizers.Effect.RecordLoss
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
@@ -16,7 +17,7 @@ class RMSPropSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
       .using(RMSProp(rate = 0.06f))
       .initWith(Tensor.zeros(_))
       .batch(97)
-      .each(Condition.always, Effect.logResult())
+      .each(Condition.always, RecordLoss())
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile()

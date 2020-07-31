@@ -5,7 +5,7 @@ import org.scanet.core.Tensor
 import org.scanet.estimators.accuracy
 import org.scanet.math.syntax._
 import org.scanet.models.{BinaryCrossentropy, LinearRegression, LogisticRegression, MeanSquaredError}
-import org.scanet.optimizers.Effect.logResult
+import org.scanet.optimizers.Effect.RecordLoss
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
@@ -18,7 +18,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .using(Adam(rate = 0.1f))
       .initWith(Tensor.zeros(_))
       .batch(97)
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile()
@@ -33,7 +33,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .using(Adam(0.1f))
       .initWith(s => Tensor.zeros(s))
       .batch(100)
-      .each(1.epochs, logResult())
+      .each(1.epochs, RecordLoss())
       .stopAfter(100.epochs)
       .run()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 100).next()
