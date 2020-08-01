@@ -11,6 +11,8 @@ import org.scanet.math.syntax._
   * and the targets predicted by the linear approximation.
   *
   * Model always has only one output
+  *
+  * That is equivalent to `layer.Dense(1, Identity)`
   */
 case object LinearRegression extends Model {
 

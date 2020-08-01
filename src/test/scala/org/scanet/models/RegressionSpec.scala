@@ -3,6 +3,7 @@ package org.scanet.models
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
+import org.scanet.models.Loss._
 import org.scanet.test.CustomMatchers
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {

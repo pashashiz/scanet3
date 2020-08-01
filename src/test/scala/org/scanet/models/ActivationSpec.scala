@@ -3,6 +3,7 @@ package org.scanet.models
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.test.CustomMatchers
+import org.scanet.models.Activation._
 import org.scanet.math.syntax._
 
 class ActivationSpec extends AnyFlatSpec with CustomMatchers {
