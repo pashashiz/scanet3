@@ -209,9 +209,9 @@ object Optimizer {
 
   def minimize[R: Numeric: Floating : TensorType: Dist]
   (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
-    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some(Numeric[R].one.negate, Numeric[R].one)), null, 1, 10000, minimizing = true, always, Seq()))
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))), null, 1, 10000, minimizing = true, always, Seq()))
 
   def maximize[R: Numeric: Floating : TensorType: Dist]
   (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
-    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some(Numeric[R].one.negate, Numeric[R].one)), null, 1, 10000, minimizing = false, always, Seq()))
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))), null, 1, 10000, minimizing = false, always, Seq()))
 }

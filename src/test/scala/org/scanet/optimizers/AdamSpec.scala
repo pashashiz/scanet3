@@ -4,7 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.estimators.accuracy
 import org.scanet.math.syntax._
-import org.scanet.models.{BinaryCrossentropy, LinearRegression, LogisticRegression, MeanSquaredError}
+import org.scanet.models.{LinearRegression, LogisticRegression}
+import org.scanet.models.Loss._
 import org.scanet.optimizers.Effect.RecordLoss
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}

@@ -11,6 +11,8 @@ import org.scanet.math.syntax._
  * to model a binary dependent variable. Hence, the result is a probability in range `[0, 1]`.
  *
  * Model always has only one output
+ *
+ * That is equivalent to `layer.Dense(1, Sigmoid)`
  */
 case object LogisticRegression extends Model {
 

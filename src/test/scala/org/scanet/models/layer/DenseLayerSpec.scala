@@ -1,8 +1,9 @@
-package org.scanet.models.nn
+package org.scanet.models.layer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
-import org.scanet.models.{BinaryCrossentropy, Sigmoid}
+import org.scanet.models.Activation._
+import org.scanet.models.Loss._
 import org.scanet.syntax._
 import org.scanet.test.CustomMatchers
 

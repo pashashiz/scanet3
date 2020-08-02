@@ -1,4 +1,4 @@
-package org.scanet.models.nn
+package org.scanet.models.layer
 
 import org.scanet.models.Model
 

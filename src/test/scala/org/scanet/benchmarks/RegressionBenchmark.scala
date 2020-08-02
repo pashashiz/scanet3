@@ -3,7 +3,8 @@ package org.scanet.benchmarks
 import org.scalatest.Ignore
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.math.syntax._
-import org.scanet.models.{LinearRegression, MeanSquaredError}
+import org.scanet.models.LinearRegression
+import org.scanet.models.Loss.MeanSquaredError
 import org.scanet.optimizers.Effect.RecordLoss
 import org.scanet.optimizers.syntax._
 import org.scanet.optimizers._

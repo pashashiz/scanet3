@@ -1,11 +1,12 @@
-package org.scanet.models.nn
+package org.scanet.models.layer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.{Shape, Tensor, TensorBoard}
 import org.scanet.datasets.MNIST
 import org.scanet.estimators.accuracy
 import org.scanet.images.Grayscale
-import org.scanet.models.{BinaryCrossentropy, CategoricalCrossentropy, Sigmoid, Softmax}
+import org.scanet.models.Activation._
+import org.scanet.models.Loss._
 import org.scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import org.scanet.optimizers.syntax._
 import org.scanet.optimizers.{Adam, Tensor2Iterator}

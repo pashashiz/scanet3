@@ -3,7 +3,8 @@ package org.scanet.optimizers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
-import org.scanet.models.{LinearRegression, MeanSquaredError}
+import org.scanet.models.LinearRegression
+import org.scanet.models.Loss._
 import org.scanet.optimizers.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
