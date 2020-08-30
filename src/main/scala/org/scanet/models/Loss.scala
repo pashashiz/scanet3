@@ -49,7 +49,7 @@ object Loss {
       // - predicted 0 - then loss -indefinite (need epsilon here)
       // if we expect 0
       // - ignore result
-      (expected * (predicted + epsilon).log).sum.negate
+      (expected * (predicted + epsilon).log).mean.negate
     }
   }
 }
