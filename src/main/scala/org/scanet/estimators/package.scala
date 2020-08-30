@@ -6,7 +6,7 @@ import org.scanet.core.{Output, TF2, TensorType}
 import org.scanet.math.syntax._
 import org.scanet.math.{Floating, Numeric}
 import org.scanet.models.TrainedModel
-import org.scanet.optimizers.{Optimizer, Tensor2Iterator}
+import org.scanet.optimizers.Tensor2Iterator
 
 package object estimators {
 
