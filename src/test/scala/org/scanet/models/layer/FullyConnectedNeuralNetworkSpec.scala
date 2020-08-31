@@ -53,7 +53,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
     model.withLoss(BinaryCrossentropy).displayGrad[Float](x = Shape(4, 3))
   }
 
-  "MNIST dataset" should "be trained with Softmax" in {
+  "MNIST dataset" should "be trained with Softmax" ignore {
     val (trainingDs, testDs) = MNIST.load(sc)
     val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
     val trained = trainingDs.train(model)
@@ -62,7 +62,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
       .batch(1000)
       .each(1.epochs, RecordLoss())
       .each(10.epochs, RecordAccuracy(testDs))
-      .stopAfter(50.epochs)
+      .stopAfter(25.epochs)
       .run()
     accuracy(trained, testDs) should be >= 0.95f
   }
