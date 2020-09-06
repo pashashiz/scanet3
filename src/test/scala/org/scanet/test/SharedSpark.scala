@@ -20,7 +20,7 @@ trait SharedSpark extends BeforeAndAfterAll {
 
   def conf = {
     new SparkConf()
-      .setMaster("local[2]")
+      .setMaster("local[*]")
       .setAppName("test")
       .set("spark.ui.enabled", "false")
       .set("spark.ui.showConsoleProgress", "false")

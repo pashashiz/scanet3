@@ -33,6 +33,10 @@ scalacOptions ++= Seq(
 )
 
 parallelExecution in Test := false
+testOptions in Test ++= Seq(
+  Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
+  Tests.Argument(TestFrameworks.ScalaTest, "-oF")
+)
 
 fork in Test := true
 javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")
