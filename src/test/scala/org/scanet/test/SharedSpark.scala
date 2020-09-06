@@ -20,11 +20,13 @@ trait SharedSpark extends BeforeAndAfterAll {
 
   def conf = {
     new SparkConf()
-      .setMaster("local[*]")
+      .setMaster("local[2]")
       .setAppName("test")
       .set("spark.ui.enabled", "false")
+      .set("spark.ui.showConsoleProgress", "false")
       .set("spark.app.id", appID)
       .set("spark.driver.host", "localhost")
+      .set("spark.sql.shuffle.partitions", "1")
       .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
       .set("spark.kryo.registrator", "org.scanet.optimizers.KryoSerializers")
   }

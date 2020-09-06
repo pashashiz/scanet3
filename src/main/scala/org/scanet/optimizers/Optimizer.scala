@@ -32,7 +32,6 @@ case class Optimizer[
      loss: Loss,
      initArgs: Shape => Tensor[A],
      dataset: RDD[Array[A]],
-     partitons: Int,
      batchSize: Int,
      minimizing: Boolean,
      stop: Condition[StepContext[A]],
@@ -42,7 +41,7 @@ case class Optimizer[
   private val lossModel = model.withLoss(loss)
 
   def run(): TrainedModel[A] = {
-    val ds = dataset.repartition(partitons).cache()
+    val ds = dataset.cache()
     val sc = ds.sparkContext
 
     @tailrec
@@ -189,9 +188,6 @@ object Optimizer {
     def iterations(number: Int): Builder[A, State with WithStopCondition] =
       stopWhen(Condition.iterations(number))
 
-    def partition(number: Int): Builder[A, State] =
-      copy(optimizer = optimizer.copy(partitons = number))
-
     def batch(size: Int): Builder[A, State] =
       copy(optimizer = optimizer.copy(batchSize = size))
 
@@ -209,9 +205,9 @@ object Optimizer {
 
   def minimize[R: Numeric: Floating : TensorType: Dist]
   (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
-    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))), null, 1, 10000, minimizing = true, always, Seq()))
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))), null, 10000, minimizing = true, always, Seq()))
 
   def maximize[R: Numeric: Floating : TensorType: Dist]
   (model: Model)(implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
-    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))), null, 1, 10000, minimizing = false, always, Seq()))
+    Builder(Optimizer(null, model, null, s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))), null, 10000, minimizing = false, always, Seq()))
 }

@@ -19,6 +19,7 @@ trait Datasets {
       .csv(resource("linear_function_1.scv"))
       .rdd
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1)))
+      .coalesce(1)
       .cache()
   }
 
@@ -32,6 +33,7 @@ trait Datasets {
       .csv(resource("logistic_regression_1.scv"))
       .rdd
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1), row.getFloat(2)))
+      .coalesce(1)
       .cache()
   }
 
@@ -40,11 +42,12 @@ trait Datasets {
       .csv(resource("facebook-comments-scaled.csv"))
       .rdd
       .map(row => row.toSeq.map(v => v.asInstanceOf[String].toFloat).toArray)
+      .coalesce(1)
       .cache()
 
   val MNISTMemoized = core.memoize((trainingSize: Int, testSize: Int) => {
     val (training, test) = datasets.MNIST.load(sc, trainingSize, testSize)
-    (training.cache(), test.cache())
+    (training.coalesce(1).cache(), test.coalesce(1).cache())
   })
 
   def MNIST(trainingSize: Int = 60000, testSize: Int = 10000) = MNISTMemoized(trainingSize, testSize)
