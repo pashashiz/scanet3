@@ -12,7 +12,7 @@ import org.scanet.syntax._
  * @param rate the learning rate.
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class AdaGrad(rate: Float = 1.0f, epsilon: Float = 1e-7f) extends Algorithm {
+case class AdaGrad(rate: Float = 0.001f, epsilon: Float = 1e-7f) extends Algorithm {
 
   override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
     Tensor.zeros[T](shape)
@@ -22,7 +22,7 @@ case class AdaGrad(rate: Float = 1.0f, epsilon: Float = 1e-7f) extends Algorithm
     // we accumulate all squared gradient per each weight
     val gradAcc = prevGradAcc + grad.sqr
     // the larger gradient is accumulated the lower rate is applied for a given weight
-    val rates = rate.const.cast[T] / (gradAcc.sqrt + epsilon.const.cast[T])
+    val rates = rate.const.cast[T] / gradAcc.sqrtZeroSafe(epsilon.const.cast[T])
     val delta = rates * grad
     Delta(delta, gradAcc)
   }

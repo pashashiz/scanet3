@@ -2,7 +2,6 @@ package org.scanet.models.layer
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scanet.core.{Shape, Tensor, TensorBoard}
-import org.scanet.datasets.MNIST
 import org.scanet.estimators.accuracy
 import org.scanet.images.Grayscale
 import org.scanet.models.Activation._
@@ -54,7 +53,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
   }
 
   "MNIST dataset" should "be trained with Softmax" ignore {
-    val (trainingDs, testDs) = MNIST.load(sc)
+    val (trainingDs, testDs) = MNIST()
     val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
     val trained = trainingDs.train(model)
       .loss(CategoricalCrossentropy)
@@ -68,7 +67,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
   }
 
   "MNIST dataset" should "be trained with Sigmoid" ignore {
-    val (trainingDs, testDs) = MNIST.load(sc)
+    val (trainingDs, testDs) = MNIST()
     val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
     val trained = trainingDs.train(model)
       .loss(BinaryCrossentropy)

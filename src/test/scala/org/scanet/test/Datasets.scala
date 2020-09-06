@@ -2,6 +2,7 @@ package org.scanet.test
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{FloatType, StructField, StructType}
+import org.scanet.{core, datasets}
 
 trait Datasets {
 
@@ -32,12 +33,19 @@ trait Datasets {
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1), row.getFloat(2)))
   }
 
-  def facebookComments: RDD[Array[Float]] = {
+  lazy val facebookComments: RDD[Array[Float]] =
     spark.read
       .csv(resource("facebook-comments-scaled.csv"))
       .rdd
       .map(row => row.toSeq.map(v => v.asInstanceOf[String].toFloat).toArray)
-  }
+      .cache()
+
+  val MNISTMemoized = core.memoize((trainingSize: Int, testSize: Int) => {
+    val (training, test) = datasets.MNIST.load(sc, trainingSize, testSize)
+    (training.cache(), test.cache())
+  })
+
+  def MNIST(trainingSize: Int = 60000, testSize: Int = 10000) = MNISTMemoized(trainingSize, testSize)
 
   def resource(path: String): String = {
     getClass.getClassLoader.getResource(path).toString

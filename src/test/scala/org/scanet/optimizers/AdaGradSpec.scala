@@ -14,7 +14,7 @@ class AdaGradSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
     val ds = linearFunction
     val trained = ds.train(LinearRegression)
       .loss(MeanSquaredError)
-      .using(AdaGrad())
+      .using(AdaGrad(rate = 1f))
       .initWith(Tensor.zeros(_))
       .batch(97)
       .stopAfter(100.epochs)
