@@ -10,7 +10,7 @@ trait Datasets {
 
   def zero: RDD[Array[Float]] = spark.sparkContext.parallelize(Seq[Array[Float]]())
 
-  def linearFunction: RDD[Array[Float]] = {
+  lazy val linearFunction: RDD[Array[Float]] = {
     spark.read
       .schema(StructType(Array(
         StructField("x", FloatType, nullable = false),
@@ -19,9 +19,10 @@ trait Datasets {
       .csv(resource("linear_function_1.scv"))
       .rdd
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1)))
+      .cache()
   }
 
-  def logisticRegression: RDD[Array[Float]] = {
+  lazy val logisticRegression: RDD[Array[Float]] = {
     spark.read
       .schema(StructType(Array(
         StructField("x1", FloatType, nullable = false),
@@ -31,6 +32,7 @@ trait Datasets {
       .csv(resource("logistic_regression_1.scv"))
       .rdd
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1), row.getFloat(2)))
+      .cache()
   }
 
   lazy val facebookComments: RDD[Array[Float]] =

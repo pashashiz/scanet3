@@ -22,12 +22,12 @@ object MNIST {
     (loadTrainingSet(sc, trainingSize), loadTestSet(sc, testSize))
 
   def loadTrainingSet(sc: SparkContext, size: Int): RDD[Array[Float]] =
-    loadDataSetFrom2(sc, images = "train-images-idx3-ubyte.gz", labels = "train-labels-idx1-ubyte.gz", size)
+    loadDataSetFrom(sc, images = "train-images-idx3-ubyte.gz", labels = "train-labels-idx1-ubyte.gz", size)
 
   def loadTestSet(sc: SparkContext, size: Int): RDD[Array[Float]] =
-    loadDataSetFrom2(sc, images = "t10k-images-idx3-ubyte.gz", labels = "t10k-labels-idx1-ubyte.gz", size)
+    loadDataSetFrom(sc, images = "t10k-images-idx3-ubyte.gz", labels = "t10k-labels-idx1-ubyte.gz", size)
 
-  def loadDataSetFrom2(sc: SparkContext, images: String, labels: String, size: Int): RDD[Array[Float]] = {
+  def loadDataSetFrom(sc: SparkContext, images: String, labels: String, size: Int): RDD[Array[Float]] = {
     def read(path: String, via: DataInputStream => Seq[(Int, Array[Float])]) = {
       sc.binaryFiles(downloadOrCached(path).toAbsolutePath.toString, 1)
         .flatMap {
