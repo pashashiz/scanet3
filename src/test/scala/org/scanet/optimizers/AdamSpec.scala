@@ -14,6 +14,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
 
   "Adam" should "minimize linear regression" in {
     val ds = linearFunction
+    val start = System.currentTimeMillis()
     val trained = ds.train(LinearRegression)
       .loss(MeanSquaredError)
       .using(Adam(rate = 0.1f))
@@ -25,6 +26,8 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
     val loss = trained.loss.compile()
     val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
     loss(x, y).toScalar should be <= 10f
+    val stop = System.currentTimeMillis()
+    println(s"took ${stop - start}")
   }
 
   it should "minimize logistic regression" in {

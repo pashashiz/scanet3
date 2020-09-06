@@ -1,10 +1,10 @@
 package org.scanet.optimizers
 
 import org.apache.spark.rdd.RDD
-import org.scanet.core.{Session, TensorBoard, TensorType}
+import org.scanet.core.{TensorBoard, TensorType}
 import org.scanet.estimators._
-import org.scanet.math.{Convertible, Floating, Numeric}
 import org.scanet.math.syntax._
+import org.scanet.math.{Convertible, Floating, Numeric}
 
 trait Effect[E] extends (E => Unit){
   private val self = this

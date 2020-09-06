@@ -8,4 +8,5 @@ project/plugins/project/
 .cache
 .lib/
 .DS_Store
-.idea
+.idea/
+benchmark/keras/env/

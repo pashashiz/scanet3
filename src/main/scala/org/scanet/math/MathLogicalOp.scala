@@ -1,6 +1,5 @@
 package org.scanet.math
 
-import org.scanet.core.Output.Grad
 import org.scanet.core.syntax._
 import org.scanet.core.{Output, Tensor, TensorType}
 import org.scanet.math.Logical.syntax._

@@ -49,7 +49,8 @@ object Loss {
       // - predicted 0 - then loss -indefinite (need epsilon here)
       // if we expect 0
       // - ignore result
-      (expected * (predicted + epsilon).log).sum.negate
+      val num = expected.shape.head.const.cast[A]
+      (expected * (predicted + epsilon).log).sum.negate / num
     }
   }
 }

@@ -17,11 +17,11 @@ import org.scanet.syntax._
  * @param beta2 The exponential decay rate for the exponentially weighted infinity norm
  * @param epsilon a constant epsilon used to better conditioning the grad update
  */
-case class Adamax(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f) extends Algorithm {
+case class Adamax(rate: Float = 0.001f, beta1: Float = 0.9f, beta2 : Float = 0.999f, epsilon: Float = 1e-7f, initAcc: Float = 0.001f) extends Algorithm {
 
   override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
-    val m1 = zeros[T](shape)
-    val m2 = zeros[T](shape)
+    val m1 = fill[Float](shape)(initAcc).cast[T]
+    val m2 = fill[Float](shape)(initAcc).cast[T]
     (m1 zip m2).eval
   }
 

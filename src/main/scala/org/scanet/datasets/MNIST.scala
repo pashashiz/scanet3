@@ -1,14 +1,15 @@
 package org.scanet.datasets
 
-import java.io.{DataInputStream, FileInputStream}
+import java.io.DataInputStream
 import java.net.URL
 import java.nio.channels.{Channels, FileChannel}
-import java.nio.file.{Files, Path, Paths}
 import java.nio.file.StandardOpenOption.WRITE
+import java.nio.file.{Files, Path, Paths}
 import java.util.zip.GZIPInputStream
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.scanet.core.Using
 
 object MNIST {
 
@@ -27,44 +28,37 @@ object MNIST {
     loadDataSetFrom(sc, images = "t10k-images-idx3-ubyte.gz", labels = "t10k-labels-idx1-ubyte.gz", size)
 
   def loadDataSetFrom(sc: SparkContext, images: String, labels: String, size: Int): RDD[Array[Float]] = {
-    val imagesRdd = sc.makeRDD(loadImages(images, size))
-    val labelsRdd = sc.makeRDD(loadLabels(labels, size))
+    def read(path: String, via: DataInputStream => Seq[(Int, Array[Float])]) = {
+      sc.binaryFiles(downloadOrCached(path).toAbsolutePath.toString, 1)
+        .flatMap {
+          case (_, portableStream) =>
+            Using.resource(new DataInputStream(new GZIPInputStream(portableStream.open())))(via(_))
+        }
+    }
+    val imagesRdd = read(images, readImages(_, size))
+    val labelsRdd = read(labels, readLabels(_, size))
     imagesRdd.join(labelsRdd).map {
       case (_, (images, labels)) => images ++ labels
     }
   }
 
-  def loadImages(name: String, size: Int): Seq[(Int, Array[Float])] = {
-    openStream(downloadOrCached(name), stream => {
-      require(stream.readInt() == 2051, "wrong MNIST image stream magic number")
-      val count = stream.readInt()
-      val width = stream.readInt()
-      val height = stream.readInt()
-      require(size <= count, "passed size is bigger than the actual data set")
-      for (i <- 0 until size) yield (i, readImage(stream, height * width))
-    })
+  def readImages(stream: DataInputStream, size: Int): Seq[(Int, Array[Float])] = {
+    require(stream.readInt() == 2051, "wrong MNIST image stream magic number")
+    val count = stream.readInt()
+    val width = stream.readInt()
+    val height = stream.readInt()
+    require(size <= count, "passed size is bigger than the actual data set")
+    for (i <- 0 until size) yield (i, readImage(stream, height * width))
   }
 
-  def loadLabels(name: String, size: Int): Seq[(Int, Array[Float])] = {
-    openStream(downloadOrCached(name), stream => {
-      require(stream.readInt() == 2049, "wrong MNIST image stream magic number")
-      val count = stream.readInt()
-      require(size <= count, "passed size is bigger than the actual data set")
-      for (i <- 0 until size) yield (i, readLabel(stream, 10))
-    })
-  }
-
-  private def openStream[A](path: Path, f: DataInputStream => A) = {
-    val stream = new DataInputStream(new GZIPInputStream(new FileInputStream(path.toString)))
-    try {
-      f.apply(stream)
-    } finally {
-      stream.close()
-    }
+  def readLabels(stream: DataInputStream, size: Int): Seq[(Int, Array[Float])] = {
+    require(stream.readInt() == 2049, "wrong MNIST image stream magic number")
+    val count = stream.readInt()
+    require(size <= count, "passed size is bigger than the actual data set")
+    for (i <- 0 until size) yield (i, readLabel(stream, 10))
   }
 
   def readImage(stream: DataInputStream, size: Int): Array[Float] = {
-    // Array.range(0, size).map(_ => (stream.readUnsignedByte().toFloat / 127.5f) - 1f)
     Array.range(0, size).map(_ => (stream.readUnsignedByte().toFloat + 1f) / 256f)
   }
 
