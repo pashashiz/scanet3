@@ -64,20 +64,6 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
       .stopAfter(25.epochs)
       .run()
     accuracy(trained, testDs) should be >= 0.95f
-  }
-
-  "MNIST dataset" should "be trained with Sigmoid" ignore {
-    val (trainingDs, testDs) = MNIST()
-    val model = Dense(50, Sigmoid) >> Dense(10, Sigmoid)
-    val trained = trainingDs.train(model)
-      .loss(BinaryCrossentropy)
-      .using(Adam(0.002f))
-      .batch(1000)
-      .each(1.epochs, RecordLoss())
-      .each(1.epochs, RecordAccuracy(testDs.sample(withReplacement = false, fraction = 0.1)))
-      .stopAfter(20.epochs)
-      .run()
-    accuracy(trained, testDs) should be >= 0.9f
     TensorBoard("board")
       .addImage("layer-1", trained.weights(0).reshape(50, 785, 1), Grayscale())
       .addImage("layer-2", trained.weights(1).reshape(10, 51, 1), Grayscale())

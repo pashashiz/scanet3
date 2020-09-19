@@ -2,6 +2,7 @@ package org.scanet.models.layer
 
 import org.scanet.core.{Output, OutputSeq, TensorType}
 import org.scanet.math.{Floating, Numeric}
+import org.scanet.math.syntax._
 
 /**
  * Layer which composes 2 other layers
@@ -12,9 +13,14 @@ import org.scanet.math.{Floating, Numeric}
 case class Composed(left: Layer, right: Layer) extends Layer {
 
   override def build[E: Numeric : Floating : TensorType](x: Output[E], weights: OutputSeq[E]) = {
-    val (leftWeights, rightWeights) = weights.splitAt(left.shapes(0).size)
+    val (leftWeights, rightWeights) = split(weights)
     val leftOutput = left.build(x, leftWeights)
     right.build(leftOutput, rightWeights)
+  }
+
+  override def penalty[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = {
+    val (leftWeights, rightWeights) = split(weights)
+    left.penalty(leftWeights) plus left.penalty(rightWeights)
   }
 
   override def outputs() = right.outputs()
@@ -24,5 +30,9 @@ case class Composed(left: Layer, right: Layer) extends Layer {
     val rightOutputs = leftShapes.last.head
     val rightShapes = right.shapes(rightOutputs)
     leftShapes ++ rightShapes
+  }
+
+  private def split[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = {
+    weights.splitAt(left.shapes(0).size)
   }
 }

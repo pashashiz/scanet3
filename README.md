@@ -48,14 +48,7 @@ tensorboard --logdir board
 ## What we are doing right now
 
 Finally, we added a fully connected neural network which we can benchmark on MNIST dataset.
-On such a simple network we can get up to 95% accuracy.
-
-There is still some work to make it better before we can move to more advanced neural networks (like convolutional):
- - test the rest of the optimizers
- - add `L1`, `L2` regularization
- - add more activation functions
- - benchmark a similar Python neural network on MNIST and check if we can achieve same performance
- - run on GPU
+On such a simple network we can get > 95% accuracy. The next step is CNN.
  
 ## Road Map
 
@@ -90,19 +83,20 @@ There is still some work to make it better before we can move to more advanced n
 - [ ] Simple math models for benchmarks
 - [x] Binary Logistic Regression
 - [x] ANN (Multilayer Perceptron NN)
-- [ ] Layers Dropout, Regularization, Normalization
+- [x] kernel regularization
+- [ ] Layers Dropout, Normalization
 - [ ] Convolutional NN
 - [ ] Recurent NN
 - [ ] others
 
 ### Activation functions
 - [x] Sigmoid
-- [ ] Tanh
+- [x] Tanh
+- [x] RELU
+- [x] Softmax
 - [ ] Exp
-- [ ] RELU
 - [ ] SELU
 - [ ] ELU
-- [x] Softmax
 - [ ] Sofplus
 
 ### Loss functions
