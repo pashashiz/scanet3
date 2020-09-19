@@ -97,12 +97,12 @@ There is still some work to make it better before we can move to more advanced n
 
 ### Activation functions
 - [x] Sigmoid
-- [ ] Tanh
+- [x] Tanh
+- [x] RELU
+- [x] Softmax
 - [ ] Exp
-- [ ] RELU
 - [ ] SELU
 - [ ] ELU
-- [x] Softmax
 - [ ] Sofplus
 
 ### Loss functions

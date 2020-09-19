@@ -23,9 +23,9 @@ abstract class Model extends Serializable {
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
-  def withBias[E: Numeric: Floating: TensorType](x: Output[E]): Output[E] = {
+  def withBias[E: Numeric: Floating: TensorType](x: Output[E], bias: Output[E]): Output[E] = {
     val rows = x.shape.dims.head
-    ones[E](rows, 1).joinAlong(x, 1)
+    fillOutput[E](rows, 1)(bias).joinAlong(x, 1)
   }
 
   def inferShapeOfY(x: Shape) = {

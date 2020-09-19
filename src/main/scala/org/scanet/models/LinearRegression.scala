@@ -16,8 +16,9 @@ import org.scanet.math.syntax._
   */
 case object LinearRegression extends Model {
 
-  override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: OutputSeq[A]): Output[A] =
-    withBias(x) matmul reshape(weights.head).transpose
+  override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: OutputSeq[A]): Output[A] = {
+    withBias(x, 1f.const.cast[A]) matmul reshape(weights.head).transpose
+  }
 
   private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)
