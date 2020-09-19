@@ -11,8 +11,11 @@ object Math {
     override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: OutputSeq[A]): Output[A] =
       weights.head * weights.head
 
+    override def penalty[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = zeros[E](Shape())
+
     override def shapes(features: Int): Seq[Shape] = Seq(Shape())
 
     override def outputs(): Int = 1
+
   }
 }

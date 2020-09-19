@@ -7,7 +7,22 @@ import org.scanet.math.syntax._
 
 abstract class Model extends Serializable {
 
+  /**
+   * Build a model
+   *
+   * @param x training set, where first dimension equals to number of amples (batchh size)
+   * @param weights model weights
+   * @return model
+   */
   def build[E: Numeric: Floating: TensorType](x: Output[E], weights: OutputSeq[E]): Output[E]
+
+  /**
+   * Additional model penalty to be added to the loss
+   *
+   * @param weights model weights
+   * @return penalty
+   */
+  def penalty[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) : Output[E]
 
   def result[E: Numeric: Floating: TensorType]: TF2[E, Tensor[E], E, Seq[Tensor[E]], Output[E]] =
     TF2[Output, E, OutputSeq, E, Output[E]](build[E])
@@ -46,7 +61,7 @@ abstract class Model extends Serializable {
 case class LossModel(model: Model, lossF: Loss) extends Serializable {
 
   def build[E: Numeric: Floating: TensorType](x: Output[E], y: Output[E], weights: OutputSeq[E]): Output[E] =
-    lossF.build(model.build(x, weights), y)
+    lossF.build(model.build(x, weights), y) plus model.penalty(weights)
 
   def loss[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], Output[E]] =
     TF3[Output, E, Output, E, OutputSeq, E, Output[E]](build[E])

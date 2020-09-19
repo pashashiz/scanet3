@@ -19,6 +19,8 @@ case object LogisticRegression extends Model {
   override def build[A: Numeric: Floating: TensorType](x: Output[A], weights: OutputSeq[A]): Output[A] =
     (withBias(x, 1f.const.cast[A]) matmul reshape(weights.head).transpose).sigmoid
 
+  override def penalty[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = zeros[E](Shape())
+
   private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)
 

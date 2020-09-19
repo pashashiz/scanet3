@@ -20,6 +20,8 @@ case object LinearRegression extends Model {
     withBias(x, 1f.const.cast[A]) matmul reshape(weights.head).transpose
   }
 
+  override def penalty[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = zeros[E](Shape())
+
   private def reshape[A: TensorType](weights: Output[A]): Output[A] =
     weights.reshape(1, weights.shape.head)
 
