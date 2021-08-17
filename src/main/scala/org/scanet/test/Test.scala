@@ -1,8 +1,12 @@
 package org.scanet.test
 
-import java.nio.FloatBuffer
+import org.tensorflow.ndarray.Shape
+import org.tensorflow.ndarray.impl.buffer.nio.NioDataBufferFactory
+import org.tensorflow.proto.framework.DataType
+import org.tensorflow.types._
+import org.tensorflow.{Graph, Session}
 
-import org.tensorflow.{DataType, Graph, Session, Tensor}
+import java.nio.FloatBuffer
 
 object Test {
 
@@ -14,23 +18,22 @@ object Test {
     val bb = FloatBuffer.allocate(1)
     bb.put(2.0f)
     bb.rewind()
-    val a = graph.opBuilder("Const", "a")
-      .setAttr("dtype", DataType.FLOAT)
-      .setAttr("value", Tensor.create(Array[Long](), ba))
+    val a = graph
+      .opBuilder("Const", "a")
+      .setAttr("dtype", DataType.DT_FLOAT)
+      .setAttr("value", TFloat32.tensorOf(Shape.scalar(), NioDataBufferFactory.create(ba)))
       .build
-    val b = graph.opBuilder("Const", "b")
-      .setAttr("dtype", DataType.FLOAT)
-      .setAttr("value", Tensor.create(Array[Long](), bb))
+    val b = graph
+      .opBuilder("Const", "b")
+      .setAttr("dtype", DataType.DT_FLOAT)
+      .setAttr("value", TFloat32.tensorOf(Shape.scalar(), NioDataBufferFactory.create(bb)))
       .build
-    graph.opBuilder("Add", "z")
-      .addInput(a.output(0))
-      .addInput(b.output(0))
-      .build()
+    graph.opBuilder("Add", "z").addInput(a.output(0)).addInput(b.output(0)).build()
     val s = new Session(graph)
     try {
       val res = s.runner.fetch("z").run.get(0)
       try {
-        System.out.println(res.floatValue) // Will print 6.0f
+        System.out.println(res.asRawTensor().data().asFloats().getFloat(0)) // Will print 5.0f
       } finally {
         if (res != null) res.close()
       }

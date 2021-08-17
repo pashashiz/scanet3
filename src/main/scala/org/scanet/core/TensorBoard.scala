@@ -9,8 +9,8 @@ import com.google.protobuf.ByteString
 import org.scanet.images.{Channel, Image}
 import org.scanet.math.Convertible
 import org.scanet.native.TfRecords
-import org.tensorflow.framework.Summary
-import org.tensorflow.util.Event
+import org.tensorflow.proto.framework.Summary
+import org.tensorflow.proto.util.Event
 
 import scala.reflect.io.Path._
 
@@ -21,7 +21,7 @@ case class TensorBoard(dir: String = "") {
   def addGraph[A](ops: Output[_]*): TensorBoard = {
     val graph = Session.withing(_.toGraph(ops))
     val event = Event.newBuilder()
-      .setGraphDef(ByteString.copyFrom(graph.toGraphDef))
+      .setGraphDef(ByteString.copyFrom(graph.toGraphDef.toByteArray))
       .build()
     writeEvents(event)
   }

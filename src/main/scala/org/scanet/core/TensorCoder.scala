@@ -15,7 +15,7 @@ trait TensorCoder[A] {
 
    def write(src: Array[A], dest: ByteBuffer): Unit
    def read(src: ByteBuffer, pos: Int, bufSize: Int): A
-   def sizeOf(src: Array[A]): Int = src.length
+   def sizeOf(src: Array[A]): Int
 }
 
 class FloatTensorCoder extends TensorCoder[Float] {
@@ -25,6 +25,8 @@ class FloatTensorCoder extends TensorCoder[Float] {
    override def write(src: Array[Float], dest: ByteBuffer): Unit = {
       dest.asFloatBuffer().put(src).rewind()
    }
+
+   def sizeOf(src: Array[Float]): Int = src.length * 4
 }
 
 class DoubleTensorCoder extends TensorCoder[Double] {
@@ -34,6 +36,8 @@ class DoubleTensorCoder extends TensorCoder[Double] {
    override def write(src: Array[Double], dest: ByteBuffer): Unit = {
       dest.asDoubleBuffer().put(src).rewind()
    }
+
+   def sizeOf(src: Array[Double]): Int = src.length * 8
 }
 
 class IntTensorCoder extends TensorCoder[Int] {
@@ -43,6 +47,8 @@ class IntTensorCoder extends TensorCoder[Int] {
    override def write(src: Array[Int], dest: ByteBuffer): Unit = {
       dest.asIntBuffer().put(src).rewind()
    }
+
+   def sizeOf(src: Array[Int]): Int = src.length * 4
 }
 
 class LongTensorCoder extends TensorCoder[Long] {
@@ -52,6 +58,8 @@ class LongTensorCoder extends TensorCoder[Long] {
    override def write(src: Array[Long], dest: ByteBuffer): Unit = {
       dest.asLongBuffer().put(src).rewind()
    }
+
+   def sizeOf(src: Array[Long]): Int = src.length * 8
 }
 
 class ByteTensorCoder extends TensorCoder[Byte] {
@@ -61,15 +69,19 @@ class ByteTensorCoder extends TensorCoder[Byte] {
    override def write(src: Array[Byte], dest: ByteBuffer): Unit = {
       dest.put(src).rewind()
    }
+
+   def sizeOf(src: Array[Byte]): Int = src.length
 }
 
 class BooleanTensorCoder extends TensorCoder[Boolean] {
 
-   override def read(buf: ByteBuffer, pos: Int, bufSize: Int): Boolean = buf.get(pos) == 1
+   override def read(src: ByteBuffer, pos: Int, bufSize: Int): Boolean = src.get(pos) == 1
 
    override def write(src: Array[Boolean], dest: ByteBuffer): Unit = {
       dest.put(src.map(b => if (b) 1.toByte else 0.toByte)).rewind()
    }
+
+   def sizeOf(src: Array[Boolean]): Int = src.length
 }
 
 class StringTensorCoder extends TensorCoder[String] {

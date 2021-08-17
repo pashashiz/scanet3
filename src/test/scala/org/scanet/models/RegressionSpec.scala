@@ -65,7 +65,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.vector(0.1f, 0.2f, 0.3f)
-    grad(x, y, Seq(weights)) should be(Seq(Tensor.vector(0.16822177f, 0.075301215f, 0.13678399f)))
+    grad(x, y, Seq(weights)) should be(Seq(Tensor.vector(0.16822174f, 0.0753012f, 0.13678399f)))
   }
 
   it should "produce unique toString to be used as a cache key" in {

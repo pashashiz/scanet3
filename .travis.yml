@@ -3,7 +3,7 @@ language: scala
 jdk: openjdk8
 
 scala:
-  - 2.12.11
+  - 2.12.12
 
 cache:
   directories:
@@ -17,4 +17,4 @@ before_cache:
   - find $HOME/.sbt        -name "*.lock"               -print -delete
 
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION "testOnly -- -l org.scalatest.tags.Slow"
+  - sbt ++$TRAVIS_SCALA_VERSION "testFast"
