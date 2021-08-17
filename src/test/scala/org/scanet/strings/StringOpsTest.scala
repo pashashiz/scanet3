@@ -1,5 +1,6 @@
 package org.scanet.strings
 
+import org.scalatest.Ignore
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
@@ -7,6 +8,7 @@ import org.scanet.syntax._
 
 import scala.reflect.io.Path._
 
+@Ignore
 class StringOpsTest extends AnyFlatSpec with Matchers {
 
   "concat" should "concatenate two string vectors" in {

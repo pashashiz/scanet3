@@ -29,11 +29,11 @@ scalacOptions ++= Seq(
   "-language:existentials"
 )
 
-parallelExecution in Test := false
-testOptions in Test ++= Seq(
+Test / parallelExecution := false
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
   Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 )
 
-fork in Test := true
+Test / fork := true
 javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")
