@@ -1,8 +1,7 @@
 package org.scanet.core
 
-import java.nio.{ByteBuffer, ByteOrder}
-
-import scala.annotation.tailrec
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets.UTF_8
 
 case class TensorBuffer[A: TensorType](buf: ByteBuffer, size: Int) {
    val coder: TensorCoder[A] = TensorType[A].coder
@@ -84,63 +83,45 @@ class BooleanTensorCoder extends TensorCoder[Boolean] {
    def sizeOf(src: Array[Boolean]): Int = src.length
 }
 
+/**
+ * String tensors are considered to be char tensor with protocol.
+ * [0, 3] 4 bytes: N, num of strings in the tensor in little endian.
+ * [(i+1)*4, (i+1)*4+3] 4 bytes: offset of i-th string in little endian, for i from 0 to N-1.
+ * [(N+1)*4, (N+1)*4+3] 4 bytes: length of the whole char buffer.
+ * [offset(i), offset(i+1) - 1] : content of i-th string.
+ * Example of a string tensor:
+ * [
+ *   2, 0, 0, 0,     # 2 strings.
+ *   16, 0, 0, 0,    # 0-th string starts from index 16.
+ *   18, 0, 0, 0,    # 1-st string starts from index 18.
+ *   18, 0, 0, 0,    # total length of array.
+ *   'A', 'B',       # 0-th string [16..17]: "AB"
+ * ]                 # 1-th string, empty
+ */
 class StringTensorCoder extends TensorCoder[String] {
 
    override def read(src: ByteBuffer, pos: Int, bufSize: Int): String = {
-      @tailrec
-      def loop(idx: Int, offset: Int, dst: Array[Byte]): String =
-         if (idx == dst.length) new String(dst, "UTF-8")
-         else {
-            dst(idx) = src.get(offset + idx)
-            loop(idx + 1, offset, dst)
-         }
-      def offset(pos: Int) =
-         if (pos == bufSize) src.limit
-         else src.getLong(pos * 8).toInt + bufSize * 8
+      def offset(pos: Int) = src.getInt((pos + 1) * 4)
 
       val curr = offset(pos)
-      val next = offset(pos + 1)
-      val offsetLen = next - curr
-      val len = offsetLen - ubytes(offsetLen - ubytes(offsetLen))
-      loop(0, curr + ubytes(len), Array.ofDim[Byte](len))
+      val dst = Array.ofDim[Byte](offset(pos + 1) - curr)
+      src.position(curr)
+      src.get(dst)
+      new String(dst, UTF_8)
    }
 
    override def write(src: Array[String], dest: ByteBuffer): Unit = {
-      src.foldLeft(0)((offset, str) => {
-         dest.putLong(offset)
-         offset + strLen(str)
+      // header has to be in little endian?
+      val headerLength = (2 + src.length) * 4
+      dest.putInt(src.length)
+      val bodyLength = src.foldLeft(headerLength)((offset, str) => {
+         dest.putInt(offset)
+         offset + str.length
       })
-      src.foreach(str => {
-         dest.put(asUBytes(str.length, dest.order))
-         dest.put(str.getBytes)
-      })
+      dest.putInt(bodyLength)
+      src.foreach(str => dest.put(str.getBytes))
       dest.rewind()
    }
 
-   override def sizeOf(array: Array[String]): Int = array.length * 8 + array.map(strLen).sum
-
-   private def strLen(str: String): Int = ubytes(str.length) + str.length
-
-   private def ubytes(num: Long): Int = {
-      @tailrec
-      def loop(i: Long, len: Int): Int =
-         if (i <= Byte.MaxValue) len
-         else loop(i >> 7, len + 1)
-      loop(num, 1)
-   }
-
-   private def asUBytes(int: Int, order: ByteOrder): Array[Byte] = {
-      val len = ubytes(int)
-      val arr = Array.ofDim[Byte](len)
-      @tailrec
-      def loop(i: Int): Array[Byte] = {
-         if (i < 0) arr
-         else {
-            val idx = if (order == ByteOrder.BIG_ENDIAN) i else len - i - 1
-            arr(idx) = (int >>> (i * 8) & 0xFF).toByte
-            loop(i - 1)
-         }
-      }
-      loop(len - 1)
-   }
+   override def sizeOf(array: Array[String]): Int = (array.length + 2) * 4 + array.map(_.length).sum
 }
