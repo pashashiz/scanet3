@@ -8,7 +8,6 @@ import org.scanet.syntax._
 
 import scala.reflect.io.Path._
 
-@Ignore
 class StringOpsTest extends AnyFlatSpec with Matchers {
 
   "concat" should "concatenate two string vectors" in {

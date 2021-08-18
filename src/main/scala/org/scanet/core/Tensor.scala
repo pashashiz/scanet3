@@ -169,13 +169,13 @@ object Tensor {
       data.length == shape.power,
       s"Shape$shape requires ${shape.power} elements but was passed ${data.length}")
     val size = TensorType[A].coder.sizeOf(data)
-    val tensor = Tensor[A](RawTensors.allocate[A](shape.toLongArray, size))
+    val tensor = Tensor[A](RawTensors.allocate[A](shape, size))
     tensor.buffer.write(data)
     tensor
   }
 
   def fromBytes[A: TensorType](data: Array[Byte], shape: Shape): Tensor[A] = {
-    val tensor = Tensor[A](RawTensors.allocate[A](shape.toLongArray, data.length))
+    val tensor = Tensor[A](RawTensors.allocate[A](shape, data.length))
     tensor.buffer.writeBytes(data)
     tensor
   }
