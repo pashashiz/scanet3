@@ -61,11 +61,10 @@ object WithinPointer extends Pointer {
   }
 
   def allocate[A: TensorType](shape: Shape): RawTensor = {
-    val nativeTensor =
-      if (TensorType[A].tag == StringType)
-        allocateString(shape)
-      else
-        allocatePrimitive[A](shape)
+    val nativeTensor = TensorType[A].tag match {
+      case StringType => allocateString(shape)
+      case _          => allocatePrimitive[A](shape)
+    }
     // we use scope here, so if someone would call close() on a RawTensor we will
     // also clean TF_Tensor eagerly
     Using.resource(new PointerScope) { scope =>
