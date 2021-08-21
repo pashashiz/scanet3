@@ -129,6 +129,7 @@ object WithinPointer extends Pointer {
       with Pointer.Deallocator {
     override def deallocate(): Unit = {
       if (!isNull) {
+//        todo: when we free strings tensor memory there might happen a segfault for unknown reason
 //        val size = TF_TensorElementCount(tensor)
 //        TF_DeleteTensor(this)
 //        (0L until size).foreach(i => TF_TString_Dealloc(strings.position(i)))
