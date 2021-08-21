@@ -139,7 +139,7 @@ object Session {
         override def eval(runner: Runner, value: Out1[T1]): out1.Materialized[T1] = {
           val outputs = out1.outputToSeq(value)
           val tensors = runner.evalUnsafe(outputs)
-            .map(n => Tensor.apply[T1](n))
+            .map(n => Tensor.wrap[T1](n))
           out1.toMaterialized(tensors)
         }
         override def unwrap(value: Out1[T1]): Seq[Output[_]] = {
@@ -160,9 +160,9 @@ object Session {
           val seq2 = out2.outputToSeq(value._2)
           val results = runner.evalUnsafe(seq1 ++ seq2)
           val tensors1 = results.take(seq1.size)
-            .map(n => Tensor.apply[T1](n))
+            .map(n => Tensor.wrap[T1](n))
           val tensors2 = results.slice(seq1.size, seq1.size + seq2.size)
-            .map(n => Tensor.apply[T2](n))
+            .map(n => Tensor.wrap[T2](n))
           (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2))
         }
 
@@ -187,11 +187,11 @@ object Session {
           val seq3 = out3.outputToSeq(value._3)
           val results = runner.evalUnsafe(seq1 ++ seq2 ++ seq3)
           val tensors1 = results.take(seq1.size)
-            .map(n => Tensor.apply[T1](n))
+            .map(n => Tensor.wrap[T1](n))
           val tensors2 = results.slice(seq1.size, seq1.size + seq2.size)
-            .map(n => Tensor.apply[T2](n))
+            .map(n => Tensor.wrap[T2](n))
           val tensors3 = results.slice(seq1.size + seq2.size, seq1.size + seq2.size + seq3.size)
-            .map(n => Tensor.apply[T3](n))
+            .map(n => Tensor.wrap[T3](n))
           (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2), out3.toMaterialized(tensors3))
         }
 

@@ -14,8 +14,7 @@ import scala.collection.mutable.ArrayBuffer
 class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
 
   val `type`: TensorType[A] = TensorType[A]
-  val buffer: TensorBuffer[A] =
-    TensorBuffer[A](RawTensors.nativeMemoryOf(native), view.originalShape.power)
+  val buffer: TensorBuffer[A] = TensorBuffer.of[A](native)
 
   def native: RawTensor = ref.native
   def shape: Shape = view.shape
@@ -160,28 +159,27 @@ object Tensor {
 
   implicit def toNativeTensor[A: TensorType](tensor: Tensor[A]): RawTensor = tensor.ref.native
 
-  def apply[A: TensorType](native: RawTensor): Tensor[A] = {
+  def wrap[A: TensorType](native: RawTensor): Tensor[A] = {
     new Tensor(new NativeRef(native), View(Shape.of(native.shape().asArray())))
   }
 
-  def apply[A: TensorType](data: Array[A], shape: Shape): Tensor[A] = {
+  def apply[A: TensorType](elements: Array[A], shape: Shape): Tensor[A] = {
     require(
-      data.length == shape.power,
-      s"Shape$shape requires ${shape.power} elements but was passed ${data.length}")
-    val size = TensorType[A].coder.sizeOf(data)
-    val tensor = Tensor[A](RawTensors.allocate[A](shape, size))
-    tensor.buffer.write(data)
+      elements.length == shape.power,
+      s"Shape$shape requires ${shape.power} elements but was passed ${elements.length}")
+    val tensor = Tensor.wrap[A](RawTensors.allocate[A](shape))
+    tensor.buffer.write(elements)
     tensor
   }
 
-  def fromBytes[A: TensorType](data: Array[Byte], shape: Shape): Tensor[A] = {
-    val tensor = Tensor[A](RawTensors.allocate[A](shape, data.length))
-    tensor.buffer.writeBytes(data)
+  def fromBytes[A: TensorType](bytes: Array[Byte], shape: Shape): Tensor[A] = {
+    val tensor = Tensor.wrap[A](RawTensors.allocate[A](shape))
+    tensor.buffer.writeBytes(bytes)
     tensor
   }
 
-  def fromBytesUntyped(dataType: DataType, data: Array[Byte], shape: Shape): Tensor[_] =
-    fromBytes(data, shape)(TensorType.of(dataType))
+  def fromBytesUntyped(dataType: DataType, bytes: Array[Byte], shape: Shape): Tensor[_] =
+    fromBytes(bytes, shape)(TensorType.of(dataType))
 
   def scalar[A: TensorType](value: A): Tensor[A] =
     apply(Array(value)(TensorType[A].classTag), Shape())

@@ -8,7 +8,6 @@ import org.scanet.math.Dist.syntax._
 import org.scanet.core.syntax._
 import org.scanet.core.Slice.syntax.::
 import org.scanet.core.TensorType.IntTag
-import org.tensorflow.types.TString
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -28,8 +27,6 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "vector" should "be allocated with String" in {
-    val ts = TString.scalarOf("hey")
-    println(ts.numBytes())
     Tensor.vector("Hello", "World", "From TensorFlow") should
       (haveShape (Shape(3)) and containData (Array("Hello", "World", "From TensorFlow")))
   }
@@ -37,6 +34,14 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   "vector" should "be allocated with long String" in {
     Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100) should
       (haveShape (Shape(5)) and containData (Array("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)))
+  }
+
+  "strings" should "be deallocated" in {
+    (0 until 1000000).foreach(_ => Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100))
+  }
+
+  "primitives" should "be deallocated" in {
+    (0 until 10000000).foreach(_ => Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)))
   }
 
   "matrix" should "be allocated" in {
@@ -306,24 +311,6 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
       5, 0, 0, 0,
       7, 0, 0, 0)
     Tensor.fromBytes[Int](bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
-  }
-
-  "String tensor" should "be serialized to bytes array" in {
-    val bytes = Array[Byte](
-      0, 0, 0, 0, 0, 0, 0, 0,
-      3, 0, 0, 0, 0, 0, 0, 0,
-      2, 97, 98,
-      1, 99)
-    Tensor.vector[String]("ab", "c").toBytes should be(bytes)
-  }
-
-  it should "be deserialized from bytes array" in {
-    val bytes = Array[Byte](
-      0, 0, 0, 0, 0, 0, 0, 0,
-      3, 0, 0, 0, 0, 0, 0, 0,
-      2, 97, 98,
-      1, 99)
-    Tensor.fromBytes[String](bytes, Shape(2)) should be(Tensor.vector[String]("ab", "c"))
   }
 
   "tensor with view" should "be compacted when serialized to bytes array" in {
