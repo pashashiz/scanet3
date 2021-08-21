@@ -36,13 +36,15 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
       (haveShape (Shape(5)) and containData (Array("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)))
   }
 
-  "strings" should "be deallocated" in {
-    (0 until 1000000).foreach(_ => Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100))
-  }
-
-  "primitives" should "be deallocated" in {
-    (0 until 10000000).foreach(_ => Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)))
-  }
+//  "strings" should "be deallocated" in {
+//    (0 until 100000).foreach(_ => Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100))
+//    (0 until 1000000).foreach(_ => Thread.sleep(10))
+//  }
+//
+//  "primitives" should "be deallocated" in {
+//    (0 until 1000000).foreach(_ => Tensor.fill(10, 10, 10)(5f))
+//    (0 until 1000000).foreach(_ => Thread.sleep(10))
+//  }
 
   "matrix" should "be allocated" in {
       Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)) should

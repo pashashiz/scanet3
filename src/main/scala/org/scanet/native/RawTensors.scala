@@ -31,12 +31,8 @@ object RawTensors {
 
   def allocate[A: TensorType](shape: Shape): RawTensor = WithinPointer.allocate[A](shape)
 
-  // todo
   implicit def toNativeShape(shape: Shape): NativeShape =
-    if (shape.isScalar)
-      NativeShape.scalar()
-    else
-      NativeShape.of(shape.dims.map(_.toLong): _*)
+    NativeShape.of(shape.toLongArray: _*)
 }
 
 object WithinPointer extends Pointer {
@@ -108,16 +104,21 @@ object WithinPointer extends Pointer {
       noopDeallocator,
       null)
     require(nativeTensor != null, s"cannot allocate a tensor with shape $shape")
-    pointerDeallocatorMethod.invoke(nativeTensor, new StringTensorDeallocator(nativeTensor, strings))
+    pointerDeallocatorMethod.invoke(
+      nativeTensor,
+      new StringTensorDeallocator(nativeTensor, strings))
     nativeTensor
   }
+
+  // IMPORTANT - these deallocators are not collected by default Pointer GC thread, instead
+  // they will be collected by our own tensor GC (see Disposable)
+  // need to think how to reuse the out of the box Pointer GC (right now the TF_Tensor is nor reachable yet)
 
   private class PrimitiveTensorDeallocator(tensor: TF_Tensor)
       extends TF_Tensor(tensor)
       with Pointer.Deallocator {
     override def deallocate(): Unit = {
       if (!isNull) {
-        println(s"dealocating tensor $tensor")
         TF_DeleteTensor(this)
       }
       setNull()
@@ -125,14 +126,14 @@ object WithinPointer extends Pointer {
   }
 
   private class StringTensorDeallocator(tensor: TF_Tensor, strings: TF_TString)
-    extends TF_Tensor(tensor)
+      extends TF_Tensor(tensor)
       with Pointer.Deallocator {
     override def deallocate(): Unit = {
       if (!isNull) {
         val size = TF_TensorElementCount(tensor)
         TF_DeleteTensor(this)
-        println(s"dealocating tensor $tensor")
         (0L until size).foreach(i => TF_TString_Dealloc(strings.position(i)))
+        strings.deallocate()
       }
       setNull()
     }
@@ -140,8 +141,6 @@ object WithinPointer extends Pointer {
 
   private val noopDeallocator: Deallocator_Pointer_long_Pointer =
     new Deallocator_Pointer_long_Pointer() {
-      override def call(data: Pointer, len: Long, arg: Pointer): Unit = {
-        println("!!!")
-      }
+      override def call(data: Pointer, len: Long, arg: Pointer): Unit = {}
     }.retainReference[Deallocator_Pointer_long_Pointer]()
 }
