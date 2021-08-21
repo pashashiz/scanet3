@@ -130,7 +130,7 @@ object WithinPointer extends Pointer {
     override def deallocate(): Unit = {
       if (!isNull) {
 //        val size = TF_TensorElementCount(tensor)
-        TF_DeleteTensor(this)
+//        TF_DeleteTensor(this)
 //        (0L until size).foreach(i => TF_TString_Dealloc(strings.position(i)))
 //        strings.deallocate()
       }
