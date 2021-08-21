@@ -124,11 +124,34 @@ object WithinPointer extends Pointer {
     }
   }
 
+  // void TensorInterface::Release() {
+  //  if (Type() == DT_STRING && NumElements() > 0) {
+  //    TF_TString* data = static_cast<TF_TString*>(Data());
+  //    if (CanMove() && data != nullptr) {
+  //      for (int64_t i = 0; i < NumElements(); ++i) {
+  //        TF_TString_Dealloc(&data[i]);
+  //      }
+  //    }
+  //  }
+  //  delete this;
+  //}
   private class StringTensorDeallocator(tensor: TF_Tensor, strings: TF_TString)
       extends TF_Tensor(tensor)
       with Pointer.Deallocator {
     override def deallocate(): Unit = {
       if (!isNull) {
+        val moved = TF_TensorMaybeMove(this)
+        if (moved != null) {
+          println("DEALLOCATING")
+          // we need to deallocate the strings themselves before deallocating the tensor memory
+          val size = TF_TensorElementCount(moved)
+//          val data = new TF_TString(TF_TensorData(moved))
+          (0L until size).foreach(i => TF_TString_Dealloc(strings.position(i)))
+          TF_DeleteTensor(moved)
+        } else {
+          // TensorBuffer is shared, leave contained strings alone.
+          TF_DeleteTensor(this)
+        }
 //        todo: when we free strings tensor memory there might happen a segfault for unknown reason
 //        val size = TF_TensorElementCount(tensor)
 //        TF_DeleteTensor(this)

@@ -44,13 +44,13 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
     System.gc()
   }
 
-//  "strings" should "be deallocated" in {
-//    (0 until 1000000).foreach { _ =>
-//      Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)
-//      Tensor.fill(10, 10, 10)(5f)
-//    }
-//    (0 until 1000000).foreach(_ => Thread.sleep(10))
-//  }
+  "strings" should "be deallocated" in {
+    (0 until 1000000).foreach { _ =>
+      Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)
+      Tensor.fill(10, 10, 10)(5f)
+    }
+    (0 until 1000000).foreach(_ => Thread.sleep(10))
+  }
 //
 //  "primitives" should "be deallocated" in {
 //    (0 until 1000000).foreach(_ => Tensor.fill(10, 10, 10)(5f))
