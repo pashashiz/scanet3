@@ -7,62 +7,62 @@ import simulacrum.typeclass
 
 import scala.reflect.ClassTag
 
-@typeclass trait TensorType[A] {
+@typeclass sealed trait TensorType[A] {
   def tag: DataType
   def jtag: Class[_ <: TType]
   def code: Int = tag.getNumber
   def classTag: ClassTag[A]
   def show: String = classTag.toString()
-  def coder: TensorCoder[A]
+  def codec: TensorCodec[A]
 }
 
-trait TensorTypeFloat extends TensorType[Float] {
+case object TensorTypeFloat extends TensorType[Float] {
   override def tag: DataType = TensorType.FloatTag
   override def jtag: Class[_ <: TType] = classOf[TFloat32]
   override def classTag: ClassTag[Float] = scala.reflect.classTag[Float]
-  override def coder: TensorCoder[Float] = new FloatTensorCoder
+  override def codec: TensorCodec[Float] = FloatTensorCodec
 }
 
-trait TensorTypeDouble extends TensorType[Double] {
+case object TensorTypeDouble extends TensorType[Double] {
   override def tag: DataType = TensorType.DoubleTag
   override def jtag: Class[_ <: TType] = classOf[TFloat64]
   override def classTag: ClassTag[Double] = scala.reflect.classTag[Double]
-  override def coder: TensorCoder[Double] = new DoubleTensorCoder
+  override def codec: TensorCodec[Double] = DoubleTensorCodec
 }
 
-trait TensorTypeLong extends TensorType[Long] {
+case object TensorTypeLong extends TensorType[Long] {
   override def tag: DataType = TensorType.LongTag
   override def jtag: Class[_ <: TType] = classOf[TInt64]
   override def classTag: ClassTag[Long] = scala.reflect.classTag[Long]
-  override def coder: TensorCoder[Long] = new LongTensorCoder
+  override def codec: TensorCodec[Long] = LongTensorCodec
 }
 
-trait TensorTypeInt extends TensorType[Int] {
+case object TensorTypeInt extends TensorType[Int] {
   override def tag: DataType = TensorType.IntTag
   override def jtag: Class[_ <: TType] = classOf[TInt32]
   override def classTag: ClassTag[Int] = scala.reflect.classTag[Int]
-  override def coder: TensorCoder[Int] = new IntTensorCoder
+  override def codec: TensorCodec[Int] = IntTensorCodec
 }
 
-trait TensorTypeByte extends TensorType[Byte] {
+case object TensorTypeByte extends TensorType[Byte] {
   override def tag: DataType = TensorType.ByteTag
   override def jtag: Class[_ <: TType] = classOf[TUint8]
   override def classTag: ClassTag[Byte] = scala.reflect.classTag[Byte]
-  override def coder: TensorCoder[Byte] = new ByteTensorCoder
+  override def codec: TensorCodec[Byte] = ByteTensorCodec
 }
 
-trait TensorTypeBoolean extends TensorType[Boolean] {
+case object TensorTypeBoolean extends TensorType[Boolean] {
   override def tag: DataType = TensorType.BoolTag
   override def jtag: Class[_ <: TType] = classOf[TBool]
   override def classTag: ClassTag[Boolean] = scala.reflect.classTag[Boolean]
-  override def coder: TensorCoder[Boolean] = new BooleanTensorCoder
+  override def codec: TensorCodec[Boolean] = BooleanTensorCodec
 }
 
-trait TensorTypeString extends TensorType[String] {
+case object TensorTypeString extends TensorType[String] {
   override def tag: DataType = TensorType.StringType
   override def jtag: Class[_ <: TType] = classOf[TString]
   override def classTag: ClassTag[String] = scala.reflect.classTag[String]
-  override def coder: TensorCoder[String] = new StringTensorCoder
+  override def codec: TensorCodec[String] = StringTensorCodec
 }
 
 object TensorType {
@@ -79,33 +79,31 @@ object TensorType {
   def of(dataType: DataType): TensorType[_] = {
     import syntax._
     dataType match {
-      case FloatTag => TensorType[Float]
-      case DoubleTag => TensorType[Double]
-      case LongTag => TensorType[Long]
-      case IntTag => TensorType[Int]
-      case ByteTag => TensorType[Byte]
-      case BoolTag => TensorType[Boolean]
+      case FloatTag   => TensorType[Float]
+      case DoubleTag  => TensorType[Double]
+      case LongTag    => TensorType[Long]
+      case IntTag     => TensorType[Int]
+      case ByteTag    => TensorType[Byte]
+      case BoolTag    => TensorType[Boolean]
       case StringType => TensorType[String]
-      case _ => throw new IllegalArgumentException(s"data type $dataType is not supported")
+      case _          => throw new IllegalArgumentException(s"data type $dataType is not supported")
     }
   }
 
   def of(code: Int): TensorType[_] = {
-    val dataType = DataType.values()
-      .find(t => t.getNumber == code)
-      .get
+    val dataType = DataType.values().find(t => t.getNumber == code).get
     of(dataType)
   }
 
   trait Instances {
 
-    implicit def floatTfTypeInst: TensorType[Float] = new TensorTypeFloat {}
-    implicit def doubleTfTypeInst: TensorType[Double] = new TensorTypeDouble {}
-    implicit def longTfTypeInst: TensorType[Long] = new TensorTypeLong {}
-    implicit def intTfTypeInst: TensorType[Int] = new TensorTypeInt {}
-    implicit def byteTfTypeInst: TensorType[Byte] = new TensorTypeByte {}
-    implicit def booleanTfTypeInst: TensorType[Boolean] = new TensorTypeBoolean {}
-    implicit def stringTfTypeInst: TensorType[String] = new TensorTypeString {}
+    implicit val floatTfTypeInst: TensorType[Float] = TensorTypeFloat
+    implicit val doubleTfTypeInst: TensorType[Double] = TensorTypeDouble
+    implicit val longTfTypeInst: TensorType[Long] = TensorTypeLong
+    implicit val intTfTypeInst: TensorType[Int] = TensorTypeInt
+    implicit val byteTfTypeInst: TensorType[Byte] = TensorTypeByte
+    implicit val booleanTfTypeInst: TensorType[Boolean] = TensorTypeBoolean
+    implicit val stringTfTypeInst: TensorType[String] = TensorTypeString
   }
   trait Syntax extends TensorType.Instances with TensorType.ToTensorTypeOps
   object syntax extends Syntax

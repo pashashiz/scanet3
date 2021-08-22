@@ -6,7 +6,7 @@ import org.scanet.core.TensorType.syntax._
 import org.scanet.core.{Shape, TensorType, Using}
 import org.tensorflow.RawTensor
 import org.tensorflow.internal.c_api.global.tensorflow._
-import org.tensorflow.internal.c_api.{Deallocator_Pointer_long_Pointer, TF_TString, TF_Tensor}
+import org.tensorflow.internal.c_api.{TF_TString, TF_Tensor}
 import org.tensorflow.internal.types.registry.TensorTypeRegistry
 import org.tensorflow.ndarray.{Shape => NativeShape}
 
@@ -81,7 +81,7 @@ object WithinPointer extends Pointer {
   def allocatePrimitive[A: TensorType](shape: Shape): TF_Tensor = {
     val ttype = TensorType[A]
     val nativeTensor =
-      TF_AllocateTensor(ttype.code, shape.toLongArray, shape.rank, ttype.coder.sizeOf(shape.power))
+      TF_AllocateTensor(ttype.code, shape.toLongArray, shape.rank, ttype.codec.sizeOf(shape.power))
     require(nativeTensor != null, s"cannot allocate a tensor with shape $shape")
     pointerDeallocatorMethod.invoke(nativeTensor, new PrimitiveTensorDeallocator(nativeTensor))
     nativeTensor
@@ -90,22 +90,12 @@ object WithinPointer extends Pointer {
   def allocateString(shape: Shape): TF_Tensor = {
     val ttype = TensorType[String]
     val size = shape.power
-    // there is a default deallocator assign to strings array, we should keep a reference so it is not GC-ed
-    val strings = new TF_TString(size)
-    // we MUST fill the allocated string with an empty value, otherwise the JVM will crash later
-    (0L until size).foreach(i => TF_TString_Init(strings.position(i)))
-    val nativeTensor = TF_NewTensor(
-      TF_STRING,
-      shape.toLongArray,
-      shape.rank,
-      strings,
-      ttype.coder.sizeOf(size),
-      noopDeallocator,
-      null)
+    val nativeTensor =
+      TF_AllocateTensor(ttype.code, shape.toLongArray, shape.rank, ttype.codec.sizeOf(shape.power))
     require(nativeTensor != null, s"cannot allocate a tensor with shape $shape")
-    pointerDeallocatorMethod.invoke(
-      nativeTensor,
-      new StringTensorDeallocator(nativeTensor, strings))
+    val strings: TF_TString = new TF_TString(TF_TensorData(nativeTensor)).capacity(size)
+    (0L until size).foreach(i => TF_TString_Init(strings.position(i)))
+    pointerDeallocatorMethod.invoke(nativeTensor, new StringTensorDeallocator2(nativeTensor))
     nativeTensor
   }
 
@@ -124,46 +114,26 @@ object WithinPointer extends Pointer {
     }
   }
 
-  // void TensorInterface::Release() {
-  //  if (Type() == DT_STRING && NumElements() > 0) {
-  //    TF_TString* data = static_cast<TF_TString*>(Data());
-  //    if (CanMove() && data != nullptr) {
-  //      for (int64_t i = 0; i < NumElements(); ++i) {
-  //        TF_TString_Dealloc(&data[i]);
-  //      }
-  //    }
-  //  }
-  //  delete this;
-  //}
-  private class StringTensorDeallocator(tensor: TF_Tensor, strings: TF_TString)
+  private class StringTensorDeallocator2(tensor: TF_Tensor)
       extends TF_Tensor(tensor)
       with Pointer.Deallocator {
     override def deallocate(): Unit = {
       if (!isNull) {
+        // there 2 types of string tensor:
+        // - tensor which allocated the strings array itself and owns it which means it can destroy it
+        // - tensor which points to shared string array
+        // TF_TensorMaybeMove returns null if tensor is shared which means we cannot deallocate strings
         val moved = TF_TensorMaybeMove(this)
         if (moved != null) {
-          println("DEALLOCATING")
-          // we need to deallocate the strings themselves before deallocating the tensor memory
           val size = TF_TensorElementCount(moved)
-//          val data = new TF_TString(TF_TensorData(moved))
+          val strings = new TF_TString(TF_TensorData(moved))
           (0L until size).foreach(i => TF_TString_Dealloc(strings.position(i)))
           TF_DeleteTensor(moved)
         } else {
-          // TensorBuffer is shared, leave contained strings alone.
           TF_DeleteTensor(this)
         }
-//        todo: when we free strings tensor memory there might happen a segfault for unknown reason
-//        val size = TF_TensorElementCount(tensor)
-//        TF_DeleteTensor(this)
-//        (0L until size).foreach(i => TF_TString_Dealloc(strings.position(i)))
-//        strings.deallocate()
       }
       setNull()
     }
   }
-
-  private val noopDeallocator: Deallocator_Pointer_long_Pointer =
-    new Deallocator_Pointer_long_Pointer() {
-      override def call(data: Pointer, len: Long, arg: Pointer): Unit = {}
-    }.retainReference[Deallocator_Pointer_long_Pointer]()
 }

@@ -2,6 +2,8 @@ name := "scanet3"
 version := "0.1"
 scalaVersion := "2.12.14"
 
+resolvers ++= Seq("sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
+
 addCommandAlias("testFast", "testOnly -- -l org.scalatest.tags.Slow")
 
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)

@@ -1,13 +1,13 @@
 package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.math.Generator.uniform
-import org.scanet.test.CustomMatchers
-import org.scanet.math.Numeric.syntax._
-import org.scanet.math.Dist.syntax._
-import org.scanet.core.syntax._
 import org.scanet.core.Slice.syntax.::
 import org.scanet.core.TensorType.IntTag
+import org.scanet.core.syntax._
+import org.scanet.math.Dist.syntax._
+import org.scanet.math.Generator.uniform
+import org.scanet.math.Numeric.syntax._
+import org.scanet.test.CustomMatchers
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -35,27 +35,6 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
     Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100) should
       (haveShape (Shape(5)) and containData (Array("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)))
   }
-
-  "gc" should "work" in {
-    System.gc()
-    Thread.sleep(100)
-    System.gc()
-    Thread.sleep(100)
-    System.gc()
-  }
-
-  "strings" should "be deallocated" in {
-    (0 until 1000000).foreach { _ =>
-      Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)
-      Tensor.fill(10, 10, 10)(5f)
-    }
-    (0 until 1000000).foreach(_ => Thread.sleep(10))
-  }
-//
-//  "primitives" should "be deallocated" in {
-//    (0 until 1000000).foreach(_ => Tensor.fill(10, 10, 10)(5f))
-//    (0 until 1000000).foreach(_ => Thread.sleep(10))
-//  }
 
   "matrix" should "be allocated" in {
       Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)) should

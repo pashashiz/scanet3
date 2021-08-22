@@ -1,6 +1,5 @@
 package org.scanet.math
 
-import org.scanet.core.{TensorTypeByte, TensorTypeDouble, TensorTypeFloat, TensorTypeInt, TensorTypeLong}
 import simulacrum.{op, typeclass}
 
 @typeclass trait Eq[A] {
@@ -184,7 +183,7 @@ object Numeric {
   object syntax extends Syntax
 }
 
-trait FloatIsFloatingPoint extends Floating[Float] with TensorTypeFloat {
+trait FloatIsFloatingPoint extends Floating[Float] {
   override def one: Float = 1.0f
   override def zero: Float = 0.0f
   override def plus[B](left: Float, right: B)(implicit c: Convertible[B, Float]): Float =
@@ -199,7 +198,7 @@ trait FloatIsFloatingPoint extends Floating[Float] with TensorTypeFloat {
   override def compare(x: Float, y: Float): Int = x.compareTo(y)
 }
 
-trait DoubleIsFloatingPoint extends Floating[Double] with TensorTypeDouble {
+trait DoubleIsFloatingPoint extends Floating[Double] {
   override def one: Double = 1.0d
   override def zero: Double = 0.0d
   override def plus[B](left: Double, right: B)(implicit c: Convertible[B, Double]): Double =
@@ -214,7 +213,7 @@ trait DoubleIsFloatingPoint extends Floating[Double] with TensorTypeDouble {
   override def compare(x: Double, y: Double): Int = x.compareTo(y)
 }
 
-trait NumericLong extends Numeric[Long] with TensorTypeLong {
+trait NumericLong extends Numeric[Long] {
   override def one: Long = 1L
   override def zero: Long = 0L
   override def plus[B](left: Long, right: B)(implicit c: Convertible[B, Long]): Long =
@@ -229,7 +228,7 @@ trait NumericLong extends Numeric[Long] with TensorTypeLong {
   override def compare(x: Long, y: Long): Int = x.compareTo(y)
 }
 
-trait NumericInt extends Numeric[Int] with TensorTypeInt {
+trait NumericInt extends Numeric[Int] {
   override def one: Int = 1
   override def zero: Int = 0
   override def plus[B](left: Int, right: B)(implicit c: Convertible[B, Int]): Int =
@@ -244,7 +243,7 @@ trait NumericInt extends Numeric[Int] with TensorTypeInt {
   override def compare(x: Int, y: Int): Int = x.compareTo(y)
 }
 
-trait NumericByte extends Numeric[Byte] with TensorTypeByte {
+trait NumericByte extends Numeric[Byte] {
   override def one: Byte = 1
   override def zero: Byte = 0
   override def plus[B](left: Byte, right: B)(implicit c: Convertible[B, Byte]): Byte =

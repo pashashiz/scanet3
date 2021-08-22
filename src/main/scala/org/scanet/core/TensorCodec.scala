@@ -10,9 +10,9 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 
 case class TensorBuffer[A: TensorType](buf: ByteBuffer) {
-  val coder: TensorCoder[A] = TensorType[A].coder
-  def read(pos: Int): A = coder.read(buf, pos)
-  def write(src: Array[A]): Unit = coder.write(src, buf)
+  val codec: TensorCodec[A] = TensorType[A].codec
+  def read(pos: Int): A = codec.read(buf, pos)
+  def write(src: Array[A]): Unit = codec.write(src, buf)
   def writeBytes(src: Array[Byte]): Unit = buf.put(src).rewind()
 }
 
@@ -21,14 +21,14 @@ object TensorBuffer {
     TensorBuffer[A](RawTensors.nativeMemoryOf(rawTensor))
 }
 
-trait TensorCoder[A] {
+trait TensorCodec[A] {
 
   def write(src: Array[A], dest: ByteBuffer): Unit
   def read(src: ByteBuffer, pos: Int): A
   def sizeOf(elements: Int): Int
 }
 
-class FloatTensorCoder extends TensorCoder[Float] {
+object FloatTensorCodec extends TensorCodec[Float] {
 
   override def read(src: ByteBuffer, pos: Int): Float = src.getFloat(pos * 4)
 
@@ -39,7 +39,7 @@ class FloatTensorCoder extends TensorCoder[Float] {
   def sizeOf(elements: Int): Int = elements * 4
 }
 
-class DoubleTensorCoder extends TensorCoder[Double] {
+object DoubleTensorCodec extends TensorCodec[Double] {
 
   override def read(src: ByteBuffer, pos: Int): Double = src.getDouble(pos * 8)
 
@@ -50,7 +50,7 @@ class DoubleTensorCoder extends TensorCoder[Double] {
   def sizeOf(elements: Int): Int = elements * 8
 }
 
-class IntTensorCoder extends TensorCoder[Int] {
+object IntTensorCodec extends TensorCodec[Int] {
 
   override def read(src: ByteBuffer, pos: Int): Int = src.getInt(pos * 4)
 
@@ -61,7 +61,7 @@ class IntTensorCoder extends TensorCoder[Int] {
   def sizeOf(elements: Int): Int = elements * 4
 }
 
-class LongTensorCoder extends TensorCoder[Long] {
+object LongTensorCodec extends TensorCodec[Long] {
 
   override def read(src: ByteBuffer, pos: Int): Long = src.getLong(pos * 8)
 
@@ -72,7 +72,7 @@ class LongTensorCoder extends TensorCoder[Long] {
   def sizeOf(elements: Int): Int = elements * 8
 }
 
-class ByteTensorCoder extends TensorCoder[Byte] {
+object ByteTensorCodec extends TensorCodec[Byte] {
 
   override def read(src: ByteBuffer, pos: Int): Byte = src.get(pos)
 
@@ -83,7 +83,7 @@ class ByteTensorCoder extends TensorCoder[Byte] {
   def sizeOf(elements: Int): Int = elements
 }
 
-class BooleanTensorCoder extends TensorCoder[Boolean] {
+object BooleanTensorCodec extends TensorCodec[Boolean] {
 
   override def read(src: ByteBuffer, pos: Int): Boolean = src.get(pos) == 1
 
@@ -94,9 +94,14 @@ class BooleanTensorCoder extends TensorCoder[Boolean] {
   def sizeOf(elements: Int): Int = elements
 }
 
-class StringTensorCoder extends TensorCoder[String] {
+object StringTensorCodec extends TensorCodec[String] {
 
-  private val pointerSize = Pointer.sizeof(classOf[TF_TString])
+  private val pointerSize = {
+    // Ensure that TensorFlow native library and classes are ready to be used
+    // so the TF_TString size would be 24 instead of 8 bytes
+    Class.forName("org.tensorflow.TensorFlow")
+    Pointer.sizeof(classOf[TF_TString])
+  }
 
   override def read(src: ByteBuffer, pos: Int): String = {
     require(
