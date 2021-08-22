@@ -1,24 +1,23 @@
 name := "scanet3"
-
 version := "0.1"
+scalaVersion := "2.12.14"
 
-scalaVersion := "2.12.11"
+resolvers ++= Seq("sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
+
+addCommandAlias("testFast", "testOnly -- -l org.scalatest.tags.Slow")
 
 addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
 // scalacOptions += "-Ymacro-annotations" // NOTE: uncomment with scala 2.13 again
 
 libraryDependencies ++= Seq(
-  // "org.typelevel" %% "spire" % "0.14.1", // NOTE: use 0.17.0-M1 with scala 2.13 again
-  // "org.typelevel" %% "cats-core" % "2.0.0",
-  "org.scala-lang" % "scala-reflect" % "2.12.11", // NOTE: remove with scala 2.13
+  "org.scala-lang" % "scala-reflect" % "2.12.14", // NOTE: remove with scala 2.13
   "org.typelevel" %% "simulacrum" % "1.0.0",
-  "org.tensorflow" % "tensorflow" % "1.15.0",
-  "org.tensorflow" % "proto" % "1.15.0",
+  "org.tensorflow" % "tensorflow-core-platform" % "0.3.2",
   "com.google.guava" % "guava" % "29.0-jre", // NOTE: needed for crc32c only, need to reimplement and remove the dependency
-  "org.apache.spark" %% "spark-core" % "3.0.0",
-  "org.apache.spark" %% "spark-sql" % "3.0.0",
-  "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
-  "org.scalatest" %% "scalatest" % "3.1.1" % "test"
+  "org.apache.spark" %% "spark-core" % "3.1.2",
+  "org.apache.spark" %% "spark-sql" % "3.1.2",
+  "org.scalacheck" %% "scalacheck" % "1.15.4" % "test",
+  "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 )
 
 scalacOptions ++= Seq(
@@ -32,11 +31,11 @@ scalacOptions ++= Seq(
   "-language:existentials"
 )
 
-parallelExecution in Test := false
-testOptions in Test ++= Seq(
+Test / parallelExecution := false
+Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
   Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 )
 
-fork in Test := true
+Test / fork := true
 javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")

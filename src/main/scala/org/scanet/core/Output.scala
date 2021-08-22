@@ -4,7 +4,7 @@ import org.scanet.core
 import org.scanet.core.Output.BuilderState._
 import org.scanet.core.Output._
 import org.scanet.math.{Floating, Numeric}
-import org.scanet.native.NativeTensorOps._
+import org.scanet.native.RawTensors._
 import org.tensorflow.{Operation, OperationBuilder}
 
 case class Output[A: TensorType](

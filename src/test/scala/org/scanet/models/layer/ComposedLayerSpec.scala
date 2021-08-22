@@ -28,10 +28,10 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers  with SharedSpar
         Array(0f, 0.1f, 0.5f, 1f, 0f))
       val result = model.result[Float].compile()
       val expected = Tensor.matrix(
-        Array(0.705357f),
-        Array(0.7701362f),
-        Array(0.76275325f),
-        Array(0.80188656f))
+        Array(0.7053571f),
+        Array(0.7701361f),
+        Array(0.7627533f),
+        Array(0.8018865f))
       result(x, Seq(w1, w2)) should be(expected)
     }
   }
@@ -61,7 +61,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers  with SharedSpar
     val w2 = Tensor.matrix(
       Array(0f, 0.1f, 0.5f, 1f))
     val loss = model.withLoss(MeanSquaredError).loss[Float].compile()
-    loss(x, y, Seq(w1, w2)) should be(Tensor.scalar(0.3399621f))
+    loss(x, y, Seq(w1, w2)) should be(Tensor.scalar(0.33996207f))
   }
 
   "calculate right loss with penalty" in {

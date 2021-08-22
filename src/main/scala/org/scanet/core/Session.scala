@@ -2,10 +2,9 @@ package org.scanet.core
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
-
 import org.scanet.core.Output.Compiled
 import org.tensorflow.op.{Scope => NativeScope}
-import org.tensorflow.{Graph, Output => NativeOutput, Session => NativeSession, Tensor => NativeTensor}
+import org.tensorflow.{Graph, RawTensor, Output => NativeOutput, Session => NativeSession}
 
 import scala.language.existentials
 import scala.util.Try
@@ -17,7 +16,7 @@ case class Runner(session: Session, feed: Map[Output[_], Tensor[_]] = Map()) {
 
   def feed(elems: (Output[_], Tensor[_])*): Runner = copy(feed = feed ++ Map(elems: _*))
 
-  def evalUnsafe(outs: Seq[Output[_]]): Seq[NativeTensor[_]] = {
+  def evalUnsafe(outs: Seq[Output[_]]): Seq[RawTensor] = {
     session.eval(outs, feed)
   }
 
@@ -68,7 +67,7 @@ class Session extends AutoCloseable {
     nGraph
   }
 
-  private[core] def eval(outs: Seq[Output[_]], feed: Map[Output[_], Tensor[_]]): Seq[NativeTensor[_]] = {
+  private[core] def eval(outs: Seq[Output[_]], feed: Map[Output[_], Tensor[_]]): Seq[RawTensor] = {
     // with side effect, all compiled options are stored in context cache
     val nativeOutputs = outs.map(out => compile(out))
     val fed = feed.foldLeft(nSession.runner)((runner, entry) => {
@@ -82,7 +81,7 @@ class Session extends AutoCloseable {
       }
     })
     val fetched = nativeOutputs.foldLeft(fed)((runner, output) => runner.fetch(output))
-    fetched.run().asScala.toList
+    fetched.run().asScala.map(_.asRawTensor()).toList
   }
 
   override def close(): Unit = nSession.close()
@@ -140,7 +139,7 @@ object Session {
         override def eval(runner: Runner, value: Out1[T1]): out1.Materialized[T1] = {
           val outputs = out1.outputToSeq(value)
           val tensors = runner.evalUnsafe(outputs)
-            .map(n => Tensor.apply[T1](n.asInstanceOf[NativeTensor[T1]]))
+            .map(n => Tensor.wrap[T1](n))
           out1.toMaterialized(tensors)
         }
         override def unwrap(value: Out1[T1]): Seq[Output[_]] = {
@@ -161,9 +160,9 @@ object Session {
           val seq2 = out2.outputToSeq(value._2)
           val results = runner.evalUnsafe(seq1 ++ seq2)
           val tensors1 = results.take(seq1.size)
-            .map(n => Tensor.apply[T1](n.asInstanceOf[NativeTensor[T1]]))
+            .map(n => Tensor.wrap[T1](n))
           val tensors2 = results.slice(seq1.size, seq1.size + seq2.size)
-            .map(n => Tensor.apply[T2](n.asInstanceOf[NativeTensor[T2]]))
+            .map(n => Tensor.wrap[T2](n))
           (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2))
         }
 
@@ -188,11 +187,11 @@ object Session {
           val seq3 = out3.outputToSeq(value._3)
           val results = runner.evalUnsafe(seq1 ++ seq2 ++ seq3)
           val tensors1 = results.take(seq1.size)
-            .map(n => Tensor.apply[T1](n.asInstanceOf[NativeTensor[T1]]))
+            .map(n => Tensor.wrap[T1](n))
           val tensors2 = results.slice(seq1.size, seq1.size + seq2.size)
-            .map(n => Tensor.apply[T2](n.asInstanceOf[NativeTensor[T2]]))
+            .map(n => Tensor.wrap[T2](n))
           val tensors3 = results.slice(seq1.size + seq2.size, seq1.size + seq2.size + seq3.size)
-            .map(n => Tensor.apply[T3](n.asInstanceOf[NativeTensor[T3]]))
+            .map(n => Tensor.wrap[T3](n))
           (out1.toMaterialized(tensors1), out2.toMaterialized(tensors2), out3.toMaterialized(tensors3))
         }
 

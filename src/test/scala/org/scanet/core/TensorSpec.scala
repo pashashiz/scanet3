@@ -1,13 +1,13 @@
 package org.scanet.core
 
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scanet.math.Generator.uniform
-import org.scanet.test.CustomMatchers
-import org.scanet.math.Numeric.syntax._
-import org.scanet.math.Dist.syntax._
-import org.scanet.core.syntax._
 import org.scanet.core.Slice.syntax.::
 import org.scanet.core.TensorType.IntTag
+import org.scanet.core.syntax._
+import org.scanet.math.Dist.syntax._
+import org.scanet.math.Generator.uniform
+import org.scanet.math.Numeric.syntax._
+import org.scanet.test.CustomMatchers
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -305,24 +305,6 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
     Tensor.fromBytes[Int](bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
   }
 
-  "String tensor" should "be serialized to bytes array" in {
-    val bytes = Array[Byte](
-      0, 0, 0, 0, 0, 0, 0, 0,
-      3, 0, 0, 0, 0, 0, 0, 0,
-      2, 97, 98,
-      1, 99)
-    Tensor.vector[String]("ab", "c").toBytes should be(bytes)
-  }
-
-  it should "be deserialized from bytes array" in {
-    val bytes = Array[Byte](
-      0, 0, 0, 0, 0, 0, 0, 0,
-      3, 0, 0, 0, 0, 0, 0, 0,
-      2, 97, 98,
-      1, 99)
-    Tensor.fromBytes[String](bytes, Shape(2)) should be(Tensor.vector[String]("ab", "c"))
-  }
-
   "tensor with view" should "be compacted when serialized to bytes array" in {
     val bytes = Array[Byte](
       0, 0, 0, 0,
@@ -336,5 +318,4 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
       7, 0, 0, 0)
     Tensor.fromBytesUntyped(IntTag, bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
   }
-
 }

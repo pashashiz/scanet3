@@ -200,7 +200,7 @@ class MathExtraOpSpec extends AnyWordSpec with Matchers {
   "sigmoid" should {
     "return a result of sigmoid function" in {
       Tensor.vector(1.0f, 5.0f, 10.0f).const.sigmoid.eval should
-        be(Tensor.vector(0.7310586f, 0.9933072f, 0.9999546f))
+        be(Tensor.vector(0.7310586f, 0.9933071f, 0.9999546f))
     }
   }
 

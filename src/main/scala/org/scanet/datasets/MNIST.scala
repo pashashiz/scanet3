@@ -70,11 +70,11 @@ object MNIST {
   }
 
   private def downloadOrCached(name: String): Path = {
-    val resource = Channels.newChannel(new URL(s"http://yann.lecun.com/exdb/mnist/$name").openStream())
     val dir = Paths.get(System.getProperty("user.home"), ".scanet", "cache", "mnist")
     Files.createDirectories(dir)
     val file = dir.resolve(name)
     if (!Files.exists(file)) {
+      val resource = Channels.newChannel(new URL(s"https://ossci-datasets.s3.amazonaws.com/mnist/$name").openStream())
       Files.createFile(file)
       FileChannel.open(file, WRITE).transferFrom(resource, 0, Long.MaxValue)
       file
