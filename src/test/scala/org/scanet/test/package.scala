@@ -2,7 +2,6 @@ package org.scanet
 
 import java.io.{ByteArrayOutputStream, InputStream}
 
-
 package object test {
 
   def resourceAsStream(path: String): InputStream =

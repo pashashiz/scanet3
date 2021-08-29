@@ -12,10 +12,11 @@ trait Datasets {
 
   lazy val linearFunction: RDD[Array[Float]] = {
     spark.read
-      .schema(StructType(Array(
-        StructField("x", FloatType, nullable = false),
-        StructField("y", FloatType, nullable = false)
-      )))
+      .schema(
+        StructType(
+          Array(
+            StructField("x", FloatType, nullable = false),
+            StructField("y", FloatType, nullable = false))))
       .csv(resource("linear_function_1.scv"))
       .rdd
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1)))
@@ -25,11 +26,12 @@ trait Datasets {
 
   lazy val logisticRegression: RDD[Array[Float]] = {
     spark.read
-      .schema(StructType(Array(
-        StructField("x1", FloatType, nullable = false),
-        StructField("x2", FloatType, nullable = false),
-        StructField("y", FloatType, nullable = false)
-      )))
+      .schema(
+        StructType(
+          Array(
+            StructField("x1", FloatType, nullable = false),
+            StructField("x2", FloatType, nullable = false),
+            StructField("y", FloatType, nullable = false))))
       .csv(resource("logistic_regression_1.scv"))
       .rdd
       .map(row => Array[Float](row.getFloat(0), row.getFloat(1), row.getFloat(2)))
@@ -50,7 +52,8 @@ trait Datasets {
     (training.coalesce(1).cache(), test.coalesce(1).cache())
   })
 
-  def MNIST(trainingSize: Int = 60000, testSize: Int = 10000) = MNISTMemoized(trainingSize, testSize)
+  def MNIST(trainingSize: Int = 60000, testSize: Int = 10000) =
+    MNISTMemoized(trainingSize, testSize)
 
   def resource(path: String): String = {
     getClass.getClassLoader.getResource(path).toString

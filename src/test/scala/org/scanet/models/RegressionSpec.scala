@@ -72,4 +72,3 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     LogisticRegression.toString should be("LogisticRegression")
   }
 }
-

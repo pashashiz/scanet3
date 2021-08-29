@@ -17,7 +17,8 @@ trait RegressionBehaviours {
   def successfullyTrainedWith(alg: Algorithm): Unit = {
     "be successfully trained" in {
       val ds = facebookComments
-      val trained = ds.train(LinearRegression)
+      val trained = ds
+        .train(LinearRegression)
         .loss(MeanSquaredError)
         .using(SGD())
         .batch(1000)
@@ -32,7 +33,12 @@ trait RegressionBehaviours {
 }
 
 @Slow
-class RegressionBenchmark extends AnyWordSpec with CustomMatchers with SharedSpark with Datasets with RegressionBehaviours {
+class RegressionBenchmark
+    extends AnyWordSpec
+    with CustomMatchers
+    with SharedSpark
+    with Datasets
+    with RegressionBehaviours {
 
   "Linear regression should be minimized" when {
 

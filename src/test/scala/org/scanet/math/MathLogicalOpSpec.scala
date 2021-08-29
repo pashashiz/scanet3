@@ -4,11 +4,13 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
+import scala.collection.immutable.Seq
 
 class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
 
   "element-wise equality" should "work on tensors with same dimensions" in {
-    (Tensor.vector(1, 2, 3).const :== Tensor.vector(1, 2, 5).const).eval should be(Tensor.vector(true, true, false))
+    (Tensor.vector(1, 2, 3).const :== Tensor.vector(1, 2, 5).const).eval should be(
+      Tensor.vector(true, true, false))
   }
 
   it should "support broadcasting" in {
@@ -16,13 +18,14 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :== Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot check for equality tensors with shapes (2, 2) :== (3)"
   }
 
   "element-wise non-equality" should "work on tensors with same dimensions" in {
-    (Tensor.vector(1, 2, 3).const :!= Tensor.vector(1, 2, 5).const).eval should be(Tensor.vector(false, false, true))
+    (Tensor.vector(1, 2, 3).const :!= Tensor.vector(1, 2, 5).const).eval should be(
+      Tensor.vector(false, false, true))
   }
 
   it should "support broadcasting" in {
@@ -30,35 +33,39 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :!= Tensor.vector(1, 2, 3).const).eval
     } should have message "requirement failed: cannot check for equality tensors with shapes (2, 2) :== (3)"
   }
 
   "equality" should "return true when tensors are equal" in {
-    (Tensor.vector(1, 2, 3).const === Tensor.vector(1, 2, 3).const).eval should be(Tensor.scalar(true))
+    (Tensor.vector(1, 2, 3).const === Tensor.vector(1, 2, 3).const).eval should be(
+      Tensor.scalar(true))
   }
 
   it should "return false when tensors are not equal" in {
-    (Tensor.vector(1, 2, 3).const === Tensor.vector(1, 2, 4).const).eval should be(Tensor.scalar(false))
+    (Tensor.vector(1, 2, 3).const === Tensor.vector(1, 2, 4).const).eval should be(
+      Tensor.scalar(false))
   }
 
   it should "fail when tensors have different shapes" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(1, 2, 3).const === 1.const).eval should be(Tensor.vector(true, false, false))
     } should have message "requirement failed: cannot check equality tensors with different shapes (3) === ()"
   }
 
   "non-equality" should "return false when tensors are equal" in {
-    (Tensor.vector(1, 2, 3).const !== Tensor.vector(1, 2, 3).const).eval should be(Tensor.scalar(false))
+    (Tensor.vector(1, 2, 3).const !== Tensor.vector(1, 2, 3).const).eval should be(
+      Tensor.scalar(false))
   }
 
   it should "return true when tensors are not equal" in {
-    (Tensor.vector(1, 2, 3).const !== Tensor.vector(1, 2, 4).const).eval should be(Tensor.scalar(true))
+    (Tensor.vector(1, 2, 3).const !== Tensor.vector(1, 2, 4).const).eval should be(
+      Tensor.scalar(true))
   }
 
   it should "fail when tensors have different shapes" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(1, 2, 3).const !== 1.const).eval should be(Tensor.vector(true, false, false))
     } should have message "requirement failed: cannot check non-equality tensors with different shapes (3) !== ()"
   }
@@ -72,15 +79,17 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "support reducing along matrix columns" in {
-    Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(0)).eval should be(Tensor.vector(true, false))
+    Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(0)).eval should be(
+      Tensor.vector(true, false))
   }
 
   it should "support reducing along matrix rows" in {
-    Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(1)).eval should be(Tensor.vector(false, true))
+    Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(1)).eval should be(
+      Tensor.vector(false, true))
   }
 
   it should "fail when given axis is out of bound" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(2)).eval
     } should have message "requirement failed: the number of removed axises should be less or equal to rank 2, but was (2)"
   }
@@ -94,21 +103,24 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "support reducing along matrix columns" in {
-    Tensor.matrix(Array(false, false), Array(true, true)).const.any(Seq(0)).eval should be(Tensor.vector(true, true))
+    Tensor.matrix(Array(false, false), Array(true, true)).const.any(Seq(0)).eval should be(
+      Tensor.vector(true, true))
   }
 
   it should "support reducing along matrix rows" in {
-    Tensor.matrix(Array(false, false), Array(true, true)).const.any(Seq(1)).eval should be(Tensor.vector(false, true))
+    Tensor.matrix(Array(false, false), Array(true, true)).const.any(Seq(1)).eval should be(
+      Tensor.vector(false, true))
   }
 
   it should "fail when given axis is out of bound" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.matrix(Array(true, false), Array(true, true)).const.any(Seq(2)).eval
     } should have message "requirement failed: the number of removed axises should be less or equal to rank 2, but was (2)"
   }
 
   "greater comparison" should "work element wise" in {
-    (Tensor.vector(1, 2, 3).const > Tensor.vector(3, 2, 1).const).eval should be(Tensor.vector(false, false, true))
+    (Tensor.vector(1, 2, 3).const > Tensor.vector(3, 2, 1).const).eval should be(
+      Tensor.vector(false, false, true))
   }
 
   it should "support broadcasting" in {
@@ -116,13 +128,14 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when tensors have different shapes" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(1, 2, 3).const > Tensor.vector(2, 3).const).eval
     } should have message "requirement failed: cannot compare tensors with shapes (3) > (2)"
   }
 
   "greater or equal comparison" should "work element wise" in {
-    (Tensor.vector(1, 2, 3).const >= Tensor.vector(3, 2, 1).const).eval should be(Tensor.vector(false, true, true))
+    (Tensor.vector(1, 2, 3).const >= Tensor.vector(3, 2, 1).const).eval should be(
+      Tensor.vector(false, true, true))
   }
 
   it should "support broadcasting" in {
@@ -130,13 +143,14 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when tensors have different shapes" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(1, 2, 3).const >= Tensor.vector(2, 3).const).eval
     } should have message "requirement failed: cannot compare tensors with shapes (3) >= (2)"
   }
 
   "less comparison" should "work element wise" in {
-    (Tensor.vector(1, 2, 3).const < Tensor.vector(3, 2, 1).const).eval should be(Tensor.vector(true, false, false))
+    (Tensor.vector(1, 2, 3).const < Tensor.vector(3, 2, 1).const).eval should be(
+      Tensor.vector(true, false, false))
   }
 
   it should "support broadcasting" in {
@@ -144,13 +158,14 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when tensors have different shapes" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(1, 2, 3).const < Tensor.vector(2, 3).const).eval
     } should have message "requirement failed: cannot compare tensors with shapes (3) < (2)"
   }
 
   "less or equal comparison" should "work element wise" in {
-    (Tensor.vector(1, 2, 3).const <= Tensor.vector(3, 2, 1).const).eval should be(Tensor.vector(true, true, false))
+    (Tensor.vector(1, 2, 3).const <= Tensor.vector(3, 2, 1).const).eval should be(
+      Tensor.vector(true, true, false))
   }
 
   it should "support broadcasting" in {
@@ -158,35 +173,39 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when tensors have different shapes" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(1, 2, 3).const <= Tensor.vector(2, 3).const).eval
     } should have message "requirement failed: cannot compare tensors with shapes (3) <= (2)"
   }
 
   "logical and" should "work on tensors with same dimensions" in {
-    (Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval should be(Tensor.vector(true, false))
+    (Tensor.vector(true, false).const && Tensor.vector(true, true).const).eval should be(
+      Tensor.vector(true, false))
   }
 
   it should "support broadcasting" in {
-    (Tensor.vector(true, false).const && Tensor.vector(true).const).eval should be(Tensor.vector(true, false))
+    (Tensor.vector(true, false).const && Tensor.vector(true).const).eval should be(
+      Tensor.vector(true, false))
   }
 
   it should "fail when tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(true, false).const && Tensor.vector(true, true, true).const).eval
     } should have message "requirement failed: cannot logically AND tensors with shapes (2) && (3)"
   }
 
   "logical or" should "work on tensors with same dimensions" in {
-    (Tensor.vector(true, false).const || Tensor.vector(true, true).const).eval should be(Tensor.vector(true, true))
+    (Tensor.vector(true, false).const || Tensor.vector(true, true).const).eval should be(
+      Tensor.vector(true, true))
   }
 
   it should "support broadcasting" in {
-    (Tensor.vector(true, false).const || Tensor.vector(true).const).eval should be(Tensor.vector(true, true))
+    (Tensor.vector(true, false).const || Tensor.vector(true).const).eval should be(
+      Tensor.vector(true, true))
   }
 
   it should "fail when tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(true, false).const || Tensor.vector(true, true, true).const).eval
     } should have message "requirement failed: cannot logically OR tensors with shapes (2) || (3)"
   }
@@ -196,15 +215,17 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   }
 
   "logical xor" should "work on tensors with same dimensions" in {
-    (Tensor.vector(true, false).const ^ Tensor.vector(true, true).const).eval should be(Tensor.vector(false, true))
+    (Tensor.vector(true, false).const ^ Tensor.vector(true, true).const).eval should be(
+      Tensor.vector(false, true))
   }
 
   it should "support broadcasting" in {
-    (Tensor.vector(true, false).const ^ Tensor.vector(true).const).eval should be(Tensor.vector(false, true))
+    (Tensor.vector(true, false).const ^ Tensor.vector(true).const).eval should be(
+      Tensor.vector(false, true))
   }
 
   it should "fail when tensors have incompatible dimensions" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       (Tensor.vector(true, false).const ^ Tensor.vector(true, true, true).const).eval
     } should have message "requirement failed: cannot logically XOR tensors with shapes (2) ^ (3)"
   }

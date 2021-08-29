@@ -8,7 +8,7 @@ class BufferTest extends AnyFlatSpec with Matchers {
 
   "buffer" should "have toString" in {
     Buffer.wrap(Array(1, 2, 3)).position(1).toString should
-      be("Buffer[Int](capacity=3, position=1, limit=3, direct=false)[2, 3]")
+    be("Buffer[Int](capacity=3, position=1, limit=3, direct=false)[2, 3]")
   }
 
   it should "be converted into array" in {

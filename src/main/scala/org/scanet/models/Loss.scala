@@ -1,31 +1,33 @@
 package org.scanet.models
 
-import org.scanet.core.{Output, TensorType}
+import org.scanet.core.{Expr, TensorType}
 import org.scanet.math.{Floating, Numeric}
 import org.scanet.math.syntax._
 
 trait Loss {
-  def build[A: Numeric: Floating: TensorType]
-  (predicted: Output[A], expected: Output[A]): Output[A]
+  def build[A: Numeric: Floating: TensorType](predicted: Expr[A], expected: Expr[A]): Expr[A]
 }
 
 object Loss {
 
   case object Identity extends Loss {
-    override def build[A: Numeric: Floating: TensorType]
-    (predicted: Output[A], expected: Output[A]): Output[A] = predicted
+    override def build[A: Numeric: Floating: TensorType](
+        predicted: Expr[A],
+        expected: Expr[A]): Expr[A] = predicted
   }
 
   case object MeanSquaredError extends Loss {
-    override def build[A: Numeric: Floating: TensorType]
-    (predicted: Output[A], expected: Output[A]): Output[A] = {
+    override def build[A: Numeric: Floating: TensorType](
+        predicted: Expr[A],
+        expected: Expr[A]): Expr[A] = {
       (predicted - expected).sqr.mean
     }
   }
 
   case object BinaryCrossentropy extends Loss {
-    override def build[A: Numeric: Floating: TensorType]
-    (predicted: Output[A], expected: Output[A]): Output[A] = {
+    override def build[A: Numeric: Floating: TensorType](
+        predicted: Expr[A],
+        expected: Expr[A]): Expr[A] = {
       val one = 1.0f.const.cast[A]
       val epsilon = 1e-8f.const.cast[A]
       // if we expect 1 and
@@ -41,8 +43,9 @@ object Loss {
   }
 
   case object CategoricalCrossentropy extends Loss {
-    override def build[A: Numeric : Floating : TensorType]
-    (predicted: Output[A], expected: Output[A]): Output[A] = {
+    override def build[A: Numeric: Floating: TensorType](
+        predicted: Expr[A],
+        expected: Expr[A]): Expr[A] = {
       val epsilon = 1e-8f.const.cast[A]
       // if we expect 1 and
       // - predicted 1 - then loss 0

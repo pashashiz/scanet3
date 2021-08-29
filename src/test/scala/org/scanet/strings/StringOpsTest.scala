@@ -33,7 +33,8 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
   }
 
   "toNumber" should "parse string values" in {
-    Tensor.vector("1.1", "2.2", "3.3").const.toNumber[Float].eval should be(Tensor.vector(1.1f, 2.2f, 3.3f))
+    Tensor.vector("1.1", "2.2", "3.3").const.toNumber[Float].eval should be(
+      Tensor.vector(1.1f, 2.2f, 3.3f))
   }
 
   "substring" should "calculate substrings by given pos and len" in {
@@ -69,11 +70,11 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
       Array(9, 10),
       Array(11, 12),
       Array(13, 14),
-      Array(15, 16)
-    )
+      Array(15, 16))
 
     val formatted = matrix.const.format("matrix: {}").eval
-    formatted should be(Tensor.scalar("matrix: [[1 2]\n [3 4]\n [5 6]\n ...\n [11 12]\n [13 14]\n [15 16]]"))
+    formatted should be(
+      Tensor.scalar("matrix: [[1 2]\n [3 4]\n [5 6]\n ...\n [11 12]\n [13 14]\n [15 16]]"))
   }
 
   it should "print and return the same vector" in {
@@ -81,13 +82,9 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "print graph vertices" in {
-    val a = Tensor.matrix(
-      Array(1, 2),
-      Array(1, 2))
+    val a = Tensor.matrix(Array(1, 2), Array(1, 2))
     val b = Tensor.vector(1, 2)
-    val c = Tensor.matrix(
-      Array(2, 4),
-      Array(2, 4))
+    val c = Tensor.matrix(Array(2, 4), Array(2, 4))
 
     val file = "test_" + System.currentTimeMillis() + ".txt"
     val out = ToFile(file)
@@ -117,7 +114,7 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
   }
 
   "assert" should "throw when current condition is false" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       val a = Tensor.vector(1, 2).const
       val b = Tensor.vector(3, 4).const
       val c = Tensor.vector(5, 6).const
@@ -135,7 +132,7 @@ class StringOpsTest extends AnyFlatSpec with Matchers {
   }
 
   "assert that" should "should fail when dependent condition is false" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       val a = Tensor.vector(1, 2).const
       val b = 0.const
       val c = (a div b) << assertThat(b gt 0.const, "b was {}, should be > 0", b)

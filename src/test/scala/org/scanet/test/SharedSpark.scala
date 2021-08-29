@@ -13,10 +13,10 @@ trait SharedSpark extends BeforeAndAfterAll {
   def spark: SparkSession = _spark
   def sc: SparkContext = _spark.sparkContext
 
-  protected implicit def reuseContextIfPossible: Boolean = false
+  implicit protected def reuseContextIfPossible: Boolean = false
 
   def appID: String = (this.getClass.getName
-    + math.floor(math.random * 10E4).toLong.toString)
+    + math.floor(math.random * 10e4).toLong.toString)
 
   def conf = {
     new SparkConf()
@@ -48,7 +48,7 @@ trait SharedSpark extends BeforeAndAfterAll {
   }
 
   def stop(sc: SparkSession) {
-    Option(sc).foreach {ctx => ctx.stop()}
+    Option(sc).foreach { ctx => ctx.stop() }
     System.clearProperty("spark.driver.port")
   }
 }

@@ -12,21 +12,20 @@ case class View(src: IndexesSource, originalShape: Shape, projection: Projection
   def isScalar: Boolean = shape.isScalar
 
   def narrow(other: Projection): View = {
-    require(other.rank <= shape.rank,
+    require(
+      other.rank <= shape.rank,
       s"projection $other has rank '${other.rank}' which is greater than " +
-        s"shape's rank '${shape.rank}'")
-    val adjustedRight = other
-      .alignRight(shape.rank, ::.build)
-      .adjustTo(shape)
+      s"shape's rank '${shape.rank}'")
+    val adjustedRight = other.alignRight(shape.rank, ::.build).adjustTo(shape)
     val adjusted = adjustedRight.alignLeft(originalShape.rank, 0.build)
-    require(shapeFull.isInBound(adjusted),
+    require(
+      shapeFull.isInBound(adjusted),
       s"projection $other is out of bound, should fit shape $shape")
     copy(projection = projection.narrow(adjusted))
   }
 
   def reshape(into: Shape): View = {
-    require(shape.power == into.power,
-      s"shape $shape cannot be reshaped into $into")
+    require(shape.power == into.power, s"shape $shape cannot be reshaped into $into")
     if (originalShape.power == shape.power && shape.power == projection.power) {
       View(into)
     } else {
@@ -36,7 +35,11 @@ case class View(src: IndexesSource, originalShape: Shape, projection: Projection
 
   def positions: Array[Int] = {
     val indexes = src.indexes
-    def loop(dims: Seq[(Slice, Int)], absPos: Int, acc: Array[Int], seqPos: Int): (Array[Int], Int) = {
+    def loop(
+        dims: Seq[(Slice, Int)],
+        absPos: Int,
+        acc: Array[Int],
+        seqPos: Int): (Array[Int], Int) = {
       if (dims.isEmpty) {
         acc(seqPos) = indexes(absPos)
         (acc, seqPos + 1)

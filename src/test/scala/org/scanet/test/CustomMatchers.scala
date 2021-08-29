@@ -9,13 +9,21 @@ trait CustomMatchers extends Matchers {
 
   def haveShape(shape: Shape): Matcher[Tensor[_]] =
     tensor => {
-      MatchResult(tensor.view.shape == shape, s"${tensor.view} was not equal to $shape", "", Vector(tensor, shape))
+      MatchResult(
+        tensor.view.shape == shape,
+        s"${tensor.view} was not equal to $shape",
+        "",
+        Vector(tensor, shape))
     }
 
   def containData[A](data: Array[A]): Matcher[Tensor[A]] =
     tensor => {
       val existing = tensor.toArray
-      MatchResult(existing sameElements data, s"data ${existing.mkString(", ")} was not equal to data ${data.mkString(", ")}", "", Vector(existing, data))
+      MatchResult(
+        existing sameElements data,
+        s"data ${existing.mkString(", ")} was not equal to data ${data.mkString(", ")}",
+        "",
+        Vector(existing, data))
     }
 
   def beWithinTolerance(mean: Float, tolerance: Float): Matcher[Float] =

@@ -166,6 +166,8 @@ object Shape {
   def apply(dims: Int*): Shape = Shape(dims.toList)
 
   def of(array: Array[Long]): Shape = Shape(array.map(_.toInt).toList)
+
+  def scalar: Shape = Shape()
 }
 
 

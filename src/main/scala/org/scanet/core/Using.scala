@@ -1,6 +1,6 @@
 package org.scanet.core
 
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 object Using {
   def resource[A <: AutoCloseable, B](resource: A)(block: A => B): B = {

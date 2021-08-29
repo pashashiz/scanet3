@@ -35,11 +35,13 @@ object ReverseAD {
         if (node.isRoot) {
           1.0f
         } else {
-          node.outputs.map(parent => {
-            val localGrad = parent.to.value.localGrads(node.value)
-            val parentGrad = gradRec(parent.to)
-            localGrad * parentGrad
-          }).sum
+          node.outputs
+            .map(parent => {
+              val localGrad = parent.to.value.localGrads(node.value)
+              val parentGrad = gradRec(parent.to)
+              localGrad * parentGrad
+            })
+            .sum
         }
       }
       graph.find(input.id).map(gradRec)
@@ -113,6 +115,3 @@ object ReverseAD {
     println(s"sample 4: ${f.eval}, ${f.grad(x)}") // 64, 48
   }
 }
-
-
-

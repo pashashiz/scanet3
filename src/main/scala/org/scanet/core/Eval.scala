@@ -2,15 +2,15 @@ package org.scanet.core
 
 import org.scanet.core.Session.withing
 
-trait InstantEvalOps[M] {
+trait Eval[M] {
   def eval: M
   def display(dir: String = ""): Unit
 }
 
-object InstantEvalOps {
+object Eval {
   trait Syntax {
-    implicit def canInstantlyEval[A](out: A)(implicit ce: CanEval[A]): InstantEvalOps[ce.Materialized] =
-      new InstantEvalOps[ce.Materialized] {
+    implicit def canEval[A](out: A)(implicit ce: CanEval[A]): Eval[ce.Materialized] =
+      new Eval[ce.Materialized] {
         override def eval: ce.Materialized = withing(session => ce.eval(session.runner, out))
         override def display(dir: String): Unit = TensorBoard(dir).addGraph(ce.unwrap(out): _*)
       }

@@ -3,8 +3,7 @@ package org.scanet.core
 import simulacrum.typeclass
 
 case class Slice(from: Int = 0, until: Int = -1, isRange: Boolean) {
-  require(from < until || until == -1,
-    s"from $from should be less than until: $until")
+  require(from < until || until == -1, s"from $from should be less than until: $until")
   def isOpenedBoth: Boolean = isOpenedLeft && isOpenedRight
   def isOpenedLeft: Boolean = from == 0
   def isOpenedRight: Boolean = until == -1
@@ -57,7 +56,6 @@ case class Unbound()
 trait UnboundSlice extends CanBuildSliceFrom[Unbound] {
   override def build(a: Unbound): Slice = Slice(0, -1, isRange = true)
 }
-
 
 object Slice {
   trait Instances {
