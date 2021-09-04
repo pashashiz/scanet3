@@ -1,10 +1,9 @@
-package org.scanet.math.logical
+package org.scanet.math
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scanet.core.Tensor
 import org.scanet.math.syntax._
-
 import scala.collection.immutable.Seq
 
 class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
