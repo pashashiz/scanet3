@@ -12,12 +12,17 @@ import org.scanet.optimizers.{Adam, Tensor2Iterator}
 import org.scanet.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  with SharedSpark with Datasets {
+class FullyConnectedNeuralNetworkSpec
+    extends AnyFlatSpec
+    with CustomMatchers
+    with SharedSpark
+    with Datasets {
 
   "fully connected neural network with 2 layers (4, 1)" should "minimize logistic regression" in {
-    val ds = logisticRegression.map(a => Array(a(0)/100, a(1)/100, a(2)))
+    val ds = logisticRegression.map(a => Array(a(0) / 100, a(1) / 100, a(2)))
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-    val trained = ds.train(model)
+    val trained = ds
+      .train(model)
       .loss(BinaryCrossentropy)
       .using(Adam(0.1f))
       .initWith(s => Tensor.zeros(s))
@@ -30,10 +35,7 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
     loss(x, y).toScalar should be <= 0.4f
     accuracy(trained, ds) should be >= 0.9f
     val predictor = trained.result.compile()
-    val input = Tensor.matrix(
-      Array(0.3462f, 0.7802f),
-      Array(0.6018f, 0.8630f),
-    )
+    val input = Tensor.matrix(Array(0.3462f, 0.7802f), Array(0.6018f, 0.8630f))
     predictor(input).const.round.eval should be(Tensor.matrix(Array(0f), Array(1f)))
   }
 
@@ -55,7 +57,8 @@ class FullyConnectedNeuralNetworkSpec extends AnyFlatSpec with CustomMatchers  w
   "MNIST dataset" should "be trained with Softmax" ignore {
     val (trainingDs, testDs) = MNIST()
     val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
-    val trained = trainingDs.train(model)
+    val trained = trainingDs
+      .train(model)
       .loss(CategoricalCrossentropy)
       .using(Adam(0.01f))
       .batch(1000)

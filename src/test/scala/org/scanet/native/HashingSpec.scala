@@ -15,11 +15,11 @@ class HashingSpec extends AnyFlatSpec with Matchers {
   }
 
   "crc32" should "compute right hash" in {
-    crc32("c".getBytes()) should be (112844655)
+    crc32("c".getBytes()) should be(112844655)
   }
 
   "crc32c" should "compute right hash" in {
-    crc32c("c".getBytes()) should be (552285127)
+    crc32c("c".getBytes()) should be(552285127)
   }
 
   "crc32c masked" should "compute right hash" in {

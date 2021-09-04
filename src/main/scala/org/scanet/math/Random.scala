@@ -77,9 +77,9 @@ object Dist {
     implicit def distByte: Dist[Byte] = new DistByte {}
   }
 
-  trait Syntax extends Instances with Dist.ToDistOps
+  trait AllSyntax extends Instances with Dist.ToDistOps
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }
 
 trait DistDouble extends Dist[Double] {

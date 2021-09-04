@@ -7,6 +7,7 @@ import org.scanet.math.syntax._
 import org.scanet.syntax.placeholder
 import org.scanet.test.CustomMatchers
 
+import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 
 class SessionSpec extends AnyFlatSpec with CustomMatchers {
@@ -20,30 +21,30 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
   it should "eval a sequence of outputs" in {
     withing(session => {
       // NOTE: we need to explicitly pass OutputSeq[Int]
-      // which is an alias for Seq[Output[Int]]
+      // which is an alias for Seq[Expr[Int]]
       session.runner.eval[OutputSeq[Int]](Seq(5.const, 10.const)) should
-        be(Seq(scalar(5), scalar(10)))
+      be(Seq(scalar(5), scalar(10)))
     })
   }
 
   it should "eval a tuple2 of outputs" in {
     withing(session => {
       session.runner.eval((5.const, 10.const)) should
-        be((scalar(5), scalar(10)))
+      be((scalar(5), scalar(10)))
     })
   }
 
   it should "eval a tuple2 with one output and sequence of outputs" in {
     withing(session => {
-      session.runner.eval[(Output[Int], OutputSeq[Int])]((1.const, Seq(5.const, 10.const))) should
-        be((scalar(1), Seq(scalar(5), scalar(10))))
+      session.runner.eval[(Expr[Int], OutputSeq[Int])]((1.const, Seq(5.const, 10.const))) should
+      be((scalar(1), Seq(scalar(5), scalar(10))))
     })
   }
 
   it should "eval a tuple3 of outputs" in {
     withing(session => {
       session.runner.eval((1.const, 5f.const, 10.const)) should
-        be((scalar(1), scalar(5f), scalar(10)))
+      be((scalar(1), scalar(5f), scalar(10)))
     })
   }
 
@@ -52,9 +53,7 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
       val a = placeholder[Int]()
       val b = 10.const
       val c = a + b
-      session.runner
-        .feed(a -> scalar(5))
-        .eval(c) should be(scalar(15))
+      session.runner.feed(a -> scalar(5)).eval(c) should be(scalar(15))
     })
   }
 

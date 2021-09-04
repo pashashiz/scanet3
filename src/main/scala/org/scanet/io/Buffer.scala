@@ -4,7 +4,7 @@ import java.nio.{ByteBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, B
 
 import org.scanet.core.TensorType._
 import org.scanet.core.TensorType.syntax._
-import org.scanet.core.{TensorType, error}
+import org.scanet.core.{error, TensorType}
 
 import scala.{specialized => sp}
 
@@ -17,127 +17,127 @@ class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buf
   private def asByte: ByteBuffer = original.asInstanceOf[ByteBuffer]
 
   def slice: Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.slice(); this
+    case FloatTag  => asFloat.slice(); this
     case DoubleTag => asDouble.slice(); this
-    case LongTag => asLong.slice(); this
-    case IntTag => asInt.slice(); this
-    case ByteTag => asByte.slice(); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.slice(); this
+    case IntTag    => asInt.slice(); this
+    case ByteTag   => asByte.slice(); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def duplicate: Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.duplicate(); this
+    case FloatTag  => asFloat.duplicate(); this
     case DoubleTag => asDouble.duplicate(); this
-    case LongTag => asLong.duplicate(); this
-    case IntTag => asInt.duplicate(); this
-    case ByteTag => asByte.duplicate(); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.duplicate(); this
+    case IntTag    => asInt.duplicate(); this
+    case ByteTag   => asByte.duplicate(); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def asReadOnlyBuffer: Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.asReadOnlyBuffer(); this
+    case FloatTag  => asFloat.asReadOnlyBuffer(); this
     case DoubleTag => asDouble.asReadOnlyBuffer(); this
-    case LongTag => asLong.asReadOnlyBuffer(); this
-    case IntTag => asInt.asReadOnlyBuffer(); this
-    case ByteTag => asByte.asReadOnlyBuffer(); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.asReadOnlyBuffer(); this
+    case IntTag    => asInt.asReadOnlyBuffer(); this
+    case ByteTag   => asByte.asReadOnlyBuffer(); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def get: A = TensorType[A].tag match {
-    case FloatTag => asFloat.get().asInstanceOf[A]
+    case FloatTag  => asFloat.get().asInstanceOf[A]
     case DoubleTag => asDouble.get().asInstanceOf[A]
-    case LongTag => asLong.get().asInstanceOf[A]
-    case IntTag => asInt.get().asInstanceOf[A]
-    case ByteTag => asByte.get().asInstanceOf[A]
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.get().asInstanceOf[A]
+    case IntTag    => asInt.get().asInstanceOf[A]
+    case ByteTag   => asByte.get().asInstanceOf[A]
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def put(f: A): Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.put(f.asInstanceOf[Float]); this
+    case FloatTag  => asFloat.put(f.asInstanceOf[Float]); this
     case DoubleTag => asDouble.put(f.asInstanceOf[Double]); this
-    case LongTag => asLong.put(f.asInstanceOf[Long]); this
-    case IntTag => asInt.put(f.asInstanceOf[Int]); this
-    case ByteTag => asByte.put(f.asInstanceOf[Byte]); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.put(f.asInstanceOf[Long]); this
+    case IntTag    => asInt.put(f.asInstanceOf[Int]); this
+    case ByteTag   => asByte.put(f.asInstanceOf[Byte]); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def get(index: Int): A = TensorType[A].tag match {
-    case FloatTag => asFloat.get(index).asInstanceOf[A]
+    case FloatTag  => asFloat.get(index).asInstanceOf[A]
     case DoubleTag => asDouble.get(index).asInstanceOf[A]
-    case LongTag => asLong.get(index).asInstanceOf[A]
-    case IntTag => asInt.get(index).asInstanceOf[A]
-    case ByteTag => asByte.get(index).asInstanceOf[A]
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.get(index).asInstanceOf[A]
+    case IntTag    => asInt.get(index).asInstanceOf[A]
+    case ByteTag   => asByte.get(index).asInstanceOf[A]
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def put(index: Int, f: A): Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.put(index, f.asInstanceOf[Float]); this
+    case FloatTag  => asFloat.put(index, f.asInstanceOf[Float]); this
     case DoubleTag => asDouble.put(index, f.asInstanceOf[Double]); this
-    case LongTag => asLong.put(index, f.asInstanceOf[Long]); this
-    case IntTag => asInt.put(index, f.asInstanceOf[Int]); this
-    case ByteTag => asByte.put(index, f.asInstanceOf[Byte]); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.put(index, f.asInstanceOf[Long]); this
+    case IntTag    => asInt.put(index, f.asInstanceOf[Int]); this
+    case ByteTag   => asByte.put(index, f.asInstanceOf[Byte]); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def get(dst: Array[A]): Buffer[A] = get(dst, 0, dst.length)
 
   def put(src: Buffer[A]): Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.put(src.asFloat); this
+    case FloatTag  => asFloat.put(src.asFloat); this
     case DoubleTag => asDouble.put(src.asDouble); this
-    case LongTag => asLong.put(src.asLong); this
-    case IntTag => asInt.put(src.asInt); this
-    case ByteTag => asByte.put(src.asByte); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.put(src.asLong); this
+    case IntTag    => asInt.put(src.asInt); this
+    case ByteTag   => asByte.put(src.asByte); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def put(src: Array[A], offset: Int, length: Int): Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.put(src.asInstanceOf[Array[Float]], offset, length); this
+    case FloatTag  => asFloat.put(src.asInstanceOf[Array[Float]], offset, length); this
     case DoubleTag => asDouble.put(src.asInstanceOf[Array[Double]], offset, length); this
-    case LongTag => asLong.put(src.asInstanceOf[Array[Long]], offset, length); this
-    case IntTag => asInt.put(src.asInstanceOf[Array[Int]], offset, length); this
-    case ByteTag => asByte.put(src.asInstanceOf[Array[Byte]], offset, length); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.put(src.asInstanceOf[Array[Long]], offset, length); this
+    case IntTag    => asInt.put(src.asInstanceOf[Array[Int]], offset, length); this
+    case ByteTag   => asByte.put(src.asInstanceOf[Array[Byte]], offset, length); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def putAll(src: Array[A]): Buffer[A] = put(src, 0, src.length)
 
   def compact: Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.compact(); this
+    case FloatTag  => asFloat.compact(); this
     case DoubleTag => asDouble.compact(); this
-    case LongTag => asLong.compact(); this
-    case IntTag => asInt.compact(); this
-    case ByteTag => asByte.compact(); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.compact(); this
+    case IntTag    => asInt.compact(); this
+    case ByteTag   => asByte.compact(); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def get(dst: Array[A], offset: Int, length: Int): Buffer[A] = TensorType[A].tag match {
-    case FloatTag => asFloat.get(dst.asInstanceOf[Array[Float]], offset, length); this
+    case FloatTag  => asFloat.get(dst.asInstanceOf[Array[Float]], offset, length); this
     case DoubleTag => asDouble.get(dst.asInstanceOf[Array[Double]], offset, length); this
-    case LongTag => asLong.get(dst.asInstanceOf[Array[Long]], offset, length); this
-    case IntTag => asInt.get(dst.asInstanceOf[Array[Int]], offset, length); this
-    case ByteTag => asByte.get(dst.asInstanceOf[Array[Byte]], offset, length); this
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.get(dst.asInstanceOf[Array[Long]], offset, length); this
+    case IntTag    => asInt.get(dst.asInstanceOf[Array[Int]], offset, length); this
+    case ByteTag   => asByte.get(dst.asInstanceOf[Array[Byte]], offset, length); this
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 
   def capacity: Int = original.capacity()
 
   def position: Int = original.position()
 
-  def position(newPosition: Int): Buffer[A] = {original.position(newPosition); this}
+  def position(newPosition: Int): Buffer[A] = { original.position(newPosition); this }
 
   def limit: Int = original.limit()
 
-  def limit(newLimit: Int): Buffer[A] = {original.limit(newLimit); this}
+  def limit(newLimit: Int): Buffer[A] = { original.limit(newLimit); this }
 
-  def mark: Buffer[A] = {original.mark(); this}
+  def mark: Buffer[A] = { original.mark(); this }
 
-  def reset: Buffer[A] = {original.reset(); this}
+  def reset: Buffer[A] = { original.reset(); this }
 
-  def clear: Buffer[A] = {original.clear(); this}
+  def clear: Buffer[A] = { original.clear(); this }
 
-  def flip: Buffer[A] = {original.flip(); this}
+  def flip: Buffer[A] = { original.flip(); this }
 
-  def rewind: Buffer[A] = {original.rewind(); this}
+  def rewind: Buffer[A] = { original.rewind(); this }
 
   def remaining: Int = original.remaining()
 
@@ -178,7 +178,8 @@ class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buf
 
   def isDirect: Boolean = original.isDirect
 
-  override def toString: String = s"Buffer[${TensorType[A].show}](capacity=$capacity, position=$position, limit=$limit, direct=$isDirect)" + show()
+  override def toString: String =
+    s"Buffer[${TensorType[A].show}](capacity=$capacity, position=$position, limit=$limit, direct=$isDirect)" + show()
 
   def show(n: Int = 20): String = {
     val elements = toStream.take(n).mkString(", ")
@@ -189,16 +190,16 @@ class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buf
 
   override def equals(other: Any): Boolean = other match {
     case other: Buffer[A] => original == other.original
-    case _ => false
+    case _                => false
   }
 
   override def compareTo(that: Buffer[A]): Int = TensorType[A].tag match {
-    case FloatTag => asFloat.compareTo(that.asFloat)
+    case FloatTag  => asFloat.compareTo(that.asFloat)
     case DoubleTag => asDouble.compareTo(that.asDouble)
-    case LongTag => asLong.compareTo(that.asLong)
-    case IntTag => asInt.compareTo(that.asInt)
-    case ByteTag => asByte.compareTo(that.asByte)
-    case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+    case LongTag   => asLong.compareTo(that.asLong)
+    case IntTag    => asInt.compareTo(that.asInt)
+    case ByteTag   => asByte.compareTo(that.asByte)
+    case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
   }
 }
 
@@ -208,34 +209,35 @@ object Buffer {
 
   def from[@sp A: TensorType](buffer: ByteBuffer): Buffer[A] = {
     TensorType[A].tag match {
-      case FloatTag => Buffer(buffer.asFloatBuffer())
+      case FloatTag  => Buffer(buffer.asFloatBuffer())
       case DoubleTag => Buffer(buffer.asDoubleBuffer())
-      case LongTag => Buffer(buffer.asLongBuffer())
-      case IntTag => Buffer(buffer.asIntBuffer())
-      case ByteTag => Buffer(buffer)
-      case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+      case LongTag   => Buffer(buffer.asLongBuffer())
+      case IntTag    => Buffer(buffer.asIntBuffer())
+      case ByteTag   => Buffer(buffer)
+      case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
     }
   }
 
   def allocate[@sp A: TensorType](capacity: Int): Buffer[A] = {
     TensorType[A].tag match {
-      case FloatTag => Buffer(FloatBuffer.allocate(capacity))
+      case FloatTag  => Buffer(FloatBuffer.allocate(capacity))
       case DoubleTag => Buffer(DoubleBuffer.allocate(capacity))
-      case LongTag => Buffer(LongBuffer.allocate(capacity))
-      case IntTag => Buffer(IntBuffer.allocate(capacity))
-      case ByteTag => Buffer(ByteBuffer.allocate(capacity))
-      case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+      case LongTag   => Buffer(LongBuffer.allocate(capacity))
+      case IntTag    => Buffer(IntBuffer.allocate(capacity))
+      case ByteTag   => Buffer(ByteBuffer.allocate(capacity))
+      case _         => error(s"Buffer[${TensorType[A].show}] is not supported")
     }
   }
 
   def wrap[@sp A: TensorType](array: Array[A], offset: Int, length: Int): Buffer[A] = {
     TensorType[A].tag match {
       case FloatTag => Buffer[A](FloatBuffer.wrap(array.asInstanceOf[Array[Float]], offset, length))
-      case DoubleTag => Buffer[A](DoubleBuffer.wrap(array.asInstanceOf[Array[Double]], offset, length))
+      case DoubleTag =>
+        Buffer[A](DoubleBuffer.wrap(array.asInstanceOf[Array[Double]], offset, length))
       case LongTag => Buffer[A](LongBuffer.wrap(array.asInstanceOf[Array[Long]], offset, length))
-      case IntTag => Buffer[A](IntBuffer.wrap(array.asInstanceOf[Array[Int]], offset, length))
+      case IntTag  => Buffer[A](IntBuffer.wrap(array.asInstanceOf[Array[Int]], offset, length))
       case ByteTag => Buffer[A](ByteBuffer.wrap(array.asInstanceOf[Array[Byte]], offset, length))
-      case _ => error(s"Buffer[${TensorType[A].show}] is not supported")
+      case _       => error(s"Buffer[${TensorType[A].show}] is not supported")
     }
   }
 

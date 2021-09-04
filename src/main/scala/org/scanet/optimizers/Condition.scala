@@ -27,21 +27,21 @@ object Condition {
 
   trait Implicits {
 
-    implicit def canBuildConditionFromInt: CanBuildConditionFrom[Int] = new CanBuildConditionFrom[Int] {
-      override def iterations[R: Numeric : TensorType](a: Int): Condition[StepContext[R]] =
-        Condition.iterations[R](a)
-      override def epochs[R: Numeric : TensorType](a: Int): Condition[StepContext[R]] =
-        Condition.epochs[R](a)
-    }
+    implicit def canBuildConditionFromInt: CanBuildConditionFrom[Int] =
+      new CanBuildConditionFrom[Int] {
+        override def iterations[R: Numeric: TensorType](a: Int): Condition[StepContext[R]] =
+          Condition.iterations[R](a)
+        override def epochs[R: Numeric: TensorType](a: Int): Condition[StepContext[R]] =
+          Condition.epochs[R](a)
+      }
   }
 
-  trait Syntax extends Implicits with CanBuildConditionFrom.ToCanBuildConditionFromOps
+  trait AllSyntax extends Implicits with CanBuildConditionFrom.ToCanBuildConditionFromOps
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }
 
 @typeclass trait CanBuildConditionFrom[A] {
   def iterations[R: Numeric: TensorType](a: A): Condition[StepContext[R]]
   def epochs[R: Numeric: TensorType](a: A): Condition[StepContext[R]]
 }
-

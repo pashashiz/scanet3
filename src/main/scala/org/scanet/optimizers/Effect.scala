@@ -6,7 +6,7 @@ import org.scanet.estimators._
 import org.scanet.math.syntax._
 import org.scanet.math.{Convertible, Floating, Numeric}
 
-trait Effect[E] extends (E => Unit){
+trait Effect[E] extends (E => Unit) {
   private val self = this
   def apply(next: E): Unit
   def onClose(): Unit = {}
@@ -18,9 +18,11 @@ trait Effect[E] extends (E => Unit){
 
 object Effect {
 
-  case class RecordLoss[E: Numeric: TensorType]
-  (console: Boolean = true, tensorboard: Boolean = false, dir: String = "board")
-  (implicit c: Convertible[E, Float]) extends Effect[StepContext[E]] {
+  case class RecordLoss[E: Numeric: TensorType](
+      console: Boolean = true,
+      tensorboard: Boolean = false,
+      dir: String = "board")(implicit c: Convertible[E, Float])
+      extends Effect[StepContext[E]] {
     val board = TensorBoard(dir)
     override def apply(ctx: StepContext[E]) = {
       val loss = ctx.result.loss
@@ -31,9 +33,12 @@ object Effect {
     }
   }
 
-  case class RecordAccuracy[E: Numeric : Floating : TensorType]
-  (ds: RDD[Array[E]], console: Boolean = true, tensorboard: Boolean = false, dir: String = "board")
-  (implicit c: Convertible[E, Float]) extends Effect[StepContext[E]] {
+  case class RecordAccuracy[E: Numeric: Floating: TensorType](
+      ds: RDD[Array[E]],
+      console: Boolean = true,
+      tensorboard: Boolean = false,
+      dir: String = "board")(implicit c: Convertible[E, Float])
+      extends Effect[StepContext[E]] {
     val board = TensorBoard(dir)
     override def apply(ctx: StepContext[E]) = {
       val trained = ctx.lossModel.trained(ctx.result.weights)

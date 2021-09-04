@@ -15,7 +15,8 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
   "Adam" should "minimize linear regression" in {
     val ds = linearFunction
     val start = System.currentTimeMillis()
-    val trained = ds.train(LinearRegression)
+    val trained = ds
+      .train(LinearRegression)
       .loss(MeanSquaredError)
       .using(Adam(rate = 0.1f))
       .initWith(Tensor.zeros(_))
@@ -31,8 +32,9 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
   }
 
   it should "minimize logistic regression" in {
-    val ds = logisticRegression.map(a => Array(a(0)/100, a(1)/100, a(2)))
-    val trained = ds.train(LogisticRegression)
+    val ds = logisticRegression.map(a => Array(a(0) / 100, a(1) / 100, a(2)))
+    val trained = ds
+      .train(LogisticRegression)
       .loss(BinaryCrossentropy)
       .using(Adam(0.1f))
       .initWith(s => Tensor.zeros(s))
@@ -45,10 +47,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
     loss(x, y).toScalar should be <= 0.4f
     accuracy(trained, ds) should be >= 0.9f
     val predictor = trained.result.compile()
-    val input = Tensor.matrix(
-      Array(0.3462f, 0.7802f),
-      Array(0.6018f, 0.8630f),
-    )
+    val input = Tensor.matrix(Array(0.3462f, 0.7802f), Array(0.6018f, 0.8630f))
     predictor(input).const.round.eval should be(Tensor.matrix(Array(0f), Array(1f)))
   }
 }

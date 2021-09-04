@@ -7,6 +7,7 @@ import org.scanet.models.Loss._
 import org.scanet.models.Regularization.L2
 import org.scanet.syntax._
 import org.scanet.test.CustomMatchers
+import scala.collection.immutable.Seq
 
 class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
 

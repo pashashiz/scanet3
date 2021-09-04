@@ -2,8 +2,7 @@ package org.scanet.core
 
 import scala.collection.mutable
 
-/**
-  * Mutable directed graph
+/** Mutable directed graph
   */
 case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
 
@@ -26,7 +25,7 @@ case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
   }
 
   def linkAll(edges: Seq[(String, String)]): DirectedGraph[A] = {
-    edges.foreach {case (from, to) => link(from, to)}
+    edges.foreach { case (from, to) => link(from, to) }
     this
   }
 
@@ -39,7 +38,11 @@ object DirectedGraph {
   def apply[A](): DirectedGraph[A] = new DirectedGraph(mutable.Map())
 }
 
-case class Node[A](id: String, value: A, inputs: mutable.Buffer[Edge[A]], outputs: mutable.Buffer[Edge[A]]) {
+case class Node[A](
+    id: String,
+    value: A,
+    inputs: mutable.Buffer[Edge[A]],
+    outputs: mutable.Buffer[Edge[A]]) {
 
   def isLeaf: Boolean = inputs.isEmpty
   def isRoot: Boolean = outputs.isEmpty
@@ -56,14 +59,16 @@ case class Node[A](id: String, value: A, inputs: mutable.Buffer[Edge[A]], output
   override def hashCode(): Int = id.hashCode
   override def equals(obj: Any): Boolean = obj match {
     case other: Node[_] => other.id == id
-    case _ => false
+    case _              => false
   }
 
-  override def toString: String = s"Node(id=$id, value=$value, in=${inputs.map(_.from.id)}, out=${outputs.map(_.to.id)})"
+  override def toString: String =
+    s"Node(id=$id, value=$value, in=${inputs.map(_.from.id)}, out=${outputs.map(_.to.id)})"
 }
 
 case class Edge[A](index: Int, from: Node[A], to: Node[A])
 
 object Node {
-  def apply[A](id: String, value: A): Node[A] = new Node(id, value, mutable.Buffer(), mutable.Buffer())
+  def apply[A](id: String, value: A): Node[A] =
+    new Node(id, value, mutable.Buffer(), mutable.Buffer())
 }

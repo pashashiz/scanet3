@@ -2,7 +2,8 @@ package org.scanet.math
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.scanet.core.{Output, Shape, Tensor}
+import org.scanet.core.{Expr, Shape, Tensor}
+import scala.collection.immutable.Seq
 import org.scanet.math.syntax._
 
 class MathBaseOpSpec extends AnyWordSpec with Matchers {
@@ -25,12 +26,12 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       (a grad a).returns[Float].eval should be(Tensor.scalar(1))
     }
     "fail to find a gradient if input is not a part of the computation graph" in {
-      the [IllegalArgumentException] thrownBy {
+      the[IllegalArgumentException] thrownBy {
         val a = 2.const
         val b = 3.const
         (a grad b).returns[Float]
       } should have message "requirement failed: " +
-        "cannot find a gradient with respect to Const(3)[Int]:() cause that input is not a part of the computation graph"
+      "cannot find a gradient with respect to Const(3)[Int]:() cause that input is not a part of the computation graph"
     }
   }
 
@@ -39,13 +40,9 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       (2.0f.const plus 5.0f.const).eval should be(Tensor.scalar(7.0f))
     }
     "add 2 tensors when one includes shape of the other" in {
-      val a = Tensor.matrix(
-        Array(1, 2),
-        Array(1, 2))
+      val a = Tensor.matrix(Array(1, 2), Array(1, 2))
       val b = Tensor.vector(1, 2)
-      val c = Tensor.matrix(
-        Array(2, 4),
-        Array(2, 4))
+      val c = Tensor.matrix(Array(2, 4), Array(2, 4))
       (a.const plus b.const).eval should be(c)
     }
     "work when adding same tensor" in {
@@ -53,10 +50,10 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       (a plus a).as("c").eval should be(Tensor.scalar(10.0f))
     }
     "fail when 2 tensors have incompatible dimensions" in {
-      the [IllegalArgumentException] thrownBy {
+      the[IllegalArgumentException] thrownBy {
         Tensor.matrix(Array(1, 2), Array(1, 2)).const plus Tensor.vector(1, 2, 3).const
       } should have message
-        "requirement failed: cannot add tensors with shapes (2, 2) + (3)"
+      "requirement failed: cannot add tensors with shapes (2, 2) + (3)"
     }
     "calculate a gradient if left side is a differentiable variable" in {
       val a = 3.const
@@ -87,22 +84,16 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       ((x - x) grad x).returns[Float].eval should be(Tensor.scalar(0))
     }
     "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
-      val a = Tensor.matrix(
-        Array(5, 10, 15),
-        Array(20, 25, 30)).const
+      val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val x = Tensor.vector(1, 2, 3).const
       val grad = Tensor.vector(2, 2, 2)
       ((a + x).sum grad x).returns[Float].eval should be(grad)
       ((x + a).sum grad x).returns[Float].eval should be(grad)
     }
     "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
-      val x = Tensor.matrix(
-        Array(5, 10, 15),
-        Array(20, 25, 30)).const
+      val x = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val a = Tensor.vector(1, 2, 3).const
-      val grad = Tensor.matrix(
-        Array(1, 1, 1),
-        Array(1, 1, 1))
+      val grad = Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1))
       ((x + a).sum grad x).returns[Float].eval should be(grad)
       ((a + x).sum grad x).returns[Float].eval should be(grad)
     }
@@ -113,10 +104,10 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       plus(1.const, 2.const, 3.const).eval should be(Tensor.scalar(6))
     }
     "fail when tensors have different shapes" in {
-      the [IllegalArgumentException] thrownBy {
+      the[IllegalArgumentException] thrownBy {
         plus(1.const, 2.const, Tensor.vector(3, 4).const).eval
       } should have message
-        "requirement failed: shapes of all tensors should be the same, but was () + () + (2)"
+      "requirement failed: shapes of all tensors should be the same, but was () + () + (2)"
     }
     "calculate gradient for plus N" in {
       val a = 1.const
@@ -145,25 +136,23 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       (2.const - Tensor.vector(5, 10).const).eval should be(Tensor.vector(-3, -8))
     }
     "fail to subtract when 2 tensors have incompatible dimensions" in {
-      the [IllegalArgumentException] thrownBy {
+      the[IllegalArgumentException] thrownBy {
         (Tensor.matrix(Array(1, 2), Array(1, 2)).const - Tensor.vector(1, 2, 3).const).eval
       } should have message "requirement failed: cannot subtracted tensors with shapes (2, 2) - (3)"
     }
     "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
-      val a = Tensor.matrix(
-        Array(5, 10, 15),
-        Array(20, 25, 30)).const
+      val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val x = Tensor.vector(1, 2, 3).const
       ((a - x).sum grad x).returns[Float].eval should be(Tensor.vector(-2, -2, -2))
       ((x - a).sum grad x).returns[Float].eval should be(Tensor.vector(2, 2, 2))
     }
     "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
-      val x = Tensor.matrix(
-        Array(5, 10, 15),
-        Array(20, 25, 30)).const
+      val x = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val a = Tensor.vector(1, 2, 3).const
-      ((x - a).sum grad x).returns[Float].eval should be(Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
-      ((a - x).sum grad x).returns[Float].eval should be(Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
+      ((x - a).sum grad x).returns[Float].eval should be(
+        Tensor.matrix(Array(1, 1, 1), Array(1, 1, 1)))
+      ((a - x).sum grad x).returns[Float].eval should be(
+        Tensor.matrix(Array(-1, -1, -1), Array(-1, -1, -1)))
     }
   }
 
@@ -172,7 +161,7 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       3.const.negate.eval should be(Tensor.scalar(-3))
     }
     "support gradient negation for scalars" in {
-      val x: Output[Int] = 3.const
+      val x: Expr[Int] = 3.const
       x.negate.grad(x).returns[Float].eval should be(Tensor.scalar(-1))
     }
     "work on a tensor" in {
@@ -186,22 +175,26 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
 
   "element-wise division" should {
     "work on tensors with same dimensions" in {
-      (Tensor.vector(5, 10, 15).const / Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(1, 2, 3))
+      (Tensor.vector(5, 10, 15).const / Tensor.vector(5, 5, 5).const).eval should be(
+        Tensor.vector(1, 2, 3))
     }
     "work for floating point numbers" in {
-      (Tensor.vector(2.0f, 4.0f, 6.0f).const / Tensor.vector(10.0f, 10.0f, 10.0f).const).eval should be(Tensor.vector(0.2f, 0.4f, 0.6f))
+      (Tensor.vector(2.0f, 4.0f, 6.0f).const / Tensor
+        .vector(10.0f, 10.0f, 10.0f)
+        .const).eval should be(Tensor.vector(0.2f, 0.4f, 0.6f))
     }
     "support broadcasting with vector divided by scalar" in {
       (Tensor.vector(5, 10, 15).const / 5.const).eval should be(Tensor.vector(1, 2, 3))
     }
     "support broadcasting with matrix divided by matrix with last dimension 1" in {
-      val left = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30))
-      val right = Tensor.matrix(Array(1), Array(5))
+      import org.scanet.math.alg.kernels.syntax._
+      val left: Tensor[Int] = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30))
+      val right: Tensor[Int] = Tensor.matrix(Array(1), Array(5))
       val expected = Tensor.matrix(Array(5, 10, 15), Array(4, 5, 6))
       (left.const / right.const).eval should be(expected)
     }
     "fail when tensors have incompatible dimensions" in {
-      the [IllegalArgumentException] thrownBy {
+      the[IllegalArgumentException] thrownBy {
         (Tensor.matrix(Array(1, 2), Array(1, 2)).const / Tensor.vector(1, 2, 3).const).eval
       } should have message "requirement failed: cannot divide tensors with shapes (2, 2) / (3)"
     }
@@ -220,21 +213,19 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       (a div x).sum.grad(a).returns[Float].eval should be(Tensor.vector(0.2f, 0.2f, 0.2f))
     }
     "calculate gradient for matrices with broadcasting when smaller tensor is differentiable value" in {
-      val a = Tensor.matrix(
-        Array(12, 16, 20),
-        Array(24, 28, 32)).const
+      val a = Tensor.matrix(Array(12, 16, 20), Array(24, 28, 32)).const
       val x = Tensor.vector(2, 4, 8).const
 
       (a div x).sum.grad(x).returns[Float].eval should be(Tensor.vector(-9f, -2.75f, -0.8125f))
-      (x div a).sum.grad(x).returns[Float].eval should be(Tensor.vector(0.125f, 0.09821428f, 0.08125f))
+      (x div a).sum.grad(x).returns[Float].eval should be(
+        Tensor.vector(0.125f, 0.09821428f, 0.08125f))
     }
     "calculate gradient for matrices with broadcasting when bigger tensor is differentiable value" in {
-      val a = Tensor.matrix(
-        Array(12, 16, 20),
-        Array(24, 28, 32)).const
+      val a = Tensor.matrix(Array(12, 16, 20), Array(24, 28, 32)).const
       val x = Tensor.vector(2, 4, 8).const
 
-      (a div x).sum.grad(a).returns[Float].eval should be(Tensor.matrix(Array(0.5f, 0.25f, 0.125f), Array(0.5f, 0.25f, 0.125f)))
+      (a div x).sum.grad(a).returns[Float].eval should be(
+        Tensor.matrix(Array(0.5f, 0.25f, 0.125f), Array(0.5f, 0.25f, 0.125f)))
       val grad = Tensor.matrix(
         Array(-0.013888889f, -0.015625f, -0.02f),
         Array(-0.0034722222f, -0.0051020407f, -0.0078125f))
@@ -243,19 +234,21 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
     "calculate gradient for matrices with broadcasting second matrix has last dimension 1" in {
       val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val x = Tensor.matrix(Array(1), Array(5)).const
-      (a div x).sum.grad(x).returns[Float].eval should be(Tensor.matrix(Array(-30.0f), Array(-3.0f)))
+      (a div x).sum.grad(x).returns[Float].eval should be(
+        Tensor.matrix(Array(-30.0f), Array(-3.0f)))
     }
   }
 
   "element-wise multiplication" should {
     "work on tensors with same dimensions" in {
-      (Tensor.vector(1, 2, 3).const * Tensor.vector(5, 5, 5).const).eval should be(Tensor.vector(5, 10, 15))
+      (Tensor.vector(1, 2, 3).const * Tensor.vector(5, 5, 5).const).eval should be(
+        Tensor.vector(5, 10, 15))
     }
     "support broadcasting" in {
       (Tensor.vector(1, 2, 3).const * 5.const).eval should be(Tensor.vector(5, 10, 15))
     }
     "fail when tensors have incompatible dimensions" in {
-      the [IllegalArgumentException] thrownBy {
+      the[IllegalArgumentException] thrownBy {
         (Tensor.matrix(Array(1, 2), Array(1, 2)).const * Tensor.vector(1, 2, 3).const).eval
       } should have message "requirement failed: cannot multiply tensors with shapes (2, 2) * (3)"
     }
@@ -274,22 +267,16 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       ((x * x) grad x).returns[Float].eval should be(Tensor.scalar(6))
     }
     "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
-      val a = Tensor.matrix(
-        Array(5, 10, 15),
-        Array(20, 25, 30)).const
+      val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val x = Tensor.vector(1, 2, 3).const
       val grad = Tensor.vector(25, 35, 45)
       ((a * x).sum grad x).returns[Float].eval should be(grad)
       ((x * a).sum grad x).returns[Float].eval should be(grad)
     }
     "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
-      val x = Tensor.matrix(
-        Array(5, 10, 15),
-        Array(20, 25, 30)).const
+      val x = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val a = Tensor.vector(1, 2, 3).const
-      val grad = Tensor.matrix(
-        Array(1, 2, 3),
-        Array(1, 2, 3))
+      val grad = Tensor.matrix(Array(1, 2, 3), Array(1, 2, 3))
       ((x * a).sum grad x).returns[Float].eval should be(grad)
       ((a * x).sum grad x).returns[Float].eval should be(grad)
     }
@@ -326,10 +313,12 @@ class MathBaseOpSpec extends AnyWordSpec with Matchers {
       Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum.eval should be(Tensor.scalar(21))
     }
     "support reducing along matrix columns" in {
-      Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(0)).eval should be(Tensor.vector(5, 7, 9))
+      Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(0)).eval should be(
+        Tensor.vector(5, 7, 9))
     }
     "support reducing along matrix rows" in {
-      Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(1)).eval should be(Tensor.vector(6, 15))
+      Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(1)).eval should be(
+        Tensor.vector(6, 15))
     }
     "support reducing 4D tensors" in {
       val tensor = Tensor(Array(1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4), Shape(2, 2, 2, 2))

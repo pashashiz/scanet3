@@ -1,24 +1,23 @@
 package org.scanet.models.layer
 
-import org.scanet.core.{Output, OutputSeq, TensorType}
+import org.scanet.core.{Expr, OutputSeq, TensorType}
 import org.scanet.math.{Floating, Numeric}
 import org.scanet.math.syntax._
 
-/**
- * Layer which composes 2 other layers
- *
- * @param left layer
- * @param right layer
- */
+/** Layer which composes 2 other layers
+  *
+  * @param left layer
+  * @param right layer
+  */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
-  override def build[E: Numeric : Floating : TensorType](x: Output[E], weights: OutputSeq[E]) = {
+  override def build[E: Numeric: Floating: TensorType](x: Expr[E], weights: OutputSeq[E]) = {
     val (leftWeights, rightWeights) = split(weights)
     val leftOutput = left.build(x, leftWeights)
     right.build(leftOutput, rightWeights)
   }
 
-  override def penalty[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = {
+  override def penalty[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) = {
     val (leftWeights, rightWeights) = split(weights)
     left.penalty(leftWeights) plus left.penalty(rightWeights)
   }
@@ -32,7 +31,7 @@ case class Composed(left: Layer, right: Layer) extends Layer {
     leftShapes ++ rightShapes
   }
 
-  private def split[E: Numeric : Floating : TensorType](weights: OutputSeq[E]) = {
+  private def split[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) = {
     weights.splitAt(left.shapes(0).size)
   }
 }

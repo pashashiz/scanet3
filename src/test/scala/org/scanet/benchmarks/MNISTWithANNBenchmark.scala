@@ -20,7 +20,8 @@ trait MNISTWithANNBehaviours {
     "be successfully trained" in {
       val (trainingDs, testDs) = MNIST()
       val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
-      val trained = trainingDs.train(model)
+      val trained = trainingDs
+        .train(model)
         .loss(CategoricalCrossentropy)
         .using(alg)
         .batch(1000)
@@ -34,7 +35,12 @@ trait MNISTWithANNBehaviours {
 }
 
 @Slow
-class MNISTWithANNBenchmark extends AnyWordSpec with CustomMatchers with SharedSpark with Datasets with MNISTWithANNBehaviours {
+class MNISTWithANNBenchmark
+    extends AnyWordSpec
+    with CustomMatchers
+    with SharedSpark
+    with Datasets
+    with MNISTWithANNBehaviours {
 
   "MNIST dataset with Fully Connected Neural Network architecture" when {
 

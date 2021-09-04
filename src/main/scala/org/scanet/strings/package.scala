@@ -1,6 +1,6 @@
-package org.scanet
+package org.scanet.strings
 
-package object strings {
+import org.scanet.core.CoreSyntax
 
-  object syntax extends StringSyntax
-}
+trait StringsSyntax extends CoreSyntax with Textual.AllSyntax with kernels.AllSyntax
+object syntax extends StringsSyntax

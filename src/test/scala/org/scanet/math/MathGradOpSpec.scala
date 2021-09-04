@@ -7,6 +7,7 @@ import org.scanet.core.Session.withing
 import org.scanet.core.Tensor.scalar
 import org.scanet.math.syntax._
 
+import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
 
 class MathGradOpSpec extends AnyWordSpec with Matchers {

@@ -1,7 +1,3 @@
 package org.scanet
 
-package object models {
-
-
-
-}
+package object models {}

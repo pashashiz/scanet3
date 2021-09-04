@@ -7,7 +7,8 @@ import org.scanet.math.Numeric
 class TensorIterator[A: TensorType: Numeric](
     private val rows: Iterator[Array[A]],
     private val batch: Int,
-    private val withPadding: Boolean) extends Iterator[Tensor[A]] {
+    private val withPadding: Boolean)
+    extends Iterator[Tensor[A]] {
 
   private val buff: BufferedIterator[Array[A]] = rows.buffered
   val columns: Int = buff.headOption.map(_.length).getOrElse(0)
@@ -40,6 +41,9 @@ class TensorIterator[A: TensorType: Numeric](
 }
 
 object TensorIterator {
-  def apply[A: TensorType: Numeric](rows: Iterator[Array[A]], batch: Int, withPadding: Boolean = true): TensorIterator[A] =
+  def apply[A: TensorType: Numeric](
+      rows: Iterator[Array[A]],
+      batch: Int,
+      withPadding: Boolean = true): TensorIterator[A] =
     new TensorIterator(rows, batch, withPadding)
 }

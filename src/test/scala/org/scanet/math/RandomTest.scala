@@ -22,7 +22,7 @@ class RandomTest extends AnyFlatSpec with Matchers {
 
   it should "work for Float with default [0, 1] range" in {
     val (_, values) = Random[Float](uniform(1L)).next(3)
-    values should be(Array(8.952618E-5f, 0.73195314f, 0.8720866f))
+    values should be(Array(8.952618e-5f, 0.73195314f, 0.8720866f))
   }
 
   it should "work for Float with custom [-1, 1] range" in {

@@ -13,42 +13,43 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
   "scalar" should "be allocated" in {
     Tensor.scalar(5) should
-      (haveShape (Shape()) and containData (Array(5)))
+    (haveShape(Shape()) and containData(Array(5)))
   }
 
   "vector" should "be allocated with Int" in {
     Tensor.vector(1, 2, 3) should
-      (haveShape (Shape(3)) and containData (Array(1, 2, 3)))
+    (haveShape(Shape(3)) and containData(Array(1, 2, 3)))
   }
 
   "vector" should "be allocated with Boolean" in {
     Tensor.vector(true, false, true) should
-      (haveShape (Shape(3)) and containData (Array(true, false, true)))
+    (haveShape(Shape(3)) and containData(Array(true, false, true)))
   }
 
   "vector" should "be allocated with String" in {
     Tensor.vector("Hello", "World", "From TensorFlow") should
-      (haveShape (Shape(3)) and containData (Array("Hello", "World", "From TensorFlow")))
+    (haveShape(Shape(3)) and containData(Array("Hello", "World", "From TensorFlow")))
   }
 
   "vector" should "be allocated with long String" in {
     Tensor.vector("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100) should
-      (haveShape (Shape(5)) and containData (Array("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)))
+    (haveShape(Shape(5)) and containData(
+      Array("", "abc" * 100, "a" * Byte.MaxValue, "a" * 16384, "abcdef" * 100)))
   }
 
   "matrix" should "be allocated" in {
-      Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)) should
-        (haveShape (Shape(2, 3)) and containData (Array(1, 2, 3, 4, 5, 6)))
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)) should
+    (haveShape(Shape(2, 3)) and containData(Array(1, 2, 3, 4, 5, 6)))
   }
 
   "n3 tensor" should "be allocated" in {
     Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2)) should
-      (haveShape (Shape(2, 2, 2)) and containData (Array(1, 2, 3, 4, 5, 6, 7, 8)))
+    (haveShape(Shape(2, 2, 2)) and containData(Array(1, 2, 3, 4, 5, 6, 7, 8)))
   }
 
   it should "fail to be constructed when shape does not match the input" in {
-    an [IllegalArgumentException] should be thrownBy
-      Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 1))
+    an[IllegalArgumentException] should be thrownBy
+    Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 1))
   }
 
   "zeros tensor" should "be allocated" in {
@@ -60,39 +61,32 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "be tabulated" in {
-     Tensor.tabulate[Int](2, 2)((i, j) => (i + 1) * (j + 1)) should
-       be(Tensor.matrix(Array(1, 2), Array(2, 4)))
+    Tensor.tabulate[Int](2, 2)((i, j) => (i + 1) * (j + 1)) should
+    be(Tensor.matrix(Array(1, 2), Array(2, 4)))
   }
 
   "diagonal matrix" should "be created" in {
     Tensor.diag[Int](1, 2, 3) should be(
-      Tensor.matrix(
-        Array(1, 0, 0),
-        Array(0, 2, 0),
-        Array(0, 0, 3)))
+      Tensor.matrix(Array(1, 0, 0), Array(0, 2, 0), Array(0, 0, 3)))
   }
 
   "eye matrix" should "be created" in {
-    Tensor.eye[Int](3) should be(
-      Tensor.matrix(
-        Array(1, 0, 0),
-        Array(0, 1, 0),
-        Array(0, 0, 1)))
+    Tensor.eye[Int](3) should be(Tensor.matrix(Array(1, 0, 0), Array(0, 1, 0), Array(0, 0, 1)))
   }
 
   "linspace vector" should "be created for Int" in {
     Tensor.linspace(2, 10, 5) should
-      be(Tensor.vector(2, 4, 6, 8, 10))
+    be(Tensor.vector(2, 4, 6, 8, 10))
   }
 
   it should "be created for Float" in {
     Tensor.linspace(2.0f, 4.0f, 5) should
-      be(Tensor.vector(2.0f, 2.5f, 3.0f, 3.5f, 4.0f))
+    be(Tensor.vector(2.0f, 2.5f, 3.0f, 3.5f, 4.0f))
   }
 
   "vector" should "be created from a range" in {
     Tensor.vector(1 to 10 by 2) should
-      be(Tensor.vector(1, 3, 5, 7, 9))
+    be(Tensor.vector(1, 3, 5, 7, 9))
   }
 
   it should "be created from exclusive range" in {
@@ -113,24 +107,24 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
   "random Int tensor" should "be created with uniform distribution" in {
     Tensor.rand[Int](Shape(3), uniform(1)) should
-      be(Tensor.vector(384748, -1151252339, -549383847))
+    be(Tensor.vector(384748, -1151252339, -549383847))
   }
 
   "random Float tensor" should "be created with uniform distribution" in {
     Tensor.rand[Float](Shape(3), uniform(1)) should
-      be(Tensor.vector(8.952618E-5f, 0.73195314f, 0.8720866f))
+    be(Tensor.vector(8.952618e-5f, 0.73195314f, 0.8720866f))
   }
 
   "random Double tensor" should "be created with uniform distribution" in {
     Tensor.rand[Double](Shape(3), uniform(1L)) should
-      be(Tensor.vector(8.958178688844853E-5, 0.872086605065287, 0.7943048233411579))
+    be(Tensor.vector(8.958178688844853e-5, 0.872086605065287, 0.7943048233411579))
   }
 
   "scalar" should "be indexed" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.scalar(5).slice(0)
     } should have message "requirement failed: " +
-      "projection (0) has rank '1' which is greater than shape's rank '0'"
+    "projection (0) has rank '1' which is greater than shape's rank '0'"
   }
 
   "vector" should "be indexed" in {
@@ -154,17 +148,17 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "fail to slice when higher rank" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.vector(0, 1, 2).slice(0, 0)
     } should have message "requirement failed: " +
-      "projection (0, 0) has rank '2' which is greater than shape's rank '1'"
+    "projection (0, 0) has rank '2' which is greater than shape's rank '1'"
   }
 
   it should "fail to slice when out of bounds" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.vector(0, 1, 2).slice(5)
     } should have message "requirement failed: " +
-      "projection (5) is out of bound, should fit shape (3)"
+    "projection (5) is out of bound, should fit shape (3)"
   }
 
   "matrix" should "be indexed" in {
@@ -184,10 +178,10 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "fail to slice when out of bounds" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.eye[Int](3).slice(1, 1, 1)
     } should have message "requirement failed: " +
-      "projection (1, 1, 1) has rank '3' which is greater than shape's rank '2'"
+    "projection (1, 1, 1) has rank '3' which is greater than shape's rank '2'"
   }
 
   "n3 tensor" should "be indexed" in {
@@ -221,13 +215,13 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "non sliced tensor" should "fail to slice when power does not match" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.range(0 until 7).reshape(4, 4)
     } should have message "requirement failed: shape (7) cannot be reshaped into (4, 4)"
   }
 
   "sliced tensor" should "fail to slice when power does not match" in {
-    the [IllegalArgumentException] thrownBy {
+    the[IllegalArgumentException] thrownBy {
       Tensor.range(0 until 7).slice(0 until 4).reshape(4, 4)
     } should have message "requirement failed: shape (4) cannot be reshaped into (4, 4)"
   }
@@ -250,23 +244,20 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
   "vector tensor" should "be shown" in {
     Tensor.range(0 until 7).toString should
-      be("Tensor[Int](shape=(7)): [0, 1, 2, 3, 4, 5, 6]")
+    be("Tensor[Int](shape=(7)): [0, 1, 2, 3, 4, 5, 6]")
   }
 
   "matrix tensor" should "be shown" in {
-    Tensor.eye[Int](5).toString should be(
-      """Tensor[Int](shape=(5, 5)):
+    Tensor.eye[Int](5).toString should be("""Tensor[Int](shape=(5, 5)):
         |[
         |  [1, 0, 0, 0, 0],
         |  [0, 1, 0, 0, 0],
         |  [0, 0, 1, 0, 0]
-        |]"""
-       .stripMargin)
+        |]""".stripMargin)
   }
 
   "n3 tensor" should "be shown" in {
-    Tensor.rand[Int](Shape(3, 3, 3), uniform(1)).toString should be(
-      """Tensor[Int](shape=(3, 3, 3)):
+    Tensor.rand[Int](Shape(3, 3, 3), uniform(1)).toString should be("""Tensor[Int](shape=(3, 3, 3)):
         |[
         |  [
         |    [384748, -1151252339, -549383847],
@@ -278,8 +269,7 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
         |    [1517050556, 92416162, -1713389258],
         |    [2059776629, -1292618668, 562838985]
         |  ]
-        |]"""
-        .stripMargin)
+        |]""".stripMargin)
   }
 
   "compact" should "compact sliced tensor" in {
@@ -292,30 +282,22 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "Int tensor" should "be serialized to bytes array" in {
-    val bytes = Array[Byte](
-      5, 0, 0, 0,
-      7, 0, 0, 0)
+    val bytes = Array[Byte](5, 0, 0, 0, 7, 0, 0, 0)
     Tensor.vector[Int](5, 7).toBytes should be(bytes)
   }
 
   it should "be deserialized from bytes array" in {
-    val bytes = Array[Byte](
-      5, 0, 0, 0,
-      7, 0, 0, 0)
+    val bytes = Array[Byte](5, 0, 0, 0, 7, 0, 0, 0)
     Tensor.fromBytes[Int](bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
   }
 
   "tensor with view" should "be compacted when serialized to bytes array" in {
-    val bytes = Array[Byte](
-      0, 0, 0, 0,
-      1, 0, 0, 0)
+    val bytes = Array[Byte](0, 0, 0, 0, 1, 0, 0, 0)
     Tensor.range(0 until 7).slice(0 until 2).toBytes should be(bytes)
   }
 
   "untyped tensor" should "be deserialized from bytes array" in {
-    val bytes = Array[Byte](
-      5, 0, 0, 0,
-      7, 0, 0, 0)
+    val bytes = Array[Byte](5, 0, 0, 0, 7, 0, 0, 0)
     Tensor.fromBytesUntyped(IntTag, bytes, Shape(2)) should be(Tensor.vector[Int](5, 7))
   }
 }

@@ -26,10 +26,7 @@ class TensorBoardSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "image" should "be displayed" in {
-    val tensor = Tensor.matrix(
-        Array(-1f, 1f, 1f),
-        Array(0f, -0.3f, 0.3f))
-      .reshape(2, 3, 1)
+    val tensor = Tensor.matrix(Array(-1f, 1f, 1f), Array(0f, -0.3f, 0.3f)).reshape(2, 3, 1)
     TensorBoard("tmp").addImage("image", tensor, Grayscale())
     "tmp" should haveTensorBoardFiles
     "tmp".toDirectory.deleteRecursively()

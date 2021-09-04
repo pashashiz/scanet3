@@ -175,12 +175,12 @@ object Numeric {
     implicit def fromByteToByte: Convertible[Byte, Byte] = new FromByteToByte {}
   }
 
-  trait Syntax extends Instances with Semiring.ToSemiringOps
+  trait AllSyntax extends Instances with Semiring.ToSemiringOps
     with Rng.ToRngOps with Rig.ToRigOps with Ring.ToRingOps
     with Field.ToFieldOps with Eq.ToEqOps with Order.ToOrderOps
     with Numeric.ToNumericOps
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }
 
 trait FloatIsFloatingPoint extends Floating[Float] {

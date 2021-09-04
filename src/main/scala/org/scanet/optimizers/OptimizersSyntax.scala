@@ -1,3 +1,3 @@
 package org.scanet.optimizers
 
-trait OptimizersSyntax extends Condition.Syntax with SparkExt.Syntax
+trait OptimizersSyntax extends Condition.AllSyntax with SparkExt.AllSyntax

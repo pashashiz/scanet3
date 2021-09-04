@@ -1,16 +1,17 @@
 package org.scanet
 
 import scala.collection.mutable
+import scala.collection.immutable.Seq
 
 package object core {
 
-  type OutputSeq[λ] = Seq[Output[λ]]
+  type OutputSeq[λ] = Seq[Expr[λ]]
 
   object syntax extends CoreSyntax
 
   def error(message: String): Nothing = throw new RuntimeException(message)
 
-  def memoize[I1, O](f: I1 => O): I1 => O = new mutable.HashMap[I1, O]() {self =>
+  def memoize[I1, O](f: I1 => O): I1 => O = new mutable.HashMap[I1, O]() { self =>
     override def apply(key: I1): O = {
       getOrElseUpdate(key, f(key))
     }

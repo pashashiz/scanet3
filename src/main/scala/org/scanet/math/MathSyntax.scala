@@ -2,7 +2,11 @@ package org.scanet.math
 
 import org.scanet.core.CoreSyntax
 
-trait MathSyntax extends CoreSyntax with Dist.Syntax
-  with Numeric.Syntax with Logical.Syntax
-  with MathBaseOp.Syntax with MathExtraOp.Syntax with MathLogicalOp.Syntax
-  with MathGradOp.Syntax
+trait MathSyntax
+    extends CoreSyntax
+    with Dist.AllSyntax
+    with Numeric.AllSyntax
+    with Logical.AllSyntax
+    with alg.kernels.AllSyntax
+    with logical.kernels.AllSyntax
+    with grad.GradSyntax

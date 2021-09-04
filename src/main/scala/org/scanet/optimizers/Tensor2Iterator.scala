@@ -6,10 +6,11 @@ import org.scanet.math.Numeric
 // low-level mutable implementation
 // NOTE: maybe rewrite to have generic N slices...
 class Tensor2Iterator[A: TensorType: Numeric](
-      private val rows: Iterator[Array[A]],
-      private val batch: Int,
-      private val splitAt: Int => Int,
-      private val withPadding: Boolean) extends Iterator[(Tensor[A], Tensor[A])] {
+    private val rows: Iterator[Array[A]],
+    private val batch: Int,
+    private val splitAt: Int => Int,
+    private val withPadding: Boolean)
+    extends Iterator[(Tensor[A], Tensor[A])] {
 
   private val buff: BufferedIterator[Array[A]] = rows.buffered
   val columns: Int = buff.headOption.map(_.length).getOrElse(0)
@@ -35,14 +36,14 @@ class Tensor2Iterator[A: TensorType: Numeric](
       }
       if (cursor < batch) {
         if (withPadding) {
-          (addPadding(x, cursor * columnsX, powerX),
-            addPadding(y, cursor * columnsY, powerY))
+          (addPadding(x, cursor * columnsX, powerX), addPadding(y, cursor * columnsY, powerY))
         } else {
           x = x.slice(0, cursor * columnsX)
           y = y.slice(0, cursor * columnsY)
         }
       }
-      (Tensor[A](x, Shape(x.length / columnsX, columnsX)),
+      (
+        Tensor[A](x, Shape(x.length / columnsX, columnsX)),
         Tensor[A](y, Shape(y.length / columnsY, columnsY)))
     }
   }
