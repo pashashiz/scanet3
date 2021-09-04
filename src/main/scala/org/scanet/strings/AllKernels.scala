@@ -37,7 +37,7 @@ case class StringFormat[A: TensorType] private (tpl: String, expr: Seq[Expr[A]])
   override def tpe: Option[TensorType[String]] = Some(TensorType[String])
   override def shape: Shape = Shape.scalar
   override def inputs: Seq[Expr[_]] = expr
-  override def compiler: Compiler[String] = DefaultCompiler[String]()
+  override def compiler: Compiler[String] = DefaultCompiler[String](inputsAsList = true)
     .withAttrs(if (tpl.nonEmpty) Map("template" -> tpl, "placeholder" -> "{}") else Map())
 }
 
