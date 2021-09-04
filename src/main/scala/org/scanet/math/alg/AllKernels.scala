@@ -4,6 +4,7 @@ import org.scanet.core
 import org.scanet.core._
 import org.scanet.core.syntax._
 import org.scanet.math.Numeric.syntax._
+import org.scanet.math.alg.kernels.syntax._
 import org.scanet.math.logical.kernels.syntax._
 import org.scanet.math.{Convertible, Floating, Numeric}
 
@@ -27,8 +28,8 @@ case class Plus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends E
       val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
       val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
       List(
-        Sum(parentGrad, shrinkLeftAxises).reshape(left.shape),
-        Sum(parentGrad, shrinkRightAxises).reshape(right.shape))
+        parentGrad.sum(shrinkLeftAxises).reshape(left.shape),
+        parentGrad.sum(shrinkRightAxises).reshape(right.shape))
     }
   }
 }
@@ -78,8 +79,8 @@ case class Minus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends 
       val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
       val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
       List(
-        Sum(parentGrad, shrinkLeftAxises).reshape(left.shape),
-        Sum(Negate(parentGrad), shrinkRightAxises).reshape(right.shape))
+        parentGrad.sum(shrinkLeftAxises).reshape(left.shape),
+        -parentGrad.sum(shrinkRightAxises).reshape(right.shape))
     }
   }
 }
@@ -94,7 +95,7 @@ case class Negate[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
-      List(Negate(parentGrad))
+      List(-parentGrad)
   }
 }
 
@@ -116,8 +117,8 @@ case class Multiply[A: TensorType: Numeric] private (left: Expr[A], right: Expr[
       val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
       val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
       List(
-        Sum(Multiply(right.cast[R], parentGrad), shrinkLeftAxises).reshape(left.shape),
-        Sum(Multiply(left.cast[R], parentGrad), shrinkRightAxises).reshape(right.shape))
+        (right.cast[R] * parentGrad).sum(shrinkLeftAxises).reshape(left.shape),
+        (left.cast[R] * parentGrad).sum(shrinkRightAxises).reshape(right.shape))
     }
   }
 }
@@ -132,9 +133,9 @@ case class Pow[A: TensorType: Numeric](expr: Expr[A], exponent: Expr[Float]) ext
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      val koef = Pow(expr.cast[R], Minus(exponent, 1f.const))
-      val local = Multiply(koef, exponent.cast[R])
-      List(Multiply(local, parentGrad))
+      val koef = expr.cast[R] ^ (exponent - 1f.const)
+      val local = koef * exponent.cast[R]
+      List(local * parentGrad)
     }
   }
 }
@@ -149,8 +150,8 @@ case class Sqrt[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      val local = Multiply(kernels.pow(expr.cast[R], -0.5f), 0.5f.const.cast[R])
-      List(Multiply(local, parentGrad))
+      val local = (expr.cast[R] ^ -0.5f) * 0.5f.const.cast[R]
+      List(local * parentGrad)
     }
   }
 }
@@ -165,7 +166,7 @@ case class Exp[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(Multiply(Exp(expr).cast[R], parentGrad))
+      List(expr.cast[R].exp * parentGrad)
     }
   }
 }
@@ -187,10 +188,10 @@ case class Div[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Ex
       val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
       val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
       List(
-        Sum(Div(parentGrad, right.cast[R]), shrinkLeftAxises).reshape(left.shape),
-        Sum(
-          Negate(Div(Multiply(left.cast[R], parentGrad), Multiply(right, right).cast[R])),
-          shrinkRightAxises).reshape(right.shape))
+        (parentGrad / right.cast[R]).sum(shrinkLeftAxises).reshape(left.shape),
+        (-left.cast[R] * parentGrad / right.sqr.cast[R])
+          .sum(shrinkRightAxises)
+          .reshape(right.shape))
     }
   }
 }
@@ -208,7 +209,7 @@ case class Sum[A: TensorType: Numeric] private (expr: Expr[A], axises: Seq[Int])
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       // we need to recover reduced axises with 1, cause broadcasting will not always work
       val parentShape = axises.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
-      List(Multiply(kernels.ones[R](expr.shape), parentGrad.reshape(parentShape)))
+      List(kernels.ones[R](expr.shape) * parentGrad.reshape(parentShape))
     }
   }
 }
@@ -232,10 +233,7 @@ case class Mean[A: TensorType: Numeric] private (expr: Expr[A], axises: Seq[Int]
       // we need to recover reduced axises with 1, cause broadcasting will not always work
       val parentShape = axises.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
       val size = expr.shape.select(axises: _*).power
-      List(
-        Div(
-          Multiply(kernels.ones[R](expr.shape), parentGrad.reshape(parentShape)),
-          size.const.cast[R]))
+      List(kernels.ones[R](expr.shape) * parentGrad.reshape(parentShape) / size.const.cast[R])
     }
   }
 }
@@ -258,9 +256,7 @@ case class Max[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(
-        Multiply((left > right).cast[R], parentGrad),
-        Multiply((left < right).cast[R], parentGrad))
+      List((left > right).cast[R] * parentGrad, (left < right).cast[R] * parentGrad)
     }
   }
 }
@@ -278,9 +274,7 @@ case class Min[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(
-        Multiply((left < right).cast[R], parentGrad),
-        Multiply((left > right).cast[R], parentGrad))
+      List((left < right).cast[R] * parentGrad, (left > right).cast[R] * parentGrad)
     }
   }
 }
@@ -295,7 +289,7 @@ case class Abs[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(Abs(parentGrad))
+      List(parentGrad.abs)
     }
   }
 }
@@ -320,7 +314,7 @@ case class Transpose[A: TensorType: Numeric] private (expr: Expr[A], perm: Seq[I
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(Transpose(parentGrad))
+      List(parentGrad.transpose)
     }
   }
 }
@@ -348,9 +342,7 @@ case class MatMul[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(
-        MatMul(parentGrad, Transpose(right).cast[R]),
-        MatMul(Transpose(left).cast[R], parentGrad))
+      List(parentGrad matmul right.transpose.cast[R], left.transpose.cast[R] matmul parentGrad)
     }
   }
 }
@@ -365,9 +357,9 @@ case class Sigmoid[A: TensorType: Numeric: Floating](expr: Expr[A]) extends Expr
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      val s = Sigmoid(expr)
-      val grad = Multiply(s, Minus(1.0f.const.cast[A], s))
-      List(Multiply(grad.cast[R], parentGrad))
+      val s = expr.sigmoid
+      val grad = s * (1.0f.const.cast[A] - s)
+      List(grad.cast[R] * parentGrad)
     }
   }
 }
@@ -382,8 +374,8 @@ case class Tanh[A: TensorType: Numeric: Floating](expr: Expr[A]) extends Expr[A]
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      val grad = Minus(1f.const.cast[A], Pow(Tanh(expr), 2.0f.const))
-      List(Multiply(grad.cast[R], parentGrad))
+      val grad = 1f.const.cast[A] - expr.tanh.sqr
+      List(grad.cast[R] * parentGrad)
     }
   }
 }
@@ -398,7 +390,7 @@ case class Log[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(Div(parentGrad, expr.cast[R]))
+      List(parentGrad / expr.cast[R])
     }
   }
 }
@@ -416,7 +408,11 @@ trait AllKernels {
   def plus[A: TensorType: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] = Plus(left, c.convert(right))
 
-  def plus[A: TensorType: Numeric](first: Expr[A], second: Expr[A], third: Expr[A], rest: Expr[A]*): Expr[A] =
+  def plus[A: TensorType: Numeric](
+      first: Expr[A],
+      second: Expr[A],
+      third: Expr[A],
+      rest: Expr[A]*): Expr[A] =
     PlusN(first +: second +: third +: rest.toList)
 
   def plus[A: TensorType: Numeric](expr: Seq[Expr[A]]): Expr[A] = PlusN(expr.toList)
@@ -566,6 +562,8 @@ object kernels extends AllKernels {
       * @return tensor `^` exponent
       */
     def pow(exponent: Expr[Float]): Expr[A] = f.pow(expr, exponent)
+    def ^(exponent: Float): Expr[A] = f.pow(expr, exponent)
+    def ^(exponent: Expr[Float]): Expr[A] = f.pow(expr, exponent)
 
     /** Raises the tensor to the power of two
       *
