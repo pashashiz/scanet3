@@ -98,6 +98,7 @@ case class Switch[A: TensorType](cond: Expr[Boolean], output: Expr[A]) extends E
 
 case class TakeOut[A: TensorType](from: Expr[_], index: Int) extends Expr[A] {
   override def name: String = "Identity"
+  override def id: Option[String] = Some(index.toString)
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = from.shape
   override def inputs: Seq[Expr[_]] = Seq(from)

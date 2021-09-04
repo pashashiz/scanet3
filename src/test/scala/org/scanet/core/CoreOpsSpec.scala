@@ -105,6 +105,14 @@ class CoreOpsSpec extends AnyFlatSpec with Matchers {
     ((x.cast[Int] + a).sum grad x).returns[Float].eval should be(Tensor.vector(1.0f, 1.0f, 1.0f))
   }
 
+  "depends" should "calculate one node after another" in {
+    val a = 1.const
+    val b = 2.const
+    val c = 3.const
+    val z = (a + b) << (b + c)
+    z.eval should be(Tensor.scalar(3))
+  }
+
   "when" should "calculate output based on true condition" in {
     val a = 1.const
     val b = 0.const
