@@ -106,7 +106,7 @@ case class And[A: TensorType: Logical](left: Expr[A], right: Expr[A]) extends Ex
 case class Or[A: TensorType: Logical](left: Expr[A], right: Expr[A]) extends Expr[Boolean] {
   require(
     left.broadcastableAny(right),
-    s"cannot logically OR tensors with shapes ${left.shape} && ${right.shape}")
+    s"cannot logically OR tensors with shapes ${left.shape} || ${right.shape}")
   override def name: String = "LogicalOr"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
   override def shape: Shape = left.shape max right.shape

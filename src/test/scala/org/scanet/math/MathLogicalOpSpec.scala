@@ -35,7 +35,7 @@ class MathLogicalOpSpec extends AnyFlatSpec with Matchers {
   it should "fail when tensors have incompatible dimensions" in {
     the[IllegalArgumentException] thrownBy {
       (Tensor.matrix(Array(1, 2), Array(1, 2)).const :!= Tensor.vector(1, 2, 3).const).eval
-    } should have message "requirement failed: cannot check for equality tensors with shapes (2, 2) :== (3)"
+    } should have message "requirement failed: cannot check for non-equality tensors with shapes (2, 2) :!= (3)"
   }
 
   "equality" should "return true when tensors are equal" in {

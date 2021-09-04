@@ -38,7 +38,7 @@ case class PlusN[A: TensorType: Numeric] private (expr: Seq[Expr[A]]) extends Ex
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.head.shape
   override def inputs: Seq[Expr[_]] = expr
-  override def compiler: core.Compiler[A] = DefaultCompiler[A]()
+  override def compiler: core.Compiler[A] = DefaultCompiler[A](inputsAsList = true)
   override def localGrad: Grad[A] = new Grad[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
