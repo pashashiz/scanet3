@@ -1,9 +1,9 @@
 package org.scanet.strings
 
 import org.scanet.core.DefaultCompiler.Ctx
-import org.scanet.core.{Compiler, DefaultCompiler, Expr, Shape, TensorType}
 import org.scanet.core.TensorType.syntax._
-import org.tensorflow.{OperationBuilder, Output}
+import org.scanet.core.{Compiler, DefaultCompiler, Expr, Shape, TensorType}
+import org.tensorflow.OperationBuilder
 
 import scala.collection.immutable.Seq
 
@@ -109,7 +109,7 @@ case class Substring[A: TensorType: Textual](expr: Expr[A], pos: Expr[Int], len:
   override def compiler: Compiler[A] = DefaultCompiler[A]()
 }
 
-trait Kernels {
+trait AllKernels {
 
   /** Converts elements of given tensor into Strings.
     * Returns given input if tensor already contains Strings.
@@ -195,11 +195,11 @@ trait Kernels {
     StringJoin[A](sep, expr.toList)
 }
 
-object kernels extends Kernels {
+object kernels extends AllKernels {
 
-  case class AnyOps[A: TensorType](expr: Expr[A]) {
-    import org.scanet.strings.{kernels => f}
+  class AnyOps[A: TensorType](expr: Expr[A]) {
     import org.scanet.core.kernels.syntax._
+    import org.scanet.strings.{kernels => f}
 
     /** Print current tensor during graph evaluation into default location.
       *
@@ -298,7 +298,7 @@ object kernels extends Kernels {
     def asString: Expr[String] = f.asString(expr)
   }
 
-  case class TextualOps[A: TensorType: Textual](expr: Expr[A]) {
+  class TextualOps[A: TensorType: Textual](expr: Expr[A]) {
     import org.scanet.strings.{kernels => f}
 
     /** Concatenates current and given String tensors
@@ -356,12 +356,12 @@ object kernels extends Kernels {
     def substring(pos: Expr[Int], len: Expr[Int]): Expr[A] = Substring(expr, pos, len)
   }
 
-  trait Syntax extends Kernels {
+  trait AllSyntax extends AllKernels {
     implicit def toStringKernelOps[A: TensorType](expr: Expr[A]): AnyOps[A] =
       new AnyOps[A](expr)
     implicit def toStringKernelTextualOps[A: TensorType: Textual](expr: Expr[A]): TextualOps[A] =
       new TextualOps[A](expr)
   }
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }

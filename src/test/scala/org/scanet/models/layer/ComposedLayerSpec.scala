@@ -7,6 +7,7 @@ import org.scanet.models.Loss.MeanSquaredError
 import org.scanet.models.Regularization.L2
 import org.scanet.syntax._
 import org.scanet.test.{CustomMatchers, Datasets, SharedSpark}
+import scala.collection.immutable.Seq
 
 class ComposedLayerSpec extends AnyWordSpec with CustomMatchers  with SharedSpark with Datasets {
 

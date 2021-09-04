@@ -19,7 +19,7 @@ case class TensorBoard(dir: String = "") {
   dir.toDirectory.createDirectory()
 
   def addGraph[A](ops: Expr[_]*): TensorBoard = {
-    val graph = Session.withing(_.toGraph(ops))
+    val graph = Session.withing(_.toGraph(ops.toList))
     val event =
       Event.newBuilder().setGraphDef(ByteString.copyFrom(graph.toGraphDef.toByteArray)).build()
     writeEvents(event)

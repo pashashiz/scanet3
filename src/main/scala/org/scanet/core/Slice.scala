@@ -63,8 +63,8 @@ object Slice {
     implicit def rangeSlice: CanBuildSliceFrom[Range] = new RangeSlice {}
     implicit def unboundSlice: CanBuildSliceFrom[Unbound] = new UnboundSlice {}
   }
-  trait Syntax extends Instances with CanBuildSliceFrom.ToCanBuildSliceFromOps
-  object syntax extends Syntax {
+  trait AllSyntax extends Instances with CanBuildSliceFrom.ToCanBuildSliceFromOps
+  object syntax extends AllSyntax {
     def :: : Unbound = Unbound()
   }
 }

@@ -4,6 +4,7 @@ import org.scanet.core._
 import org.scanet.math.Floating
 import org.scanet.math.Numeric
 import org.scanet.math.syntax._
+import scala.collection.immutable.Seq
 
 abstract class Model extends Serializable {
 

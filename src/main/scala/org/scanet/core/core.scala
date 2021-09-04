@@ -1,6 +1,7 @@
 package org.scanet
 
 import scala.collection.mutable
+import scala.collection.immutable.Seq
 
 package object core {
 

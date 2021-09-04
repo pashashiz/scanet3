@@ -36,9 +36,9 @@ object Condition {
       }
   }
 
-  trait Syntax extends Implicits with CanBuildConditionFrom.ToCanBuildConditionFromOps
+  trait AllSyntax extends Implicits with CanBuildConditionFrom.ToCanBuildConditionFromOps
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }
 
 @typeclass trait CanBuildConditionFrom[A] {

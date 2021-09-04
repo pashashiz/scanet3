@@ -4,9 +4,9 @@ import org.scanet.core.CoreSyntax
 
 trait MathSyntax
     extends CoreSyntax
-    with Dist.Syntax
-    with Numeric.Syntax
-    with Logical.Syntax
-    with alg.kernels.Syntax
-    with logical.kernels.Syntax
-    with grad.Syntax
+    with Dist.AllSyntax
+    with Numeric.AllSyntax
+    with Logical.AllSyntax
+    with alg.kernels.AllSyntax
+    with logical.kernels.AllSyntax
+    with grad.GradSyntax

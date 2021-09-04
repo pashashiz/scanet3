@@ -105,6 +105,6 @@ object TensorType {
     implicit val booleanTfTypeInst: TensorType[Boolean] = TensorTypeBoolean
     implicit val stringTfTypeInst: TensorType[String] = TensorTypeString
   }
-  trait Syntax extends TensorType.Instances with TensorType.ToTensorTypeOps
-  object syntax extends Syntax
+  trait AllSyntax extends TensorType.Instances with TensorType.ToTensorTypeOps
+  object syntax extends AllSyntax
 }

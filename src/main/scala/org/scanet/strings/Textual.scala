@@ -4,9 +4,9 @@ trait Textual[S]
 
 object Textual {
 
-  trait Syntax {
+  trait AllSyntax {
     implicit def stringIsTextual: Textual[String] = new Textual[String] {}
   }
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }

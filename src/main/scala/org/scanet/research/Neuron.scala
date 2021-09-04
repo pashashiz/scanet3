@@ -5,6 +5,7 @@ import org.scanet.models.Activation.Identity
 import org.scanet.models.Loss.MeanSquaredError
 import org.scanet.models.layer.Dense
 import org.scanet.syntax._
+import scala.collection.immutable.Seq
 
 object Neuron {
 

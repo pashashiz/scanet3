@@ -2,16 +2,13 @@ package org.scanet.math.alg
 
 import org.scanet.core
 import org.scanet.core._
-//import org.scanet.core.kernels._
+import org.scanet.core.syntax._
 import org.scanet.math.Numeric.syntax._
 import org.scanet.math.logical.kernels.syntax._
 import org.scanet.math.{Convertible, Floating, Numeric}
-import org.scanet.core.Const.syntax._
 
 import scala.collection.immutable.Seq
 import scala.math.Ordering.Implicits._
-import org.scanet.core.TensorType.syntax._
-import org.scanet.core.kernels.syntax._
 
 case class Plus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
@@ -406,7 +403,7 @@ case class Log[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
   }
 }
 
-trait Kernels {
+trait AllKernels {
 
   def zeros[A: TensorType: Numeric](shape: Int*): Expr[A] = fill(shape: _*)(Numeric[A].zero)
 
@@ -490,9 +487,9 @@ trait Kernels {
   def log[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Log(expr)
 }
 
-object kernels extends Kernels {
+object kernels extends AllKernels {
 
-  case class NumericOps[A: TensorType: Numeric](expr: Expr[A]) {
+  class NumericOps[A: TensorType: Numeric](expr: Expr[A]) {
     import org.scanet.math.alg.{kernels => f}
 
     /** Add two tensors. Supports broadcasting.
@@ -730,7 +727,7 @@ object kernels extends Kernels {
     def round: Expr[A] = f.round(expr)
   }
 
-  case class FloatingOps[A: TensorType: Numeric: Floating](expr: Expr[A]) {
+  class FloatingOps[A: TensorType: Numeric: Floating](expr: Expr[A]) {
     import org.scanet.math.alg.{kernels => f}
 
     /** Computes exponential of a given tensor element wise.
@@ -766,7 +763,7 @@ object kernels extends Kernels {
     def tanh: Expr[A] = f.tanh(expr)
   }
 
-  trait Syntax extends Kernels {
+  trait AllSyntax extends AllKernels {
     implicit def toMathKernelNumericOps[A: TensorType: Numeric](expr: Expr[A]): NumericOps[A] =
       new NumericOps[A](expr)
     implicit def toMathKernelFloatingOps[A: TensorType: Numeric: Floating](
@@ -774,5 +771,5 @@ object kernels extends Kernels {
       new FloatingOps[A](expr)
   }
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }

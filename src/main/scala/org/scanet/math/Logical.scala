@@ -17,8 +17,8 @@ object Logical {
   trait Instances {
     implicit def booleanIsLogical: Logical[Boolean] = new BooleanIsLogical
   }
-  trait Syntax extends Instances with Logical.ToLogicalOps
-  object syntax extends Syntax
+  trait AllSyntax extends Instances with Logical.ToLogicalOps
+  object syntax extends AllSyntax
 }
 
 class BooleanIsLogical extends Logical[Boolean] {

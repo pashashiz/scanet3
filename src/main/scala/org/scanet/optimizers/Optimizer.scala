@@ -11,6 +11,7 @@ import org.scanet.optimizers.Optimizer.{sessionsPool, tfCache}
 
 import scala.annotation.tailrec
 import scala.collection._
+import scala.collection.immutable.Seq
 
 case class Step[A: Numeric: TensorType](epoch: Int = 0, iter: Int = 0) {
   def nextIter: Step[A] = incIter(1)
@@ -83,7 +84,7 @@ case class Optimizer[A: Numeric: Floating: TensorType](
       val (weightsInitialized, metaInitialized) = if (globalIter == 0) {
         val features = batches.columns - model.outputs()
         val shapes = model.shapes(features)
-        (shapes.map(initArgs(_)), shapes.map(alg.initMeta[A](_)))
+        (shapes.map(initArgs(_)).toList, shapes.map(alg.initMeta[A](_)).toList)
       } else {
         (weights, meta)
       }

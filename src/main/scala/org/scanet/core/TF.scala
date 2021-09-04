@@ -1,6 +1,7 @@
 package org.scanet.core
 
 import org.scanet.math.syntax.placeholder
+import scala.collection.immutable.Seq
 
 trait TF1[P1, P1M, R] {
 

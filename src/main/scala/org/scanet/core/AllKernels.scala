@@ -2,15 +2,17 @@ package org.scanet.core
 
 import org.scanet.core.Slice.syntax._
 import org.scanet.core.Const.syntax._
+import org.scanet.core.DefaultCompiler.Ctx
 import org.scanet.core.TensorType.syntax._
 import org.scanet.math.{Floating, Numeric}
+import org.tensorflow.OperationBuilder
 
 import scala.collection.immutable.Seq
 
 case class Placeholder[A: TensorType](shape: Shape) extends Expr[A] {
   override def name: String = "Placeholder"
   override val tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override def id: Option[String] = Some(address)
+  override def id: Option[String] = Some(s"#$address")
   override def inputs: Seq[Expr[_]] = Seq.empty
   override def compiler: Compiler[A] =
     DefaultCompiler[A]().withAttr("dtype", TensorType[A]).withAttr("shape", shape)
@@ -99,7 +101,10 @@ case class TakeOut[A: TensorType](from: Expr[_], index: Int) extends Expr[A] {
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = from.shape
   override def inputs: Seq[Expr[_]] = Seq(from)
-  override def compiler: Compiler[A] = DefaultCompiler[A](index = Some(index))
+  override def compiler: Compiler[A] = DefaultCompiler[A](withInputs = false).withStage {
+    (ctx: Ctx, builder: OperationBuilder) =>
+      builder.addInput(ctx.inputs.head.operation.output(index))
+  }
 }
 
 case class Merge[A: TensorType](expr: Seq[Expr[A]]) extends Expr[A] {
@@ -255,7 +260,7 @@ object Cast {
   }
 }
 
-trait Kernels {
+trait AllKernels {
 
   def placeholder[A: TensorType](shape: Int*): Expr[A] = placeholder(Shape(shape: _*))
   def placeholder[A: TensorType](shape: Shape): Expr[A] = Placeholder[A](shape)
@@ -338,9 +343,9 @@ trait Kernels {
   def cast[A: TensorType, B: TensorType](expr: Expr[A]): Expr[B] = Cast(expr)
 }
 
-object kernels extends Kernels {
+object kernels extends AllKernels {
 
-  case class Ops[A: TensorType](expr: Expr[A]) {
+  class Ops[A: TensorType](expr: Expr[A]) {
     import org.scanet.core.{kernels => f}
 
     def slice(projection: Projection): Expr[A] = f.slice(expr, projection)
@@ -450,10 +455,10 @@ object kernels extends Kernels {
     def asVoid: Expr[Nothing] = expr.asInstanceOf[Expr[Nothing]]
   }
 
-  trait Syntax extends Kernels {
+  trait AllSyntax extends AllKernels {
     implicit def toCoreKernelOps[A: TensorType](expr: Expr[A]): Ops[A] =
       new Ops[A](expr)
   }
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }

@@ -8,6 +8,7 @@ import org.tensorflow.{Graph, RawTensor, Output => NativeOutput, Session => Nati
 import scala.language.existentials
 import scala.util.Try
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 
 case class Runner(session: Session, feed: Map[Expr[_], Tensor[_]] = Map()) {
 
@@ -210,9 +211,9 @@ object Session {
       }
   }
 
-  trait Syntax extends Implicits
+  trait AllSyntax extends Implicits
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }
 
 trait OutputContainer[O[_]] {

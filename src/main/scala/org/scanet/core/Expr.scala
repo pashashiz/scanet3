@@ -247,12 +247,12 @@ object Const {
 
   def apply[A: TensorType](tensor: Tensor[A]): Expr[A] = new Const[A](tensor.compact)
 
-  trait Syntax {
+  trait AllSyntax {
     implicit def scalarIsConstOps[A: TensorType](value: A): Ops[A] =
       new Ops(Tensor.scalar(value))
     implicit def tensorIsConstOps[A: TensorType](tensor: Tensor[A]): Ops[A] =
       new Ops(tensor)
   }
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }

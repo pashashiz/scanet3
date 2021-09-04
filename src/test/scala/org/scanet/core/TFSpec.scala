@@ -5,6 +5,7 @@ import org.scanet.core.Session.withing
 import org.scanet.core.Tensor.scalar
 import org.scanet.math.syntax._
 import org.scanet.test.CustomMatchers
+import scala.collection.immutable.Seq
 
 /*_*/
 class TFSpec extends AnyFlatSpec with CustomMatchers {
@@ -18,7 +19,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "work with seq of outputs as arg" in {
-    val sum = TF1((arg: OutputSeq[Int]) => plus(arg: _*))
+    val sum = TF1((arg: OutputSeq[Int]) => plus(arg))
     withing(session => {
       val func = sum compile session
       func(Seq(scalar(1), scalar(2))) should be(scalar(3))
@@ -29,7 +30,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     // NOTE: sadly, we have to specify a result type so we
     // could have proper result type to compile it later :(
     val double: TF1[Int, Tensor[Int], OutputSeq[Int]] =
-      TF1((arg: Expr[Int]) => Seq(arg + 0.const, arg + 0.const))
+      TF1((arg: Expr[Int]) => Seq(arg + 0.const, arg + 0.const): OutputSeq[Int])
     withing(session => {
       val func = double compile session
       func(scalar(5)) should be(Seq(scalar(5), scalar(5)))
@@ -38,7 +39,7 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
 
   it should "return complex tuple" in {
     val complex: TF1[Int, Tensor[Int], (Expr[Int], OutputSeq[Int])] =
-      TF1((arg: Expr[Int]) => (arg + 0.const, Seq(arg + 0.const, arg + 0.const)))
+      TF1((arg: Expr[Int]) => (arg + 0.const, Seq(arg + 0.const, arg + 0.const): OutputSeq[Int]))
     withing(session => {
       val func = complex compile session
       func(scalar(5)) should be((scalar(5), Seq(scalar(5), scalar(5))))

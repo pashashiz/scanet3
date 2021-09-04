@@ -5,6 +5,7 @@ import org.scanet.math.{Floating, Numeric}
 import org.scanet.models.Regularization.Zero
 import org.scanet.models.{Activation, Regularization}
 import org.scanet.syntax._
+import scala.collection.immutable.Seq
 
 /** Regular densely-connected NN layer.
   *

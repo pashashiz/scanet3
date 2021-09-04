@@ -16,13 +16,11 @@ class RDDOps[A: Numeric: Floating: TensorType: Dist](val rdd: RDD[Array[A]])(
 
 object SparkExt {
 
-  trait Implicits {
+  trait AllSyntax {
     implicit def rddOps[A: Numeric: Floating: TensorType: Dist](rdd: RDD[Array[A]])(
         implicit c: Convertible[Int, A]): RDDOps[A] =
       new RDDOps[A](rdd)
   }
 
-  trait Syntax extends Implicits
-
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }

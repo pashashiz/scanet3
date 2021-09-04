@@ -122,7 +122,7 @@ case class Not[A: TensorType: Logical](expr: Expr[A]) extends Expr[Boolean] {
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
-trait Kernels {
+trait AllKernels {
 
   def all[A: TensorType: Logical](expr: Expr[A]): Expr[Boolean] = all(expr, 0 until expr.rank)
   def all[A: TensorType: Logical](expr: Expr[A], axises: Seq[Int]): Expr[Boolean] =
@@ -188,9 +188,9 @@ trait Kernels {
 
 }
 
-object kernels extends Kernels {
+object kernels extends AllKernels {
 
-  case class AnyOps[A: TensorType](expr: Expr[A]) {
+  class AnyOps[A: TensorType](expr: Expr[A]) {
     import org.scanet.math.logical.{kernels => f}
 
     /** Check if 2 tensors are equal (tensors should have the same shape)
@@ -274,7 +274,7 @@ object kernels extends Kernels {
     def <=(right: Expr[A]): Expr[Boolean] = f.lte(expr, right)
   }
 
-  case class LogicalOps[A: TensorType: Logical](expr: Expr[A]) {
+  class LogicalOps[A: TensorType: Logical](expr: Expr[A]) {
     import org.scanet.math.logical.{kernels => f}
 
     /** Reduces tensor along the dimensions given in axis using logical AND.
@@ -351,12 +351,12 @@ object kernels extends Kernels {
     def unary_! : Expr[Boolean] = f.not(expr)
   }
 
-  trait Syntax extends Kernels {
+  trait AllSyntax extends AllKernels {
     implicit def toLogicalKernelAnyOps[A: TensorType](expr: Expr[A]): AnyOps[A] =
       new AnyOps[A](expr)
     implicit def toLogicalKernelLogicalOps[A: TensorType: Logical](expr: Expr[A]): LogicalOps[A] =
       new LogicalOps[A](expr)
   }
 
-  object syntax extends Syntax
+  object syntax extends AllSyntax
 }
