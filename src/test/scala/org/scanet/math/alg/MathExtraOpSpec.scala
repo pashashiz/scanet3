@@ -1,12 +1,12 @@
-package org.scanet.math
+package org.scanet.math.alg
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scanet.core.{Shape, Tensor}
 import org.scanet.math.syntax._
-import scala.collection.immutable.Seq
 
 import scala.Array.range
+import scala.collection.immutable.Seq
 
 class MathExtraOpSpec extends AnyWordSpec with Matchers {
 
