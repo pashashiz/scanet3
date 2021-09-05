@@ -1,4 +1,4 @@
-package org.scanet.math
+package org.scanet.math.grad
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -7,8 +7,8 @@ import org.scanet.core.Session.withing
 import org.scanet.core.Tensor.scalar
 import org.scanet.math.syntax._
 
-import scala.collection.immutable.Seq
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Seq
 
 class MathGradOpSpec extends AnyWordSpec with Matchers {
 
