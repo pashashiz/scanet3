@@ -3,19 +3,13 @@ package scanet.math.linalg
 import org.tensorflow.proto.framework.DataType
 import scanet.core
 import scanet.core.syntax._
-import scanet.core.{Cast, DefaultCompiler, Expr, Grad, Shape, TakeOut, TakeOutUntyped, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{DefaultCompiler, Expr, Shape, TakeOutUntyped, TensorType}
+import scanet.math.Floating
 
 import scala.collection.immutable.Seq
 
-case class Det[A: TensorType: Floating] private (tensor: Expr[A]) extends Expr[A] {
-  require(
-    tensor.rank >= 2,
-    s"at least tensor with rank 2 is required but was passed a tensor with rank ${tensor.rank}")
-  private val matrixShape = Shape(tensor.shape.dims.takeRight(2))
-  require(
-    matrixShape.dims.distinct.size <= 1,
-    s"the last 2 dimensions should form a squared matrix, but was a matrix with shape $matrixShape")
+case class Det[A: TensorType: Floating](tensor: Expr[A]) extends Expr[A] {
+  tensor.requireSquareMatrixTail
   override def name: String = "MatrixDeterminant"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override val shape: Shape = Shape(tensor.shape.dims.dropRight(2))
@@ -26,8 +20,9 @@ case class Det[A: TensorType: Floating] private (tensor: Expr[A]) extends Expr[A
 /** NOTE: the result is a complex number which is not supported by JVM lib as of now
   * so we return Any Expr which should be casted after
   */
-case class Eigen[A: TensorType: Floating] private (tensor: Expr[A], vectors: Boolean)
+case class Eigen[A: TensorType: Floating](tensor: Expr[A], vectors: Boolean)
     extends Expr[(Any, Any)] {
+  tensor.requireSquareMatrixTail
   override def name: String = "Eig"
   override def tpe: Option[TensorType[(Any, Any)]] = None
   override def shape: Shape = Shape()
@@ -45,13 +40,24 @@ trait AllKernels {
     */
   def det[A: TensorType: Floating](tensor: Expr[A]): Expr[A] = Det(tensor)
 
+  /** Computes the eigenvalues for a matrix or a batch of matrices (D3)
+    *
+    * @param tensor Tensor of shape [..., N, N].
+    *               Only the lower triangular part of each inner inner matrix is referenced.
+    */
   def eigenValues[A: TensorType: Floating](tensor: Expr[A]): Expr[A] =
     TakeOutUntyped(Eigen(tensor, vectors = false), 0, Shape(tensor.shape.dims.dropRight(1)))
       .castUnsafe[A]
 
+  /** Computes the eigenvectors for a matrix or a batch of matrices (D3)
+    *
+    * @param tensor Tensor of shape [..., N, N].
+    *               Only the lower triangular part of each inner inner matrix is referenced.
+    */
   def eigenVectors[A: TensorType: Floating](tensor: Expr[A]): Expr[A] =
     TakeOutUntyped(Eigen(tensor, vectors = true), 1, tensor.shape).castUnsafe[A]
 
+  /** @see [[eigenValues]] and [[eigenVectors]] */
   def eigen[A: TensorType: Floating](tensor: Expr[A]): (Expr[A], Expr[A]) = {
     val e: Eigen[A] = Eigen(tensor, vectors = true)
     val values = TakeOutUntyped[Any](e, 0, Shape(tensor.shape.dims.dropRight(1))).castUnsafe[A]
@@ -65,12 +71,16 @@ object kernels extends AllKernels {
   class LinalgFloatingOps[A: TensorType: Floating](expr: Expr[A]) {
     import scanet.math.linalg.{kernels => f}
 
-    /** @see [[f.det]]
-      */
+    /** @see [[f.det]] */
     def det: Expr[A] = f.det(expr)
 
+    /** @see [[f.eigenValues]] */
     def eigenValues: Expr[A] = f.eigenValues(expr)
+
+    /** @see [[f.eigenVectors]] */
     def eigenVectors: Expr[A] = f.eigenVectors(expr)
+
+    /** @see [[f.eigen]] */
     def eigen: (Expr[A], Expr[A]) = f.eigen(expr)
   }
 
