@@ -3,7 +3,8 @@ package scanet.core
 import scanet.core.Session.withing
 
 trait Eval[M] {
-  def eval: M
+  def
+  eval: M
   def display(dir: String = ""): Unit
 }
 

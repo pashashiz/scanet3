@@ -96,16 +96,25 @@ case class Switch[A: TensorType](cond: Expr[Boolean], output: Expr[A]) extends E
   override def compiler: Compiler[(A, A)] = DefaultCompiler[(A, A)](index = None)
 }
 
-case class TakeOut[A: TensorType](from: Expr[_], index: Int) extends Expr[A] {
+trait TakeOutExpr[A] extends Expr[A] {
+  def from: Expr[_]
+  def index: Int
+  def shape: Shape
   override def name: String = "Identity"
-  override def id: Option[String] = Some(index.toString)
-  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override def shape: Shape = from.shape
   override def inputs: Seq[Expr[_]] = Seq(from)
   override def compiler: Compiler[A] = DefaultCompiler[A](withInputs = false).withStage {
     (ctx: Ctx, builder: OperationBuilder) =>
       builder.addInput(ctx.inputs.head.operation.output(index))
   }
+  override def toStringChild: String = s"($from[$index])"
+}
+
+case class TakeOut[A: TensorType](from: Expr[_], index: Int, shape: Shape) extends TakeOutExpr[A] {
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+}
+
+case class TakeOutUntyped[A](from: Expr[_], index: Int, shape: Shape) extends TakeOutExpr[A] {
+  override def tpe: Option[TensorType[A]] = None
 }
 
 case class Merge[A: TensorType](expr: Seq[Expr[A]]) extends Expr[A] {
@@ -238,7 +247,7 @@ case class JoinAlong[A: TensorType](outputs: Seq[Expr[A]], axis: Int) extends Ex
   }
 }
 
-case class Cast[A: TensorType, B: TensorType] private (expr: Expr[A]) extends Expr[B] {
+case class Cast[B: TensorType] private (expr: Expr[_]) extends Expr[B] {
   override def name: String = "Cast"
   override def tpe: Option[TensorType[B]] = Some(TensorType[B])
   override def shape: Shape = expr.shape
@@ -253,12 +262,15 @@ case class Cast[A: TensorType, B: TensorType] private (expr: Expr[A]) extends Ex
 }
 
 object Cast {
-  def apply[A: TensorType, B: TensorType](expr: Expr[A]): Expr[B] = {
+
+  def safe[A: TensorType, B: TensorType](expr: Expr[A]): Expr[B] = {
     if (TensorType[A].tag == TensorType[B].tag)
       expr.asInstanceOf[Expr[B]]
     else
-      new Cast[A, B](expr)
+      new Cast[B](expr)
   }
+
+  def unsafe[B: TensorType](expr: Expr[_]): Expr[B] = new Cast[B](expr)
 }
 
 trait AllKernels {
@@ -318,8 +330,8 @@ trait AllKernels {
       require(falseCase.shape == trueCase.shape, "shapes for true and false branches should match")
       // perform switch op that sends input to 0 output when condition is false and to 1 for true
       val switch = Switch(cond, cond)
-      val falseBranch = TakeOut[Boolean](switch, 0)
-      val trueBranch = TakeOut[Boolean](switch, 1)
+      val falseBranch = TakeOut[Boolean](switch, 0, switch.shape)
+      val trueBranch = TakeOut[Boolean](switch, 1, switch.shape)
       Merge(Seq(dependsOn(trueCase, trueBranch), dependsOn(falseCase, falseBranch)))
     }
   }
@@ -341,12 +353,13 @@ trait AllKernels {
     joinAlong(outputs.toList.map(reshape(_, shape)), 0)
   }
 
-  def cast[A: TensorType, B: TensorType](expr: Expr[A]): Expr[B] = Cast(expr)
+  def cast[A: TensorType, B: TensorType](expr: Expr[A]): Expr[B] = Cast.safe(expr)
+  def castUnsafe[B: TensorType](expr: Expr[_]): Expr[B] = Cast.unsafe[B](expr)
 }
 
 object kernels extends AllKernels {
 
-  class Ops[A: TensorType](expr: Expr[A]) {
+  class TensorTypeOps[A: TensorType](expr: Expr[A]) {
     import scanet.core.{kernels => f}
 
     def slice(projection: Projection): Expr[A] = f.slice(expr, projection)
@@ -456,9 +469,22 @@ object kernels extends AllKernels {
     def asVoid: Expr[Nothing] = expr.asInstanceOf[Expr[Nothing]]
   }
 
+  class AnyOps(expr: Expr[_]) {
+    import scanet.core.{kernels => f}
+
+    /** Cast elements of given tensor form any type into B.
+      * That is unsafe operation and if cast is impossible will fail in runtime
+      *
+      * @return casted output
+      */
+    def castUnsafe[B: TensorType]: Expr[B] = f.castUnsafe(expr)
+  }
+
   trait AllSyntax extends AllKernels {
-    implicit def toCoreKernelOps[A: TensorType](expr: Expr[A]): Ops[A] =
-      new Ops[A](expr)
+    implicit def toCoreKernelTensorTypeOps[A: TensorType](expr: Expr[A]): TensorTypeOps[A] =
+      new TensorTypeOps[A](expr)
+    implicit def toCoreKernelAnyOps[A](expr: Expr[A]): AnyOps =
+      new AnyOps(expr)
   }
 
   object syntax extends AllSyntax

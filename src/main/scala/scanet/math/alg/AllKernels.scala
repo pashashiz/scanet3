@@ -457,6 +457,10 @@ trait AllKernels {
   def abs[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Abs(expr)
 
   def round[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Round(expr)
+  def roundAt[A: TensorType: Numeric](expr: Expr[A], precision: Expr[Int]): Expr[A] = {
+    val p = precision.cast[A]
+    round(expr * p) / p
+  }
 
   def transpose[A: TensorType: Numeric](expr: Expr[A], perm: Seq[Int]): Expr[A] =
     Transpose(expr, perm)
@@ -723,6 +727,8 @@ object kernels extends AllKernels {
       * @return rounded tensor
       */
     def round: Expr[A] = f.round(expr)
+    def roundAt(precision: Expr[Int]): Expr[A] = f.roundAt(expr, precision)
+    def roundAt(precision: Int): Expr[A] = f.roundAt(expr, precision.const)
   }
 
   class FloatingOps[A: TensorType: Numeric: Floating](expr: Expr[A]) {
