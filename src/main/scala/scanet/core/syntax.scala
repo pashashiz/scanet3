@@ -6,6 +6,7 @@ trait CoreSyntax
     with Session.AllSyntax
     with Eval.AllSyntax
     with Const.AllSyntax
+    with Require.AllSyntax
     with kernels.AllSyntax {}
 
 object syntax extends CoreSyntax

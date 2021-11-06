@@ -8,6 +8,7 @@ trait MathSyntax
     with Numeric.AllSyntax
     with Logical.AllSyntax
     with alg.kernels.AllSyntax
+    with linalg.kernels.AllSyntax
     with logical.kernels.AllSyntax
     with grad.GradSyntax
 

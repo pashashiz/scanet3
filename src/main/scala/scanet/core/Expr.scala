@@ -4,6 +4,7 @@ import scanet.core.DefaultCompiler.{Ctx, Stage}
 import scanet.math.{Floating, Numeric}
 import scanet.native.RawTensors
 import org.tensorflow
+import org.tensorflow.proto.framework.DataType
 import org.tensorflow.types.family.TType
 
 import scala.collection.immutable.Seq
@@ -49,16 +50,15 @@ trait Expr[A] {
     }
     fill(DirectedGraph[Expr[_]](), this)
   }
-
+  protected def toStringChild: String = id match {
+    case Some(value) => s"($value)"
+    case None        => if (inputs.nonEmpty) inputs.mkString("(", ", ", ")") else ""
+  }
   final override def toString: String = {
     val fullName = if (label == name) s"$name" else s"$label:$name"
-    val child = id match {
-      case Some(value) => s"($value)"
-      case None        => if (inputs.nonEmpty) inputs.mkString("(", ", ", ")") else ""
-    }
     val deps = if (controls.nonEmpty) s".depends(${controls.mkString(", ")})" else ""
     val tpeOrEmpty = tpe.map(t => s"[${t.show}]").getOrElse("")
-    s"$fullName$child$deps$tpeOrEmpty:$shape"
+    s"$fullName$toStringChild$deps$tpeOrEmpty:$shape"
   }
   final def address: String = super.hashCode().toString
   final override def hashCode(): Int = toString.hashCode
@@ -128,9 +128,12 @@ case class DefaultCompiler[A](index: Option[Int], stages: Seq[Stage]) extends Co
       builder.setAttr("value", tensor.compact).setAttr("dtype", TensorType[B].tag)
   }
 
-  def withAttr(name: String, value: TensorType[_]): DefaultCompiler[A] = withStage {
+  def withAttr(name: String, value: TensorType[_]): DefaultCompiler[A] =
+    withAttr(name, value.tag)
+
+  def withAttr(name: String, value: DataType): DefaultCompiler[A] = withStage {
     (_: Ctx, builder: OperationBuilder) =>
-      builder.setAttr(name, value.tag)
+      builder.setAttr(name, value)
   }
 
   def withAttr(name: String, value: String): DefaultCompiler[A] = withStage {

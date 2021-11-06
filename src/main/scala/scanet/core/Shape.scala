@@ -42,11 +42,11 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def last: Int = dims.last
 
-  def prepend(dim: Int) = Shape(dim +: dims: _*)
-  def +:(dim: Int) = prepend(dim)
+  def prepend(dim: Int): Shape = Shape(dim +: dims: _*)
+  def +:(dim: Int): Shape = prepend(dim)
 
-  def append(dim: Int) = Shape(dims :+ dim: _*)
-  def :+(dim: Int) = append(dim)
+  def append(dim: Int): Shape = Shape(dims :+ dim: _*)
+  def :+(dim: Int): Shape = append(dim)
 
   def insert(dim: Int, size: Int): Shape = {
     require(dim >= 0 && dim <= rank, s"couldn't insert dimension $dim cause rank is $rank")
