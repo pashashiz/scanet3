@@ -123,6 +123,10 @@ class ViewSpec extends AnyFlatSpec with Matchers {
     Shape(2, 3, 4).remove(1, 2) should be(Shape(2))
   }
 
+  it should "support updating all" in {
+    Shape(2, 3, 4).updateAll(1)(0, 2) should be(Shape(1, 3, 1))
+  }
+
   "minus" should "leave higher dimensions from first shape if it is bigger" in {
     Shape(2, 3, 4) - Shape(3, 4) should be(Shape(2))
   }
@@ -150,29 +154,29 @@ class ViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return dimension index with size one" in {
-    Shape(2, 3, 4) broadcastableAxises Shape(2, 3, 1) should be(Seq(2))
+    Shape(2, 3, 4) broadcastableAxis Shape(2, 3, 1) should be(Seq(2))
   }
 
   it should "return empty shape if both are equal" in {
-    Shape(2, 3, 4) broadcastableAxises Shape(2, 3, 4) should be(Seq())
+    Shape(2, 3, 4) broadcastableAxis Shape(2, 3, 4) should be(Seq())
   }
 
   it should "return empty shape if other dimension is bigger" in {
-    Shape(2, 3, 4) broadcastableAxises Shape(1, 2, 3, 4) should be(Seq())
+    Shape(2, 3, 4) broadcastableAxis Shape(1, 2, 3, 4) should be(Seq())
   }
 
   it should "same shape if other dimension is empty" in {
-    Shape(2, 3, 4) broadcastableAxises Shape() should be(Seq(0, 1, 2))
+    Shape(2, 3, 4) broadcastableAxis Shape() should be(Seq(0, 1, 2))
   }
 
   it should "fail if shapes are incompatible" in {
     the[IllegalArgumentException] thrownBy {
-      Shape(2, 3, 4) broadcastableAxises Shape(2, 5, 4)
-    } should have message "requirement failed: cannot find broadcastable axises for (2, 3, 4) and (2, 5, 4)"
+      Shape(2, 3, 4) broadcastableAxis Shape(2, 5, 4)
+    } should have message "requirement failed: cannot find broadcastable axis for (2, 3, 4) and (2, 5, 4)"
   }
 
-  "broadcastable axises" should "leave higher dimensions from first shape if it is bigger" in {
-    Shape(2, 3, 4) broadcastableAxises Shape(3, 4) should be(Seq(0))
+  "broadcastable axis" should "leave higher dimensions from first shape if it is bigger" in {
+    Shape(2, 3, 4) broadcastableAxis Shape(3, 4) should be(Seq(0))
   }
 
   "insert" should "place new dimension between existing and shift all right dimensions" in {

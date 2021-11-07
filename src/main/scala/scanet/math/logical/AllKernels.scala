@@ -10,19 +10,19 @@ import scanet.math.{Convertible, Logical}
 import scala.collection.immutable.Seq
 import scala.math.Ordering.Implicits._
 
-case class All[A: TensorType: Logical](expr: Expr[A], axises: Seq[Int]) extends Expr[Boolean] {
+case class All[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
   override def name: String = "All"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
-  override def shape: Shape = expr.shape.remove(axises: _*)
-  override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(axises.map(_.toLong): _*).const)
+  override def shape: Shape = expr.shape.remove(axis: _*)
+  override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const)
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
-case class Any[A: TensorType: Logical](expr: Expr[A], axises: Seq[Int]) extends Expr[Boolean] {
+case class Any[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
   override def name: String = "Any"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
-  override def shape: Shape = expr.shape.remove(axises: _*)
-  override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(axises.map(_.toLong): _*).const)
+  override def shape: Shape = expr.shape.remove(axis: _*)
+  override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const)
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
@@ -125,12 +125,12 @@ case class Not[A: TensorType: Logical](expr: Expr[A]) extends Expr[Boolean] {
 trait AllKernels {
 
   def all[A: TensorType: Logical](expr: Expr[A]): Expr[Boolean] = all(expr, 0 until expr.rank)
-  def all[A: TensorType: Logical](expr: Expr[A], axises: Seq[Int]): Expr[Boolean] =
-    All(expr, axises)
+  def all[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]): Expr[Boolean] =
+    All(expr, axis)
 
   def any[A: TensorType: Logical](expr: Expr[A]): Expr[Boolean] = any(expr, 0 until expr.rank)
-  def any[A: TensorType: Logical](expr: Expr[A], axises: Seq[Int]): Expr[Boolean] =
-    Any(expr, axises)
+  def any[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]): Expr[Boolean] =
+    Any(expr, axis)
 
   def eq[A: TensorType, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[Boolean] = {
@@ -281,10 +281,10 @@ object kernels extends AllKernels {
       *
       * {{{Tensor.matrix(Array(true, false), Array(true, true)).const.all(Seq(1)).eval should be(Tensor.vector(false, true))}}}
       *
-      * @param axises axises to make a reduction
+      * @param axis axis to make a reduction
       * @return a result of reduction
       */
-    def all(axises: Seq[Int]): Expr[Boolean] = f.all(expr, axises)
+    def all(axis: Seq[Int]): Expr[Boolean] = f.all(expr, axis)
 
     /** Reduces tensor along all dimensions using logical AND.
       *
@@ -298,10 +298,10 @@ object kernels extends AllKernels {
       *
       * {{{Tensor.matrix(Array(false, false), Array(true, true)).const.any(Seq(1)).eval should be(Tensor.vector(false, true))}}}
       *
-      * @param axises axises to make a reduction
+      * @param axis axis to make a reduction
       * @return a result of reduction
       */
-    def any(axises: Seq[Int]): Expr[Boolean] = f.any(expr, axises)
+    def any(axis: Seq[Int]): Expr[Boolean] = f.any(expr, axis)
 
     /** Reduces tensor along all dimensions using logical OR.
       *
