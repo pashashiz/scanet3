@@ -57,7 +57,7 @@ object Activation {
   case object Softmax extends Activation {
     override def build[A: Numeric: Floating: TensorType](in: Expr[A]): Expr[A] = {
       val e = in.exp
-      val sum = e.sum(axises = Seq(1))
+      val sum = e.sum(axis = Seq(1))
       e / sum.reshape(sum.shape :+ 1)
     }
   }

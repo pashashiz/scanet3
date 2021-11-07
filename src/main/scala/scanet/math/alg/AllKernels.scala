@@ -25,11 +25,11 @@ case class Plus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends E
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
-      val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
       List(
-        parentGrad.sum(shrinkLeftAxises).reshape(left.shape),
-        parentGrad.sum(shrinkRightAxises).reshape(right.shape))
+        parentGrad.sum(shrinkLeftAxis).reshape(left.shape),
+        parentGrad.sum(shrinkRightAxis).reshape(right.shape))
     }
   }
 }
@@ -76,11 +76,11 @@ case class Minus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends 
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
-      val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
       List(
-        parentGrad.sum(shrinkLeftAxises).reshape(left.shape),
-        -parentGrad.sum(shrinkRightAxises).reshape(right.shape))
+        parentGrad.sum(shrinkLeftAxis).reshape(left.shape),
+        -parentGrad.sum(shrinkRightAxis).reshape(right.shape))
     }
   }
 }
@@ -114,11 +114,11 @@ case class Multiply[A: TensorType: Numeric] private (left: Expr[A], right: Expr[
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
-      val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
       List(
-        (right.cast[R] * parentGrad).sum(shrinkLeftAxises).reshape(left.shape),
-        (left.cast[R] * parentGrad).sum(shrinkRightAxises).reshape(right.shape))
+        (right.cast[R] * parentGrad).sum(shrinkLeftAxis).reshape(left.shape),
+        (left.cast[R] * parentGrad).sum(shrinkRightAxis).reshape(right.shape))
     }
   }
 }
@@ -185,62 +185,71 @@ case class Div[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Ex
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkRightAxises = parentShape.broadcastableAxises(right.shape).toList
-      val shrinkLeftAxises = parentShape.broadcastableAxises(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
       List(
-        (parentGrad / right.cast[R]).sum(shrinkLeftAxises).reshape(left.shape),
+        (parentGrad / right.cast[R]).sum(shrinkLeftAxis).reshape(left.shape),
         (-left.cast[R] * parentGrad / right.sqr.cast[R])
-          .sum(shrinkRightAxises)
+          .sum(shrinkRightAxis)
           .reshape(right.shape))
     }
   }
 }
 
-case class Sum[A: TensorType: Numeric] private (expr: Expr[A], axises: Seq[Int]) extends Expr[A] {
+case class Sum[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int]) extends Expr[A] {
   override def name: String = "Sum"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override val shape: Shape = expr.shape.remove(axises: _*)
+  override val shape: Shape = expr.shape.remove(axis: _*)
   override val inputs: Seq[Expr[_]] =
-    Seq(expr, Tensor.vector(axises.map(_.toLong): _*).const.as("axises"))
+    Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const.as("axis"))
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      // we need to recover reduced axises with 1, cause broadcasting will not always work
-      val parentShape = axises.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
+      // we need to recover reduced axis with 1, cause broadcasting will not always work
+      val parentShape = axis.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
       List(kernels.ones[R](expr.shape) * parentGrad.reshape(parentShape))
     }
   }
 }
 
 object Sum {
-  def apply[A: TensorType: Numeric](expr: Expr[A], axises: Seq[Int]): Expr[A] =
-    if (expr.isScalar || axises.isEmpty) expr else new Sum(expr, axises)
+  def apply[A: TensorType: Numeric](expr: Expr[A], axis: Seq[Int]): Expr[A] =
+    if (expr.isScalar || axis.isEmpty) expr else new Sum(expr, axis)
 }
 
-case class Mean[A: TensorType: Numeric] private (expr: Expr[A], axises: Seq[Int]) extends Expr[A] {
+case class Mean[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int], keepDims: Boolean)
+    extends Expr[A] {
   override def name: String = "Mean"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override val shape: Shape = expr.shape.remove(axises: _*)
+  override val shape: Shape = {
+    if (keepDims)
+      expr.shape.updateAll(1)(axis: _*)
+    else
+      expr.shape.remove(axis: _*)
+  }
   override val inputs: Seq[Expr[_]] =
-    Seq(expr, Tensor.vector(axises.map(_.toLong): _*).const.as("axises"))
-  override def compiler: Compiler[A] = DefaultCompiler[A]()
+    Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const.as("axis"))
+  override def compiler: Compiler[A] = DefaultCompiler[A]().withAttr("keep_dims", keepDims)
   override def localGrad: Grad[A] = new Grad[A] {
     override def calc[R: Numeric: Floating: TensorType](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      // we need to recover reduced axises with 1, cause broadcasting will not always work
-      val parentShape = axises.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
-      val size = expr.shape.select(axises: _*).power
+      // we need to recover reduced axis with 1, cause broadcasting will not always work
+      val parentShape = axis.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
+      val size = expr.shape.select(axis: _*).power
       List(kernels.ones[R](expr.shape) * parentGrad.reshape(parentShape) / size.const.cast[R])
     }
   }
 }
 
 object Mean {
-  def apply[A: TensorType: Numeric](expr: Expr[A], axises: Seq[Int]): Expr[A] =
-    if (expr.isScalar || axises.isEmpty) expr else new Mean(expr, axises)
+  def apply[A: TensorType: Numeric](
+      expr: Expr[A],
+      axis: Seq[Int],
+      keepDims: Boolean = false): Expr[A] =
+    if (expr.isScalar || axis.isEmpty) expr else new Mean(expr, axis, keepDims)
 }
 
 case class Max[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[A] {
@@ -442,10 +451,13 @@ trait AllKernels {
 
   def exp[A: TensorType: Numeric: Floating](expr: Expr[A]): Expr[A] = Exp(expr)
 
-  def sum[A: TensorType: Numeric](out: Expr[A], axises: Seq[Int]): Expr[A] = Sum(out, axises)
+  def sum[A: TensorType: Numeric](out: Expr[A], axis: Seq[Int]): Expr[A] = Sum(out, axis)
   def sum[A: TensorType: Numeric](out: Expr[A]): Expr[A] = sum(out, 0 until out.rank)
 
-  def mean[A: TensorType: Numeric](expr: Expr[A], axises: Seq[Int]): Expr[A] = Mean(expr, axises)
+  def mean[A: TensorType: Numeric](
+      expr: Expr[A],
+      axis: Seq[Int],
+      keepDims: Boolean = false): Expr[A] = Mean(expr, axis, keepDims)
   def mean[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = mean(expr, 0 until expr.rank)
 
   def max[A: TensorType, C](left: Expr[A], right: C)(implicit c: Convertible[C, Expr[A]]): Expr[A] =
@@ -458,7 +470,7 @@ trait AllKernels {
 
   def round[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Round(expr)
   def roundAt[A: TensorType: Numeric](expr: Expr[A], precision: Expr[Int]): Expr[A] = {
-    val p = precision.cast[A]
+    val p = 10f.const.pow(precision.cast[Float]).cast[A]
     round(expr * p) / p
   }
 
@@ -596,15 +608,15 @@ object kernels extends AllKernels {
 
     /** Computes the sum of elements across dimensions of a tensor.
       *
-      * Reduces `tensor` along the dimensions given in `axises`.
-      * The rank of the tensor is reduced by 1 for each entry in `axises`.
+      * Reduces `tensor` along the dimensions given in `axis`.
+      * The rank of the tensor is reduced by 1 for each entry in `axis`.
       *
       * {{{Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.sum(Seq(0)).eval should be(Tensor.vector(5, 7, 9))}}}
       *
-      * @param axises to sum
+      * @param axis to sum
       * @return tensor with summed values
       */
-    def sum(axises: Seq[Int]): Expr[A] = f.sum(expr, axises)
+    def sum(axis: Seq[Int]): Expr[A] = f.sum(expr, axis)
 
     /** Computes the sum of elements across all dimensions of a tensor.
       *
@@ -638,15 +650,15 @@ object kernels extends AllKernels {
 
     /** Computes the mean of elements across dimensions of a tensor.
       *
-      * Reduces `out` along the dimensions given in `axises`.
-      * The rank of the tensor is reduced by 1 for each entry in `axises`.
+      * Reduces `out` along the dimensions given in `axis`.
+      * The rank of the tensor is reduced by 1 for each entry in `axis`.
       *
       * {{{Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const.mean(Seq(0)).eval should be(Tensor.vector(5, 7, 9))}}}
       *
-      * @param axises to sum
+      * @param axis to sum
       * @return tensor with mean values
       */
-    def mean(axises: Seq[Int]): Expr[A] = f.mean(expr, axises)
+    def mean(axis: Seq[Int], keepDims: Boolean = false): Expr[A] = f.mean(expr, axis, keepDims)
 
     /** Computes the mean of elements across all dimensions of a tensor.
       *
