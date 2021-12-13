@@ -1,16 +1,12 @@
 package scanet.optimizers
 
-import scanet.core.{Expr, Shape, Tensor, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating, Shape, Tensor}
 
 trait Algorithm {
 
-  def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T]
+  def initMeta[T: Floating](shape: Shape): Tensor[T]
 
-  def delta[T: Floating: Numeric: TensorType](
-      grad: Expr[T],
-      meta: Expr[T],
-      iter: Expr[Int]): Delta[T]
+  def delta[T: Floating](grad: Expr[T], meta: Expr[T], iter: Expr[Int]): Delta[T]
 }
 
-case class Delta[T: Floating: Numeric: TensorType](delta: Expr[T], meta: Expr[T])
+case class Delta[T: Floating](delta: Expr[T], meta: Expr[T])

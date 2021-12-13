@@ -1,8 +1,8 @@
 package scanet.models
 
-import scanet.core.{Expr, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating}
 import scanet.math.syntax._
+
 import scala.collection.immutable.Seq
 
 /** NOTE: activation might be expressed as a function Output[A] => Output[A]
@@ -15,7 +15,7 @@ import scala.collection.immutable.Seq
   * }}}
   */
 trait Activation {
-  def build[A: Numeric: Floating: TensorType](in: Expr[A]): Expr[A]
+  def build[A: Floating](in: Expr[A]): Expr[A]
 }
 
 object Activation {
@@ -25,7 +25,7 @@ object Activation {
     * Identity is usually used for linear regression.
     */
   case object Identity extends Activation {
-    override def build[A: Numeric: Floating: TensorType](in: Expr[A]): Expr[A] = in
+    override def build[A: Floating](in: Expr[A]): Expr[A] = in
   }
 
   /** Sigmoid activation function, {{{sigmoid(x) = 1 / (1 + exp(-x))}}}.
@@ -38,13 +38,13 @@ object Activation {
     * The sigmoid function always returns a value between `0` and `1`.
     */
   case object Sigmoid extends Activation {
-    override def build[A: Numeric: Floating: TensorType](in: Expr[A]): Expr[A] = in.sigmoid
+    override def build[A: Floating](in: Expr[A]): Expr[A] = in.sigmoid
   }
 
   /** Hyperbolic tangent activation function
     */
   case object Tanh extends Activation {
-    override def build[A: Numeric: Floating: TensorType](in: Expr[A]): Expr[A] = in.tanh
+    override def build[A: Floating](in: Expr[A]): Expr[A] = in.tanh
   }
 
   /** Softmax converts a real vector to a vector of categorical probabilities.
@@ -55,7 +55,7 @@ object Activation {
     * because the result could be interpreted as a probability distribution.
     */
   case object Softmax extends Activation {
-    override def build[A: Numeric: Floating: TensorType](in: Expr[A]): Expr[A] = {
+    override def build[A: Floating](in: Expr[A]): Expr[A] = {
       val e = in.exp
       val sum = e.sum(axis = Seq(1))
       e / sum.reshape(sum.shape :+ 1)
@@ -72,7 +72,7 @@ object Activation {
     * @param threshold max threshold
     */
   case class ReLU(threshold: Float = 0f) extends Activation {
-    override def build[A: Numeric: Floating: TensorType](in: Expr[A]) =
+    override def build[A: Floating](in: Expr[A]) =
       max(threshold.const.cast[A], in)
   }
 }

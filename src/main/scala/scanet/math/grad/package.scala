@@ -1,21 +1,21 @@
 package scanet.math.grad
 
-import scanet.core.{Expr, Node, Shape, TensorType}
-import scanet.math._
+import scanet.core.{Expr, Floating, Node, Numeric, Shape}
 import scanet.math.alg.kernels.syntax._
+
 import scala.collection.immutable.Seq
 
-class GradCalcN[A: TensorType: Numeric, B: TensorType: Numeric](
+class GradCalcN[A: Numeric, B: Numeric](
     out: Expr[A],
     withRespectTo: Seq[Expr[B]]) {
-  def returns[R: Floating: Numeric: TensorType]: Seq[Expr[R]] =
+  def returns[R: Floating]: Seq[Expr[R]] =
     withRespectTo.map(r => new GradCalc[A, B](out, r).returns[R])
 }
 
-class GradCalc[A: TensorType: Numeric, B: TensorType: Numeric](
+class GradCalc[A: Numeric, B: Numeric](
     out: Expr[A],
     withRespectTo: Expr[B]) {
-  def returns[R: Floating: Numeric: TensorType]: Expr[R] = {
+  def returns[R: Floating]: Expr[R] = {
     require(
       out.shape.isScalar,
       "gradient is supported on scalars only, " +
@@ -32,6 +32,7 @@ class GradCalc[A: TensorType: Numeric, B: TensorType: Numeric](
       } else {
         val grads = node.outputs.map(edge => {
           val parent = edge.to
+          // todo: cache
           val parentGrad = gradRec(parent)
           parent.value.localGrad(edge.index, parentGrad)
         })
@@ -42,17 +43,17 @@ class GradCalc[A: TensorType: Numeric, B: TensorType: Numeric](
   }
 }
 
-class GradOps[A: TensorType: Numeric](expr: Expr[A]) {
+class GradOps[A: Numeric](expr: Expr[A]) {
 
-  def grad[B: TensorType: Numeric](withRespectTo: Expr[B]): GradCalc[A, B] =
+  def grad[B: Numeric](withRespectTo: Expr[B]): GradCalc[A, B] =
     new GradCalc[A, B](expr, withRespectTo)
 
-  def grad[B: TensorType: Numeric](withRespectTo: Seq[Expr[B]]): GradCalcN[A, B] =
+  def grad[B: Numeric](withRespectTo: Seq[Expr[B]]): GradCalcN[A, B] =
     new GradCalcN[A, B](expr, withRespectTo)
 }
 
 trait GradSyntax {
-  implicit def toGradOps[A: TensorType: Numeric](expr: Expr[A]): GradOps[A] =
+  implicit def toGradOps[A: Numeric](expr: Expr[A]): GradOps[A] =
     new GradOps[A](expr)
 }
 

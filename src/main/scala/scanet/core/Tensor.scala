@@ -3,8 +3,7 @@ package scanet.core
 import java.nio.ByteBuffer
 import scanet.core.syntax._
 import scanet.math.Generator.uniform
-import scanet.math.Numeric.syntax._
-import scanet.math.{Convertible, Dist, Generator, Numeric, Random}
+import scanet.math.{Dist, Generator, Random}
 import scanet.native.{Disposable, RawTensors}
 import org.tensorflow.RawTensor
 import org.tensorflow.proto.framework.DataType
@@ -120,19 +119,21 @@ class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
     } else {
       val projection = Projection.of(shape) narrow
         Projection(limits.map(max => (0 until max).build))
-      slice(projection).showAll()
+      val limited = slice(projection)
+      val maxWidth = limited.toArray.map(_.toString.length).max
+      limited.showAll(maxWidth)
     }
   }
 
-  private def showAll(baseShift: String = ""): String = {
+  private def showAll(width: Int, baseShift: String = ""): String = {
     if (isScalar) {
-      toScalar.toString
+      toScalar.toString.padTo(width, " ").mkString
     } else {
       val nl = System.lineSeparator
       val children = foldLeft("")((acc, next) => {
-        val sep = if (acc.isEmpty) "" else if (rank > 1) s",$nl" else ", "
+        val sep = if (acc.isEmpty) "" else if (rank > 1) s",$nl" else "  "
         val shift = if (rank > 1) baseShift + "  " else ""
-        acc + sep + shift + next.showAll(shift)
+        acc + sep + shift + next.showAll(width, shift)
       })
       if (rank > 1) {
         s"[$nl$children$nl$baseShift]"
@@ -201,17 +202,17 @@ object Tensor {
     apply(data, Shape(rowSizes.length, rowSizes.head))
   }
 
-  def zeros[A: TensorType: Numeric](shape: Int*): Tensor[A] =
+  def zeros[A: Numeric](shape: Int*): Tensor[A] =
     zeros(Shape(shape.toList))
 
-  def zeros[A: TensorType: Numeric](shape: Shape): Tensor[A] = {
+  def zeros[A: Numeric](shape: Shape): Tensor[A] = {
     Tensor(Array.fill(shape.power)(Numeric[A].zero)(TensorType[A].classTag), shape)
   }
 
-  def ones[A: TensorType: Numeric](shape: Int*): Tensor[A] =
+  def ones[A: Numeric](shape: Int*): Tensor[A] =
     ones(Shape(shape.toList))
 
-  def ones[A: TensorType: Numeric](shape: Shape): Tensor[A] =
+  def ones[A: Numeric](shape: Shape): Tensor[A] =
     fill(shape)(Numeric[A].one)
 
   def fill[A: TensorType](shape: Int*)(value: A): Tensor[A] =
@@ -236,18 +237,18 @@ object Tensor {
     Tensor(array, shape)
   }
 
-  def diag[A: TensorType: Numeric](values: A*): Tensor[A] =
+  def diag[A: Numeric](values: A*): Tensor[A] =
     diag(values.toArray(TensorType[A].classTag))
 
-  def diag[A: TensorType: Numeric](values: Array[A]): Tensor[A] = {
+  def diag[A: Numeric](values: Array[A]): Tensor[A] = {
     val zero = Numeric[A].zero
     tabulate(values.length, values.length)((x, y) => if (x == y) values(x) else zero)
   }
 
-  def eye[A: TensorType: Numeric](n: Int): Tensor[A] =
+  def eye[A: Numeric](n: Int): Tensor[A] =
     diag[A](Array.fill(n)(Numeric[A].one)(TensorType[A].classTag))
 
-  def linspace[A: TensorType: Numeric](first: A, last: A, size: Int = 100)(
+  def linspace[A: Numeric](first: A, last: A, size: Int = 100)(
       implicit c: Convertible[Int, A]): Tensor[A] = {
     val increment = (last - first) / c.convert(size - 1)
     tabulate(size)(i => first plus (increment * i))
@@ -255,7 +256,7 @@ object Tensor {
 
   def range(range: Range): Tensor[Int] = Tensor.range[Int](range.start, range.end, 1)
 
-  def range[A: TensorType: Numeric](start: A, end: A, step: A, inclusive: Boolean = false)(
+  def range[A: Numeric](start: A, end: A, step: A, inclusive: Boolean = false)(
       implicit c1: Convertible[A, Int],
       c2: Convertible[Int, A]): Tensor[A] = {
     val sizeAprox = c1.convert((end - start) / step) + 1
@@ -269,7 +270,7 @@ object Tensor {
     tabulate(size)(i => start plus (step * i))
   }
 
-  def rand[A: TensorType: Numeric: Dist](
+  def rand[A: Numeric: Dist](
       shape: Shape,
       gen: Generator = uniform,
       range: Option[(A, A)] = None): Tensor[A] = {

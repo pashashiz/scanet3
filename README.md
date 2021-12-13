@@ -1,4 +1,4 @@
-# ScalaNet
+# Scanet
 
 [![Build Status](https://travis-ci.org/pashashiz/scanet3.svg?branch=master)](https://travis-ci.org/pashashiz/scanet3)
 
@@ -78,13 +78,18 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [x] Adamax
 - [x] AMSGrad
 
+### Statistics
+- [x] Variance/STD
+- [ ] Covariance/Correlation Matrix
+- [ ] Lots of other useful algs to analize the data set
+
 ### Models
 - [x] Linear Regression
 - [ ] Simple math models for benchmarks
 - [x] Binary Logistic Regression
 - [x] ANN (Multilayer Perceptron NN)
 - [x] kernel regularization
-- [ ] Layers Dropout, Normalization
+- [ ] Layers Dropout, Batch Normalization
 - [ ] Convolutional NN
 - [ ] Recurent NN
 - [ ] others
@@ -126,6 +131,19 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [ ] Compare with existing implementations using local CPU
 - [ ] Compare with existing implementations using one GPU
 - [ ] Compare with existing implementations using distributed mode on GCP DataProc
+
+### Other useful things
+- [ ] While training analyze the weights histograms to make sure the deep NN do not saturate
+- [ ] Grid/Random hyper parameters search
+- [ ] Different weight initializers (Xavier)
+- [ ] Decay learning rate over time (step, exponential, 1/t decay)
+- [ ] Try using in interactive notebook
+- [ ] Add graph library so we could plot some charts and publish them in `tensorboard` or `notebook` (maybe fork and upgrade `vegas` to scala `2.12` ot try `evil-plot`)
+
+### Refactoring
+- [x] Refactor type class hierarchy so `TensorType` was on top and `Numeric` and the rest would extend it.
+- [ ] Refactor tensor functions so the materialized type of args was only infered during compilation
+      Also we would need to try simplifying tensor functions and add methods so we could compose functions (`compose`, `endThen`, etc)
 
 If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 
  

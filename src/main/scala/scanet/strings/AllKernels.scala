@@ -2,7 +2,7 @@ package scanet.strings
 
 import scanet.core.DefaultCompiler.Ctx
 import scanet.core.TensorType.syntax._
-import scanet.core.{Compiler, DefaultCompiler, Expr, Shape, TensorType}
+import scanet.core.{Compiler, DefaultCompiler, Expr, Shape, TensorType, Textual}
 import org.tensorflow.OperationBuilder
 
 import scala.collection.immutable.Seq
@@ -72,7 +72,7 @@ case class AssertThat(cond: Expr[Boolean], expr: Expr[String]) extends Expr[Noth
     }
 }
 
-case class StringJoin[A: TensorType: Textual](sep: String, expr: Seq[Expr[A]]) extends Expr[A] {
+case class StringJoin[A: Textual](sep: String, expr: Seq[Expr[A]]) extends Expr[A] {
   require(
     expr.zip(expr.tail).forall({ case (o1, o2) => o1.broadcastableAny(o2) }),
     s"all tensors should have broadcastable shapes ${expr.map(_.shape)}")
@@ -92,7 +92,7 @@ case class StringLength[A: Textual](expr: Expr[A]) extends Expr[Int] {
   override def compiler: Compiler[Int] = DefaultCompiler[Int]()
 }
 
-case class StringToNumber[A: TensorType: Textual, B: TensorType](expr: Expr[A]) extends Expr[B] {
+case class StringToNumber[A: Textual, B: TensorType](expr: Expr[A]) extends Expr[B] {
   override def name: String = "StringToNumber"
   override def tpe: Option[TensorType[B]] = Some(TensorType[B])
   override def shape: Shape = expr.shape
@@ -100,8 +100,7 @@ case class StringToNumber[A: TensorType: Textual, B: TensorType](expr: Expr[A]) 
   override def compiler: Compiler[B] = DefaultCompiler[B]().withAttr("out_type", TensorType[B])
 }
 
-case class Substring[A: TensorType: Textual](expr: Expr[A], pos: Expr[Int], len: Expr[Int])
-    extends Expr[A] {
+case class Substring[A: Textual](expr: Expr[A], pos: Expr[Int], len: Expr[Int]) extends Expr[A] {
   override def name: String = "Substr"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
@@ -191,7 +190,7 @@ trait AllKernels {
     * @param expr list of string tensors to join
     * @return single string tensor
     */
-  def join[A: TensorType: Textual](sep: String, expr: Expr[A]*): Expr[A] =
+  def join[A: Textual](sep: String, expr: Expr[A]*): Expr[A] =
     StringJoin[A](sep, expr.toList)
 }
 
@@ -298,7 +297,7 @@ object kernels extends AllKernels {
     def asString: Expr[String] = f.asString(expr)
   }
 
-  class TextualOps[A: TensorType: Textual](expr: Expr[A]) {
+  class TextualOps[A: Textual](expr: Expr[A]) {
     import scanet.strings.{kernels => f}
 
     /** Concatenates current and given String tensors
@@ -359,7 +358,7 @@ object kernels extends AllKernels {
   trait AllSyntax extends AllKernels {
     implicit def toStringKernelOps[A: TensorType](expr: Expr[A]): AnyOps[A] =
       new AnyOps[A](expr)
-    implicit def toStringKernelTextualOps[A: TensorType: Textual](expr: Expr[A]): TextualOps[A] =
+    implicit def toStringKernelTextualOps[A: Textual](expr: Expr[A]): TextualOps[A] =
       new TextualOps[A](expr)
   }
 

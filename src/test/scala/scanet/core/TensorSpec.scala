@@ -6,7 +6,6 @@ import scanet.core.TensorType.IntTag
 import scanet.core.syntax._
 import scanet.math.Dist.syntax._
 import scanet.math.Generator.uniform
-import scanet.math.Numeric.syntax._
 import scanet.test.CustomMatchers
 
 class TensorSpec extends AnyFlatSpec with CustomMatchers {
@@ -244,32 +243,34 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
 
   "vector tensor" should "be shown" in {
     Tensor.range(0 until 7).toString should
-    be("Tensor[Int](shape=(7)): [0, 1, 2, 3, 4, 5, 6]")
+    be("Tensor[Int](shape=(7)): [0  1  2  3  4  5  6]")
   }
 
   "matrix tensor" should "be shown" in {
-    Tensor.eye[Int](5).toString should be("""Tensor[Int](shape=(5, 5)):
+    Tensor.eye[Int](5).toString should be(
+     """|Tensor[Int](shape=(5, 5)):
         |[
-        |  [1, 0, 0, 0, 0],
-        |  [0, 1, 0, 0, 0],
-        |  [0, 0, 1, 0, 0]
+        |  [1  0  0  0  0],
+        |  [0  1  0  0  0],
+        |  [0  0  1  0  0]
         |]""".stripMargin)
   }
 
   "n3 tensor" should "be shown" in {
-    Tensor.rand[Int](Shape(3, 3, 3), uniform(1)).toString should be("""Tensor[Int](shape=(3, 3, 3)):
-        |[
-        |  [
-        |    [384748, -1151252339, -549383847],
-        |    [1612966641, -883454042, 1563994289],
-        |    [1331515492, -234691648, 672332705]
-        |  ],
-        |  [
-        |    [-2039128390, -1888584533, -294927845],
-        |    [1517050556, 92416162, -1713389258],
-        |    [2059776629, -1292618668, 562838985]
-        |  ]
-        |]""".stripMargin)
+    Tensor.rand[Int](Shape(3, 3, 3), uniform(1)).toString should be(
+    """|Tensor[Int](shape=(3, 3, 3)):
+       |[
+       |  [
+       |    [384748       -1151252339  -549383847 ],
+       |    [1612966641   -883454042   1563994289 ],
+       |    [1331515492   -234691648   672332705  ]
+       |  ],
+       |  [
+       |    [-2039128390  -1888584533  -294927845 ],
+       |    [1517050556   92416162     -1713389258],
+       |    [2059776629   -1292618668  562838985  ]
+       |  ]
+       |]""".stripMargin)
   }
 
   "compact" should "compact sliced tensor" in {

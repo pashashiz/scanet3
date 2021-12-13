@@ -1,7 +1,6 @@
 package scanet.core
 
 import scanet.core.DefaultCompiler.{Ctx, Stage}
-import scanet.math.{Floating, Numeric}
 import scanet.native.RawTensors
 import org.tensorflow
 import org.tensorflow.proto.framework.DataType
@@ -14,7 +13,7 @@ trait Expr[A] {
   def name: String
   def label: String = name
   def as(label: String): Expr[A] = Labeled(this, label)
-  // revisit: maybe we can generate a unique identifier of a tensor
+  // todo: generate a unique identifier of a tensor, use it in cache
   def id: Option[String] = None
   def tpe: Option[TensorType[A]]
   def shape: Shape
@@ -32,7 +31,7 @@ trait Expr[A] {
     compiler(session, this)
 
   def localGrad: Grad[A] = error(s"gradient is not implemented for '$name' expr")
-  final def localGrad[R: Floating: Numeric: TensorType](
+  final def localGrad[R: Floating](
       index: Int,
       parentGrad: Expr[R]): Expr[R] = {
     val grads = localGrad.calc[R](this, parentGrad)
@@ -154,6 +153,11 @@ case class DefaultCompiler[A](index: Option[Int], stages: Seq[Stage]) extends Co
       builder.setAttr(name, value)
   }
 
+  def withAttr(name: String, value: Seq[Long]): DefaultCompiler[A] = withStage {
+    (_: Ctx, builder: OperationBuilder) =>
+      builder.setAttr(name, value.toArray)
+  }
+
   def withAttr(name: String, value: Float): DefaultCompiler[A] = withStage {
     (_: Ctx, builder: OperationBuilder) =>
       builder.setAttr(name, value)
@@ -191,7 +195,7 @@ object DefaultCompiler {
 }
 
 trait Grad[A] {
-  def calc[R: Numeric: Floating: TensorType](current: Expr[A], parentGrad: Expr[R]): Seq[Expr[R]]
+  def calc[R:Floating](current: Expr[A], parentGrad: Expr[R]): Seq[Expr[R]]
 }
 
 case class Label(name: String, index: Int = 0) {
@@ -235,7 +239,7 @@ case class Const[A: TensorType](tensor: Tensor[A]) extends Expr[A] {
   }
   override def inputs: Seq[Expr[_]] = Seq.empty
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R:Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = List()
   }

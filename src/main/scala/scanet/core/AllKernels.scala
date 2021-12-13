@@ -1,11 +1,10 @@
 package scanet.core
 
-import scanet.core.Slice.syntax._
+import org.tensorflow.OperationBuilder
 import scanet.core.Const.syntax._
 import scanet.core.DefaultCompiler.Ctx
+import scanet.core.Slice.syntax._
 import scanet.core.TensorType.syntax._
-import scanet.math.{Floating, Numeric}
-import org.tensorflow.OperationBuilder
 
 import scala.collection.immutable.Seq
 
@@ -47,7 +46,7 @@ case class Fill[A: TensorType] private (shape: Shape, scalar: Expr[A]) extends E
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
     import scanet.math.alg.kernels._
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R:Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = Seq(null, sum(parentGrad))
   }
@@ -134,7 +133,7 @@ case class Squeeze[A: TensorType] private (expr: Expr[A]) extends Expr[A] {
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R:Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(Reshape(parentGrad, expr.shape))
@@ -158,7 +157,7 @@ case class Reshape[A: TensorType] private (expr: Expr[A], shape: Shape) extends 
   override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(shape.dims: _*).const.as("new_shape"))
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R:Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(Reshape(parentGrad, expr.shape))
@@ -206,8 +205,8 @@ object SliceOp {
 }
 
 case class JoinAlong[A: TensorType](outputs: Seq[Expr[A]], axis: Int) extends Expr[A] {
-  import scanet.core.DefaultCompiler.Ctx
   import org.tensorflow.OperationBuilder
+  import scanet.core.DefaultCompiler.Ctx
 
   private val shapes = outputs.map(_.shape)
   require(
@@ -227,7 +226,7 @@ case class JoinAlong[A: TensorType](outputs: Seq[Expr[A]], axis: Int) extends Ex
       builder.addInput(ctx.inputs.last.outputOrFail)
   }
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R:Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val ranges = outputs
@@ -254,7 +253,7 @@ case class Cast[B: TensorType] private (expr: Expr[_]) extends Expr[B] {
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[B] = DefaultCompiler[B]().withAttr("DstT", TensorType[B])
   override def localGrad: Grad[B] = new Grad[B] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R:Floating](
         current: Expr[B],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(parentGrad)
@@ -395,6 +394,7 @@ object kernels extends AllKernels {
     def reshape(dim1: Int): Expr[A] = reshape(Shape(dim1))
     def reshape(dim1: Int, dim2: Int): Expr[A] = reshape(Shape(dim1, dim2))
     def reshape(dim1: Int, dim2: Int, dim3: Int): Expr[A] = reshape(Shape(dim1, dim2, dim3))
+    def reshape(dim1: Int, dim2: Int, dim3: Int, dim4: Int): Expr[A] = reshape(Shape(dim1, dim2, dim3, dim4))
 
     /** Removes dimensions of size 1 from the shape of a tensor.
       *

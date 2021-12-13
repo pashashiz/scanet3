@@ -2,6 +2,9 @@ package scanet.core
 
 object Require {
 
+  def fail(error: String): Nothing =
+    throw new IllegalArgumentException(error)
+
   class RequireOps[A: TensorType](expr: Expr[A]) {
     def requireSquareMatrixTail: Expr[A] = {
       require(

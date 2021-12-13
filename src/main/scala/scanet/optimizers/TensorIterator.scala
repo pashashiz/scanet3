@@ -1,10 +1,9 @@
 package scanet.optimizers
 
-import scanet.core.{Shape, Tensor, TensorType}
-import scanet.math.Numeric
+import scanet.core.{Numeric, Shape, Tensor, TensorType}
 
 // low-level mutable implementation
-class TensorIterator[A: TensorType: Numeric](
+class TensorIterator[A: Numeric](
     private val rows: Iterator[Array[A]],
     private val batch: Int,
     private val withPadding: Boolean)
@@ -41,7 +40,7 @@ class TensorIterator[A: TensorType: Numeric](
 }
 
 object TensorIterator {
-  def apply[A: TensorType: Numeric](
+  def apply[A: Numeric](
       rows: Iterator[Array[A]],
       batch: Int,
       withPadding: Boolean = true): TensorIterator[A] =

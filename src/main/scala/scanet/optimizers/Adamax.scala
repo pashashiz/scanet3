@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import scanet.core._
-import scanet.math.{Floating, Numeric}
 import scanet.syntax._
 
 /** Adamax is a variant of Adam based on the infinity norm.
@@ -25,13 +24,13 @@ case class Adamax(
     initAcc: Float = 0.001f)
     extends Algorithm {
 
-  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
     val m1 = fill[Float](shape)(initAcc).cast[T]
     val m2 = fill[Float](shape)(initAcc).cast[T]
     (m1 zip m2).eval
   }
 
-  override def delta[T: Floating: Numeric: TensorType](
+  override def delta[T: Floating](
       grad: Expr[T],
       meta: Expr[T],
       iter: Expr[Int]): Delta[T] = {

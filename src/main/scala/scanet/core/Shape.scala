@@ -19,6 +19,7 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     indexes.reverse
   }
 
+  def apply(dim: Int): Int = dims(dim)
   def get(dim: Int): Int = dims(dim)
 
   def rank: Int = dims.size
@@ -146,6 +147,8 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
       .map { case (dim, _) => dim }
     Shape(filteredDims)
   }
+
+  def updated(axis: Int, value: Int): Shape = updateAll(value)(axis)
 
   def updateAll(value: Int)(axis: Int*): Shape = {
     require(

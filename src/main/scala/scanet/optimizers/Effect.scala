@@ -1,10 +1,9 @@
 package scanet.optimizers
 
 import org.apache.spark.rdd.RDD
-import scanet.core.{TensorBoard, TensorType}
+import scanet.core.{Convertible, Floating, Numeric, TensorBoard}
 import scanet.estimators._
 import scanet.math.syntax._
-import scanet.math.{Convertible, Floating, Numeric}
 
 trait Effect[E] extends (E => Unit) {
   private val self = this
@@ -18,7 +17,7 @@ trait Effect[E] extends (E => Unit) {
 
 object Effect {
 
-  case class RecordLoss[E: Numeric: TensorType](
+  case class RecordLoss[E: Numeric](
       console: Boolean = true,
       tensorboard: Boolean = false,
       dir: String = "board")(implicit c: Convertible[E, Float])
@@ -33,7 +32,7 @@ object Effect {
     }
   }
 
-  case class RecordAccuracy[E: Numeric: Floating: TensorType](
+  case class RecordAccuracy[E: Floating](
       ds: RDD[Array[E]],
       console: Boolean = true,
       tensorboard: Boolean = false,

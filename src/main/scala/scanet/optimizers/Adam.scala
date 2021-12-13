@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import scanet.core._
-import scanet.math.{Floating, Numeric}
 import scanet.syntax._
 
 /** Adam optimization is a stochastic gradient descent method that
@@ -19,13 +18,13 @@ case class Adam(
     epsilon: Float = 1e-7f)
     extends Algorithm {
 
-  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
     val m = zeros[T](shape)
     val v = zeros[T](shape)
     (m zip v).eval
   }
 
-  override def delta[T: Floating: Numeric: TensorType](
+  override def delta[T: Floating](
       grad: Expr[T],
       meta: Expr[T],
       iter: Expr[Int]): Delta[T] = {

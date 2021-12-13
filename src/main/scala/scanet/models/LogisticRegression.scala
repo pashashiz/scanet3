@@ -1,9 +1,8 @@
 package scanet.models
 
-import scanet.core.{Expr, OutputSeq, Shape, TensorType}
-import scanet.math.Floating
-import scanet.math.Numeric
+import scanet.core.{Expr, Floating, OutputSeq, Shape, TensorType}
 import scanet.math.syntax._
+
 import scala.collection.immutable.Seq
 
 /** Binary Logistic Regression
@@ -17,10 +16,10 @@ import scala.collection.immutable.Seq
   */
 case object LogisticRegression extends Model {
 
-  override def build[A: Numeric: Floating: TensorType](x: Expr[A], weights: OutputSeq[A]): Expr[A] =
+  override def build[A: Floating](x: Expr[A], weights: OutputSeq[A]): Expr[A] =
     (withBias(x, 1f.const.cast[A]) matmul reshape(weights.head).transpose).sigmoid
 
-  override def penalty[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) = zeros[E](Shape())
+  override def penalty[E: Floating](weights: OutputSeq[E]) = zeros[E](Shape())
 
   private def reshape[A: TensorType](weights: Expr[A]): Expr[A] =
     weights.reshape(1, weights.shape.head)

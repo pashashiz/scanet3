@@ -2,6 +2,7 @@ package scanet.core
 
 trait CoreSyntax
     extends TensorType.AllSyntax
+    with Convertible.AllSyntax
     with Slice.AllSyntax
     with Session.AllSyntax
     with Eval.AllSyntax

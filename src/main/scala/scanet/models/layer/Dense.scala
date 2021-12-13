@@ -1,10 +1,10 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, OutputSeq, Shape, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating, OutputSeq, Shape}
 import scanet.models.Regularization.Zero
 import scanet.models.{Activation, Regularization}
 import scanet.syntax._
+
 import scala.collection.immutable.Seq
 
 /** Regular densely-connected NN layer.
@@ -23,7 +23,7 @@ import scala.collection.immutable.Seq
 case class Dense(outputs: Int, activation: Activation, reg: Regularization = Zero, bias: Float = 1f)
     extends Layer {
 
-  override def build[E: Numeric: Floating: TensorType](x: Expr[E], weights: OutputSeq[E]) = {
+  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]) = {
     require(weights.size == 1, "Dense layer can have only one set of weights")
     // x:(samples, features)
     // w:(outputs, features)
@@ -31,7 +31,7 @@ case class Dense(outputs: Int, activation: Activation, reg: Regularization = Zer
     activation.build(withBias(x, bias.const.cast[E]) matmul weights.head.transpose)
   }
 
-  override def penalty[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) =
+  override def penalty[E: Floating](weights: OutputSeq[E]) =
     reg.build(weights.head)
 
   override def shapes(features: Int) = Seq(Shape(outputs, features + 1))

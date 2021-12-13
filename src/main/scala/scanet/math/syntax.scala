@@ -5,8 +5,6 @@ import scanet.core.CoreSyntax
 trait MathSyntax
     extends CoreSyntax
     with Dist.AllSyntax
-    with Numeric.AllSyntax
-    with Logical.AllSyntax
     with alg.kernels.AllSyntax
     with linalg.kernels.AllSyntax
     with stat.kernels.AllSyntax

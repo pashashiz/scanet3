@@ -1,9 +1,8 @@
 package scanet.models
 
-import scanet.core._
-import scanet.math.Floating
-import scanet.math.Numeric
+import scanet.core.{Floating, _}
 import scanet.math.syntax._
+
 import scala.collection.immutable.Seq
 
 abstract class Model extends Serializable {
@@ -15,7 +14,7 @@ abstract class Model extends Serializable {
    * @param weights model weights
    * @return model
    */
-  def build[E: Numeric: Floating: TensorType](x: Expr[E], weights: OutputSeq[E]): Expr[E]
+  def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E]
 
   /**
    * Additional model penalty to be added to the loss
@@ -23,9 +22,9 @@ abstract class Model extends Serializable {
    * @param weights model weights
    * @return penalty
    */
-  def penalty[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) : Expr[E]
+  def penalty[E: Floating](weights: OutputSeq[E]) : Expr[E]
 
-  def result[E: Numeric: Floating: TensorType]: TF2[E, Tensor[E], E, Seq[Tensor[E]], Expr[E]] =
+  def result[E: Floating]: TF2[E, Tensor[E], E, Seq[Tensor[E]], Expr[E]] =
     TF2[Expr, E, OutputSeq, E, Expr[E]](build[E])
 
   /** @param features number of features in a dataset
@@ -39,7 +38,7 @@ abstract class Model extends Serializable {
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
-  def withBias[E: Numeric: Floating: TensorType](x: Expr[E], bias: Expr[E]): Expr[E] = {
+  def withBias[E: Floating](x: Expr[E], bias: Expr[E]): Expr[E] = {
     val rows = x.shape.dims.head
     fillOutput[E](rows, 1)(bias).joinAlong(x, 1)
   }
@@ -54,41 +53,41 @@ abstract class Model extends Serializable {
     shapes(features)
   }
 
-  def displayResult[E: Numeric: Floating: TensorType](x: Shape, dir: String = ""): Unit = {
+  def displayResult[E: Floating](x: Shape, dir: String = ""): Unit = {
     result[E].display(Seq(x), inferShapeOfWeights(x), label = "result", dir = dir)
   }
 }
 
 case class LossModel(model: Model, lossF: Loss) extends Serializable {
 
-  def build[E: Numeric: Floating: TensorType](x: Expr[E], y: Expr[E], weights: OutputSeq[E]): Expr[E] =
+  def build[E: Floating](x: Expr[E], y: Expr[E], weights: OutputSeq[E]): Expr[E] =
     lossF.build(model.build(x, weights), y) plus model.penalty(weights)
 
-  def loss[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], Expr[E]] =
+  def loss[E: Floating]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], Expr[E]] =
     TF3[Expr, E, Expr, E, OutputSeq, E, Expr[E]](build[E])
 
-  def weightsAndGrad[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], (OutputSeq[E], OutputSeq[E])] =
+  def weightsAndGrad[E: Floating]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], (OutputSeq[E], OutputSeq[E])] =
     TF3[Expr, E, Expr, E, OutputSeq, E, (OutputSeq[E], OutputSeq[E])](
       (x, y, w) => (w, build(x, y, w).grad(w).returns[E]))
 
-  def grad[E: Numeric: Floating: TensorType]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], OutputSeq[E]] =
+  def grad[E: Floating]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], OutputSeq[E]] =
     TF3[Expr, E, Expr, E, OutputSeq, E, OutputSeq[E]](
       (x, y, w) => build(x, y, w).grad(w).returns[E])
 
-  def trained[E: Numeric: Floating: TensorType](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
+  def trained[E: Floating](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
 
-  def displayLoss[E: Numeric: Floating: TensorType](x: Shape, dir: String = ""): Unit = {
+  def displayLoss[E: Floating](x: Shape, dir: String = ""): Unit = {
     loss[E].display(Seq(x), Seq(model.inferShapeOfY(x)), model.inferShapeOfWeights(x), label = "loss", dir = dir)
   }
 
-  def displayGrad[E: Numeric: Floating: TensorType](x: Shape, dir: String = ""): Unit = {
+  def displayGrad[E: Floating](x: Shape, dir: String = ""): Unit = {
     grad[E].display(Seq(x), Seq(model.inferShapeOfY(x)), model.inferShapeOfWeights(x), label = "loss_grad", dir = dir)
   }
 
   override def toString: String = s"$model:$lossF"
 }
 
-class TrainedModel[E: Numeric : Floating: TensorType](val lossModel: LossModel, val weights: Seq[Tensor[E]]) {
+class TrainedModel[E: Floating](val lossModel: LossModel, val weights: Seq[Tensor[E]]) {
 
   def buildResult(x: Expr[E]): Expr[E] = lossModel.model.build(x, weights.map(_.const))
 

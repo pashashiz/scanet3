@@ -2,16 +2,16 @@ package scanet
 
 import org.apache.spark.rdd.RDD
 import scanet.core.Session.withing
-import scanet.core.{Expr, TF2, TensorType}
+import scanet.core.{Expr, Numeric, TF2}
 import scanet.math.syntax._
-import scanet.math.{Floating, Numeric}
 import scanet.models.TrainedModel
 import scanet.optimizers.Tensor2Iterator
+
 import scala.collection.immutable.Seq
 
 package object estimators {
 
-  def accuracy[A: Floating: Numeric: TensorType](
+  def accuracy[A: Numeric](
       model: TrainedModel[A],
       ds: RDD[Array[A]]): Float = {
     val batchSize = 10000

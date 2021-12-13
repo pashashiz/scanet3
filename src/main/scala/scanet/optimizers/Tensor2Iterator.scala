@@ -1,11 +1,10 @@
 package scanet.optimizers
 
-import scanet.core.{Shape, Tensor, TensorType}
-import scanet.math.Numeric
+import scanet.core.{Numeric, Shape, Tensor, TensorType}
 
 // low-level mutable implementation
 // NOTE: maybe rewrite to have generic N slices...
-class Tensor2Iterator[A: TensorType: Numeric](
+class Tensor2Iterator[A: Numeric](
     private val rows: Iterator[Array[A]],
     private val batch: Int,
     private val splitAt: Int => Int,
@@ -56,7 +55,7 @@ class Tensor2Iterator[A: TensorType: Numeric](
 }
 
 object Tensor2Iterator {
-  def apply[A: TensorType: Numeric](
+  def apply[A: Numeric](
       rows: Iterator[Array[A]],
       batch: Int,
       splitAt: Int => Int = _ - 1,

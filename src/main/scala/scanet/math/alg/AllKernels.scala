@@ -1,17 +1,15 @@
 package scanet.math.alg
 
 import scanet.core
-import scanet.core._
+import scanet.core.{Convertible, _}
 import scanet.core.syntax._
-import scanet.math.Numeric.syntax._
 import scanet.math.alg.kernels.syntax._
 import scanet.math.logical.kernels.syntax._
-import scanet.math.{Convertible, Floating, Numeric}
 
 import scala.collection.immutable.Seq
 import scala.math.Ordering.Implicits._
 
-case class Plus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
+case class Plus[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
     left.broadcastableAny(right),
     s"cannot add tensors with shapes ${left.shape} + ${right.shape}")
@@ -21,7 +19,7 @@ case class Plus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends E
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
@@ -34,14 +32,14 @@ case class Plus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends E
   }
 }
 
-case class PlusN[A: TensorType: Numeric] private (expr: Seq[Expr[A]]) extends Expr[A] {
+case class PlusN[A: Numeric] private (expr: Seq[Expr[A]]) extends Expr[A] {
   override def name: String = "AddN"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.head.shape
   override def inputs: Seq[Expr[_]] = expr
   override def compiler: core.Compiler[A] = DefaultCompiler[A](inputsAsList = true)
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       Seq.fill(expr.size)(parentGrad)
@@ -49,7 +47,7 @@ case class PlusN[A: TensorType: Numeric] private (expr: Seq[Expr[A]]) extends Ex
 }
 
 object PlusN {
-  def apply[A: TensorType: Numeric](expr: Seq[Expr[A]]): Expr[A] = {
+  def apply[A: Numeric](expr: Seq[Expr[A]]): Expr[A] = {
     if (expr.size == 1) {
       expr.head
     } else {
@@ -62,7 +60,7 @@ object PlusN {
   }
 }
 
-case class Minus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
+case class Minus[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
     left.broadcastableAny(right),
     s"cannot subtracted tensors with shapes ${left.shape} - ${right.shape}")
@@ -72,7 +70,7 @@ case class Minus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends 
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
@@ -85,21 +83,21 @@ case class Minus[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends 
   }
 }
 
-case class Negate[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Negate[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Neg"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(-parentGrad)
   }
 }
 
-case class Multiply[A: TensorType: Numeric] private (left: Expr[A], right: Expr[A])
+case class Multiply[A: Numeric] private (left: Expr[A], right: Expr[A])
     extends Expr[A] {
   require(
     left.broadcastableAny(right),
@@ -110,7 +108,7 @@ case class Multiply[A: TensorType: Numeric] private (left: Expr[A], right: Expr[
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
@@ -123,14 +121,14 @@ case class Multiply[A: TensorType: Numeric] private (left: Expr[A], right: Expr[
   }
 }
 
-case class Pow[A: TensorType: Numeric](expr: Expr[A], exponent: Expr[Float]) extends Expr[A] {
+case class Pow[A: Numeric](expr: Expr[A], exponent: Expr[Float]) extends Expr[A] {
   override def name: String = "Pow"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override val inputs: Seq[Expr[_]] = Seq(expr, exponent.as("exponent").cast[A])
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val koef = expr.cast[R] ^ (exponent - 1f.const)
@@ -140,14 +138,14 @@ case class Pow[A: TensorType: Numeric](expr: Expr[A], exponent: Expr[Float]) ext
   }
 }
 
-case class Sqrt[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Sqrt[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Sqrt"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val local = (expr.cast[R] ^ -0.5f) * 0.5f.const.cast[R]
@@ -156,14 +154,14 @@ case class Sqrt[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
   }
 }
 
-case class Exp[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Exp[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Exp"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List(expr.cast[R].exp * parentGrad)
@@ -171,7 +169,7 @@ case class Exp[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
   }
 }
 
-case class Div[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
+case class Div[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
     left.broadcastableAny(right),
     s"cannot divide tensors with shapes ${left.shape} / ${right.shape}")
@@ -181,7 +179,7 @@ case class Div[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Ex
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
@@ -196,7 +194,7 @@ case class Div[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Ex
   }
 }
 
-case class Sum[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int]) extends Expr[A] {
+case class Sum[A: Numeric] private (expr: Expr[A], axis: Seq[Int]) extends Expr[A] {
   override def name: String = "Sum"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override val shape: Shape = expr.shape.remove(axis: _*)
@@ -204,7 +202,7 @@ case class Sum[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int]) e
     Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const.as("axis"))
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       // we need to recover reduced axis with 1, cause broadcasting will not always work
@@ -215,11 +213,11 @@ case class Sum[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int]) e
 }
 
 object Sum {
-  def apply[A: TensorType: Numeric](expr: Expr[A], axis: Seq[Int]): Expr[A] =
+  def apply[A: Numeric](expr: Expr[A], axis: Seq[Int]): Expr[A] =
     if (expr.isScalar || axis.isEmpty) expr else new Sum(expr, axis)
 }
 
-case class Mean[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int], keepDims: Boolean)
+case class Mean[A: Numeric] private (expr: Expr[A], axis: Seq[Int], keepDims: Boolean)
     extends Expr[A] {
   override def name: String = "Mean"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
@@ -233,7 +231,7 @@ case class Mean[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int], 
     Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const.as("axis"))
   override def compiler: Compiler[A] = DefaultCompiler[A]().withAttr("keep_dims", keepDims)
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       // we need to recover reduced axis with 1, cause broadcasting will not always work
@@ -245,7 +243,7 @@ case class Mean[A: TensorType: Numeric] private (expr: Expr[A], axis: Seq[Int], 
 }
 
 object Mean {
-  def apply[A: TensorType: Numeric](
+  def apply[A: Numeric](
       expr: Expr[A],
       axis: Seq[Int],
       keepDims: Boolean = false): Expr[A] =
@@ -262,7 +260,7 @@ case class Max[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[A] {
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List((left > right).cast[R] * parentGrad, (left < right).cast[R] * parentGrad)
@@ -280,7 +278,7 @@ case class Min[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[A] {
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List((left < right).cast[R] * parentGrad, (left > right).cast[R] * parentGrad)
@@ -288,14 +286,14 @@ case class Min[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[A] {
   }
 }
 
-case class Abs[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Abs[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Abs"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List(parentGrad.abs)
@@ -303,7 +301,7 @@ case class Abs[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
   }
 }
 
-case class Round[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Round[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Rint"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
@@ -311,7 +309,7 @@ case class Round[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
   override def compiler: Compiler[A] = DefaultCompiler[A]()
 }
 
-case class Transpose[A: TensorType: Numeric] private (expr: Expr[A], perm: Seq[Int])
+case class Transpose[A: Numeric] private (expr: Expr[A], perm: Seq[Int])
     extends Expr[A] {
   override def name: String = "Transpose"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
@@ -320,7 +318,7 @@ case class Transpose[A: TensorType: Numeric] private (expr: Expr[A], perm: Seq[I
     Seq(expr, Tensor.vector(perm.map(_.toLong): _*).const.as("perm"))
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List(parentGrad.transpose)
@@ -329,13 +327,13 @@ case class Transpose[A: TensorType: Numeric] private (expr: Expr[A], perm: Seq[I
 }
 
 object Transpose {
-  def apply[A: TensorType: Numeric](expr: Expr[A], perm: Seq[Int]): Expr[A] =
+  def apply[A: Numeric](expr: Expr[A], perm: Seq[Int]): Expr[A] =
     if (expr.isScalar) expr else new Transpose(expr, perm)
-  def apply[A: TensorType: Numeric](expr: Expr[A]): Expr[A] =
+  def apply[A: Numeric](expr: Expr[A]): Expr[A] =
     apply(expr, (0 until expr.rank).reverse)
 }
 
-case class MatMul[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
+case class MatMul[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
     left.rank == 2 && right.rank == 2,
     s"rank cannot be > 2 but got tensors with shapes ${left.shape} * ${right.shape}")
@@ -348,7 +346,7 @@ case class MatMul[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List(parentGrad matmul right.transpose.cast[R], left.transpose.cast[R] matmul parentGrad)
@@ -356,14 +354,14 @@ case class MatMul[A: TensorType: Numeric](left: Expr[A], right: Expr[A]) extends
   }
 }
 
-case class Sigmoid[A: TensorType: Numeric: Floating](expr: Expr[A]) extends Expr[A] {
+case class Sigmoid[A: Floating](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Sigmoid"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val s = expr.sigmoid
@@ -373,14 +371,14 @@ case class Sigmoid[A: TensorType: Numeric: Floating](expr: Expr[A]) extends Expr
   }
 }
 
-case class Tanh[A: TensorType: Numeric: Floating](expr: Expr[A]) extends Expr[A] {
+case class Tanh[A: Floating](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Tanh"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val grad = 1f.const.cast[A] - expr.tanh.sqr
@@ -389,14 +387,14 @@ case class Tanh[A: TensorType: Numeric: Floating](expr: Expr[A]) extends Expr[A]
   }
 }
 
-case class Log[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Log[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def name: String = "Log"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R: Numeric: Floating: TensorType](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       List(parentGrad / expr.cast[R])
@@ -406,59 +404,59 @@ case class Log[A: TensorType: Numeric](expr: Expr[A]) extends Expr[A] {
 
 trait AllKernels {
 
-  def zeros[A: TensorType: Numeric](shape: Int*): Expr[A] = fill(shape: _*)(Numeric[A].zero)
+  def zeros[A: Numeric](shape: Int*): Expr[A] = fill(shape: _*)(Numeric[A].zero)
 
-  def zeros[A: TensorType: Numeric](shape: Shape): Expr[A] = fill(shape)(Numeric[A].zero)
+  def zeros[A: Numeric](shape: Shape): Expr[A] = fill(shape)(Numeric[A].zero)
 
-  def ones[A: TensorType: Numeric](shape: Int*): Expr[A] = fill(shape: _*)(Numeric[A].one)
+  def ones[A: Numeric](shape: Int*): Expr[A] = fill(shape: _*)(Numeric[A].one)
 
-  def ones[A: TensorType: Numeric](shape: Shape): Expr[A] = fill(shape)(Numeric[A].one)
+  def ones[A: Numeric](shape: Shape): Expr[A] = fill(shape)(Numeric[A].one)
 
-  def plus[A: TensorType: Numeric, C](left: Expr[A], right: C)(
+  def plus[A: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] = Plus(left, c.convert(right))
 
-  def plus[A: TensorType: Numeric](
+  def plus[A: Numeric](
       first: Expr[A],
       second: Expr[A],
       third: Expr[A],
       rest: Expr[A]*): Expr[A] =
     PlusN(first +: second +: third +: rest.toList)
 
-  def plus[A: TensorType: Numeric](expr: Seq[Expr[A]]): Expr[A] = PlusN(expr.toList)
+  def plus[A: Numeric](expr: Seq[Expr[A]]): Expr[A] = PlusN(expr.toList)
 
-  def minus[A: TensorType: Numeric, C](left: Expr[A], right: C)(
+  def minus[A: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] = Minus(left, c.convert(right))
 
-  def negate[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Negate(expr)
+  def negate[A: Numeric](expr: Expr[A]): Expr[A] = Negate(expr)
 
-  def multiply[A: TensorType: Numeric, C](left: Expr[A], right: C)(
+  def multiply[A: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] =
     Multiply(left, c.convert(right))
 
-  def div[A: TensorType: Numeric, C](left: Expr[A], right: C)(
+  def div[A: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] = Div(left, c.convert(right))
 
-  def pow[A: TensorType: Numeric](expr: Expr[A], exponent: Expr[Float]): Expr[A] =
+  def pow[A: Numeric](expr: Expr[A], exponent: Expr[Float]): Expr[A] =
     Pow(expr, exponent)
 
-  def pow[A: TensorType: Numeric](expr: Expr[A], exponent: Float): Expr[A] =
+  def pow[A: Numeric](expr: Expr[A], exponent: Float): Expr[A] =
     Pow(expr, Tensor.scalar(exponent).const)
 
-  def sqrt[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Sqrt(expr)
+  def sqrt[A: Numeric](expr: Expr[A]): Expr[A] = Sqrt(expr)
 
-  def sqrtZeroSafe[A: TensorType: Numeric](out: Expr[A], epsilon: Expr[A]): Expr[A] =
+  def sqrtZeroSafe[A: Numeric](out: Expr[A], epsilon: Expr[A]): Expr[A] =
     sqrt(plus(out, epsilon))
 
-  def exp[A: TensorType: Numeric: Floating](expr: Expr[A]): Expr[A] = Exp(expr)
+  def exp[A: Floating](expr: Expr[A]): Expr[A] = Exp(expr)
 
-  def sum[A: TensorType: Numeric](out: Expr[A], axis: Seq[Int]): Expr[A] = Sum(out, axis)
-  def sum[A: TensorType: Numeric](out: Expr[A]): Expr[A] = sum(out, 0 until out.rank)
+  def sum[A: Numeric](out: Expr[A], axis: Seq[Int]): Expr[A] = Sum(out, axis)
+  def sum[A: Numeric](out: Expr[A]): Expr[A] = sum(out, 0 until out.rank)
 
-  def mean[A: TensorType: Numeric](
+  def mean[A: Numeric](
       expr: Expr[A],
       axis: Seq[Int],
       keepDims: Boolean = false): Expr[A] = Mean(expr, axis, keepDims)
-  def mean[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = mean(expr, 0 until expr.rank)
+  def mean[A: Numeric](expr: Expr[A]): Expr[A] = mean(expr, 0 until expr.rank)
 
   def max[A: TensorType, C](left: Expr[A], right: C)(implicit c: Convertible[C, Expr[A]]): Expr[A] =
     Max(left, c.convert(right))
@@ -466,42 +464,42 @@ trait AllKernels {
   def min[A: TensorType, C](left: Expr[A], right: C)(implicit c: Convertible[C, Expr[A]]): Expr[A] =
     Min(left, c.convert(right))
 
-  def abs[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Abs(expr)
+  def abs[A: Numeric](expr: Expr[A]): Expr[A] = Abs(expr)
 
-  def round[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Round(expr)
-  def roundAt[A: TensorType: Numeric](expr: Expr[A], precision: Expr[Int]): Expr[A] = {
+  def round[A: Numeric](expr: Expr[A]): Expr[A] = Round(expr)
+  def roundAt[A: Numeric](expr: Expr[A], precision: Expr[Int]): Expr[A] = {
     val p = 10f.const.pow(precision.cast[Float]).cast[A]
     round(expr * p) / p
   }
 
-  def transpose[A: TensorType: Numeric](expr: Expr[A], perm: Seq[Int]): Expr[A] =
+  def transpose[A: Numeric](expr: Expr[A], perm: Seq[Int]): Expr[A] =
     Transpose(expr, perm)
 
-  def transpose[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Transpose(expr)
+  def transpose[A: Numeric](expr: Expr[A]): Expr[A] = Transpose(expr)
 
-  def matmul[A: TensorType: Numeric, C](left: Expr[A], right: C)(
+  def matmul[A: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] = MatMul(left, c.convert(right))
 
-  def decayingAvg[A: TensorType: Numeric](avg: Expr[A], next: Expr[A], decay: Expr[A]): Expr[A] = {
+  def decayingAvg[A: Numeric](avg: Expr[A], next: Expr[A], decay: Expr[A]): Expr[A] = {
     // todo: try to rewrite with ops
     plus(multiply(decay, avg), multiply(minus(1.0f.const.cast[A], decay), next))
   }
 
-  def boost[A: TensorType: Numeric](out: Expr[A], rate: Expr[A], iter: Expr[Int]): Expr[A] = {
+  def boost[A: Numeric](out: Expr[A], rate: Expr[A], iter: Expr[Int]): Expr[A] = {
     // todo: try to rewrite with ops
     div(out, minus(Numeric[A].one.const, pow(rate, iter.cast[Float])))
   }
 
-  def sigmoid[A: TensorType: Numeric: Floating](expr: Expr[A]): Expr[A] = Sigmoid(expr)
+  def sigmoid[A: Floating](expr: Expr[A]): Expr[A] = Sigmoid(expr)
 
-  def tanh[A: TensorType: Numeric: Floating](expr: Expr[A]): Expr[A] = Tanh(expr)
+  def tanh[A: Floating](expr: Expr[A]): Expr[A] = Tanh(expr)
 
-  def log[A: TensorType: Numeric](expr: Expr[A]): Expr[A] = Log(expr)
+  def log[A: Numeric](expr: Expr[A]): Expr[A] = Log(expr)
 }
 
 object kernels extends AllKernels {
 
-  class NumericOps[A: TensorType: Numeric](expr: Expr[A]) {
+  class NumericOps[A: Numeric](expr: Expr[A]) {
     import scanet.math.alg.{kernels => f}
 
     /** Add two tensors. Supports broadcasting.
@@ -743,7 +741,7 @@ object kernels extends AllKernels {
     def roundAt(precision: Int): Expr[A] = f.roundAt(expr, precision.const)
   }
 
-  class FloatingOps[A: TensorType: Numeric: Floating](expr: Expr[A]) {
+  class FloatingOps[A: Floating](expr: Expr[A]) {
     import scanet.math.alg.{kernels => f}
 
     /** Computes exponential of a given tensor element wise.
@@ -780,9 +778,9 @@ object kernels extends AllKernels {
   }
 
   trait AllSyntax extends AllKernels {
-    implicit def toMathKernelNumericOps[A: TensorType: Numeric](expr: Expr[A]): NumericOps[A] =
+    implicit def toMathKernelNumericOps[A: Numeric](expr: Expr[A]): NumericOps[A] =
       new NumericOps[A](expr)
-    implicit def toMathKernelFloatingOps[A: TensorType: Numeric: Floating](
+    implicit def toMathKernelFloatingOps[A: Floating](
         expr: Expr[A]): FloatingOps[A] =
       new FloatingOps[A](expr)
   }

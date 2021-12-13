@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import scanet.core._
-import scanet.math.{Floating, Numeric}
 import scanet.syntax._
 
 /** Adagrad is an optimizer with parameter-specific learning rates,
@@ -13,11 +12,11 @@ import scanet.syntax._
   */
 case class AdaGrad(rate: Float = 0.001f, epsilon: Float = 1e-7f) extends Algorithm {
 
-  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
     Tensor.zeros[T](shape)
   }
 
-  override def delta[T: Floating: Numeric: TensorType](
+  override def delta[T: Floating](
       grad: Expr[T],
       prevGradAcc: Expr[T],
       iter: Expr[Int]): Delta[T] = {

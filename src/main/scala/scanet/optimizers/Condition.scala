@@ -1,7 +1,6 @@
 package scanet.optimizers
 
-import scanet.core.TensorType
-import scanet.math.Numeric
+import scanet.core.Numeric
 import simulacrum.typeclass
 
 case class Condition[A](f: A => Boolean) extends (A => Boolean) {
@@ -10,17 +9,17 @@ case class Condition[A](f: A => Boolean) extends (A => Boolean) {
 
 object Condition {
 
-  def always[R: Numeric: TensorType]: Condition[StepContext[R]] = Condition(_ => true)
+  def always[R: Numeric]: Condition[StepContext[R]] = Condition(_ => true)
 
-  def never[R: Numeric: TensorType]: Condition[StepContext[R]] = Condition(_ => false)
+  def never[R: Numeric]: Condition[StepContext[R]] = Condition(_ => false)
 
-  def iterations[R: Numeric: TensorType](number: Int): Condition[StepContext[R]] = {
+  def iterations[R: Numeric](number: Int): Condition[StepContext[R]] = {
     Condition(ctx => {
       ctx.step.iter % number == 0
     })
   }
 
-  def epochs[R: Numeric: TensorType](number: Int): Condition[StepContext[R]] =
+  def epochs[R: Numeric](number: Int): Condition[StepContext[R]] =
     Condition(ctx => {
       ctx.step.epoch % number == 0
     })
@@ -29,9 +28,9 @@ object Condition {
 
     implicit def canBuildConditionFromInt: CanBuildConditionFrom[Int] =
       new CanBuildConditionFrom[Int] {
-        override def iterations[R: Numeric: TensorType](a: Int): Condition[StepContext[R]] =
+        override def iterations[R: Numeric](a: Int): Condition[StepContext[R]] =
           Condition.iterations[R](a)
-        override def epochs[R: Numeric: TensorType](a: Int): Condition[StepContext[R]] =
+        override def epochs[R: Numeric](a: Int): Condition[StepContext[R]] =
           Condition.epochs[R](a)
       }
   }
@@ -42,6 +41,6 @@ object Condition {
 }
 
 @typeclass trait CanBuildConditionFrom[A] {
-  def iterations[R: Numeric: TensorType](a: A): Condition[StepContext[R]]
-  def epochs[R: Numeric: TensorType](a: A): Condition[StepContext[R]]
+  def iterations[R: Numeric](a: A): Condition[StepContext[R]]
+  def epochs[R: Numeric](a: A): Condition[StepContext[R]]
 }

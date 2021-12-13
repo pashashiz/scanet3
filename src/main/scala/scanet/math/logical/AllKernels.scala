@@ -2,15 +2,12 @@ package scanet.math.logical
 
 import scanet.core
 import scanet.core.syntax._
-import scanet.core._
-import scanet.math.Logical.syntax._
-import scanet.math.Numeric.syntax._
-import scanet.math.{Convertible, Logical}
+import scanet.core.{Convertible, _}
 
 import scala.collection.immutable.Seq
 import scala.math.Ordering.Implicits._
 
-case class All[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
+case class All[A: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
   override def name: String = "All"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
   override def shape: Shape = expr.shape.remove(axis: _*)
@@ -18,7 +15,7 @@ case class All[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]) extends Ex
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
-case class Any[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
+case class Any[A: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
   override def name: String = "Any"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
   override def shape: Shape = expr.shape.remove(axis: _*)
@@ -92,7 +89,7 @@ case class LessEqual[A: TensorType](left: Expr[A], right: Expr[A]) extends Expr[
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
-case class And[A: TensorType: Logical](left: Expr[A], right: Expr[A]) extends Expr[Boolean] {
+case class And[A: Logical](left: Expr[A], right: Expr[A]) extends Expr[Boolean] {
   require(
     left.broadcastableAny(right),
     s"cannot logically AND tensors with shapes ${left.shape} && ${right.shape}")
@@ -103,7 +100,7 @@ case class And[A: TensorType: Logical](left: Expr[A], right: Expr[A]) extends Ex
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
-case class Or[A: TensorType: Logical](left: Expr[A], right: Expr[A]) extends Expr[Boolean] {
+case class Or[A: Logical](left: Expr[A], right: Expr[A]) extends Expr[Boolean] {
   require(
     left.broadcastableAny(right),
     s"cannot logically OR tensors with shapes ${left.shape} || ${right.shape}")
@@ -114,7 +111,7 @@ case class Or[A: TensorType: Logical](left: Expr[A], right: Expr[A]) extends Exp
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
 
-case class Not[A: TensorType: Logical](expr: Expr[A]) extends Expr[Boolean] {
+case class Not[A: Logical](expr: Expr[A]) extends Expr[Boolean] {
   override def name: String = "LogicalNot"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
   override def shape: Shape = expr.shape
@@ -124,12 +121,12 @@ case class Not[A: TensorType: Logical](expr: Expr[A]) extends Expr[Boolean] {
 
 trait AllKernels {
 
-  def all[A: TensorType: Logical](expr: Expr[A]): Expr[Boolean] = all(expr, 0 until expr.rank)
-  def all[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]): Expr[Boolean] =
+  def all[A: Logical](expr: Expr[A]): Expr[Boolean] = all(expr, 0 until expr.rank)
+  def all[A: Logical](expr: Expr[A], axis: Seq[Int]): Expr[Boolean] =
     All(expr, axis)
 
-  def any[A: TensorType: Logical](expr: Expr[A]): Expr[Boolean] = any(expr, 0 until expr.rank)
-  def any[A: TensorType: Logical](expr: Expr[A], axis: Seq[Int]): Expr[Boolean] =
+  def any[A: Logical](expr: Expr[A]): Expr[Boolean] = any(expr, 0 until expr.rank)
+  def any[A: Logical](expr: Expr[A], axis: Seq[Int]): Expr[Boolean] =
     Any(expr, axis)
 
   def eq[A: TensorType, C](left: Expr[A], right: C)(
@@ -168,13 +165,13 @@ trait AllKernels {
   def lte[A: TensorType, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[Boolean] = LessEqual(left, c.convert(right))
 
-  def and[A: TensorType: Logical, C](left: Expr[A], right: C)(
+  def and[A: Logical, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[Boolean] = And(left, c.convert(right))
 
-  def or[A: TensorType: Logical, C](left: Expr[A], right: C)(
+  def or[A: Logical, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[Boolean] = Or(left, c.convert(right))
 
-  def xor[A: TensorType: Logical, C](left: Expr[A], right: C)(
+  def xor[A: Logical, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[Boolean] = {
     val rightExpr: Expr[A] = c.convert(right)
     require(
@@ -184,7 +181,7 @@ trait AllKernels {
     and(or(left, rightExpr), or(not(left), not(rightExpr)))
   }
 
-  def not[A: TensorType: Logical](expr: Expr[A]): Expr[Boolean] = Not(expr)
+  def not[A: Logical](expr: Expr[A]): Expr[Boolean] = Not(expr)
 
 }
 
@@ -274,7 +271,7 @@ object kernels extends AllKernels {
     def <=(right: Expr[A]): Expr[Boolean] = f.lte(expr, right)
   }
 
-  class LogicalOps[A: TensorType: Logical](expr: Expr[A]) {
+  class LogicalOps[A: Logical](expr: Expr[A]) {
     import scanet.math.logical.{kernels => f}
 
     /** Reduces tensor along the dimensions given in axis using logical AND.
@@ -354,7 +351,7 @@ object kernels extends AllKernels {
   trait AllSyntax extends AllKernels {
     implicit def toLogicalKernelAnyOps[A: TensorType](expr: Expr[A]): AnyOps[A] =
       new AnyOps[A](expr)
-    implicit def toLogicalKernelLogicalOps[A: TensorType: Logical](expr: Expr[A]): LogicalOps[A] =
+    implicit def toLogicalKernelLogicalOps[A: Logical](expr: Expr[A]): LogicalOps[A] =
       new LogicalOps[A](expr)
   }
 
