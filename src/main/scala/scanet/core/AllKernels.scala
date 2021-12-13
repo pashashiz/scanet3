@@ -46,7 +46,7 @@ case class Fill[A: TensorType] private (shape: Shape, scalar: Expr[A]) extends E
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
     import scanet.math.alg.kernels._
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = Seq(null, sum(parentGrad))
   }
@@ -133,7 +133,7 @@ case class Squeeze[A: TensorType] private (expr: Expr[A]) extends Expr[A] {
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(Reshape(parentGrad, expr.shape))
@@ -157,7 +157,7 @@ case class Reshape[A: TensorType] private (expr: Expr[A], shape: Shape) extends 
   override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(shape.dims: _*).const.as("new_shape"))
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(Reshape(parentGrad, expr.shape))
@@ -226,7 +226,7 @@ case class JoinAlong[A: TensorType](outputs: Seq[Expr[A]], axis: Int) extends Ex
       builder.addInput(ctx.inputs.last.outputOrFail)
   }
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val ranges = outputs
@@ -253,7 +253,7 @@ case class Cast[B: TensorType] private (expr: Expr[_]) extends Expr[B] {
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def compiler: Compiler[B] = DefaultCompiler[B]().withAttr("DstT", TensorType[B])
   override def localGrad: Grad[B] = new Grad[B] {
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[B],
         parentGrad: Expr[R]): Seq[Expr[R]] =
       List(parentGrad)

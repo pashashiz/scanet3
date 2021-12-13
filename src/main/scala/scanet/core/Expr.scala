@@ -195,7 +195,7 @@ object DefaultCompiler {
 }
 
 trait Grad[A] {
-  def calc[R:Floating](current: Expr[A], parentGrad: Expr[R]): Seq[Expr[R]]
+  def calc[R: Floating](current: Expr[A], parentGrad: Expr[R]): Seq[Expr[R]]
 }
 
 case class Label(name: String, index: Int = 0) {
@@ -239,7 +239,7 @@ case class Const[A: TensorType](tensor: Tensor[A]) extends Expr[A] {
   }
   override def inputs: Seq[Expr[_]] = Seq.empty
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = List()
   }

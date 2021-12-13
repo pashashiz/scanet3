@@ -148,7 +148,7 @@ case class Conv2D[A: Floating] private (
   }
 
   override def localGrad: Grad[A] = new Grad[A] {
-    override def calc[R:Floating](
+    override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val inputGrad =
