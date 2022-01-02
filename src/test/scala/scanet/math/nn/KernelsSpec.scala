@@ -2,27 +2,29 @@ package scanet.math.nn
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.{Shape, Tensor}
+import scanet.core.{Expr, Shape, Tensor}
+import scanet.math.nn.Padding._
+import scanet.math.nn.Reduce.{Avg, Max}
 import scanet.math.syntax._
 
 class KernelsSpec extends AnyWordSpec with Matchers {
 
+  val input1: Expr[Double] = Tensor.matrix[Double](
+    Array(2, 1, 2, 0, 1),
+    Array(1, 3, 2, 2, 3),
+    Array(1, 1, 3, 3, 0),
+    Array(2, 2, 0, 1, 1),
+    Array(0, 0, 3, 1, 2))
+    .const
+    .reshape(1, 5, 5, 1)
+
+  val filters1: Expr[Double] = Tensor.matrix[Double](
+    Array(2, 3),
+    Array(0, 1))
+    .const
+    .reshape(2, 2, 1, 1)
+
   "conv2D" when {
-
-    val input1 = Tensor.matrix[Double](
-      Array(2, 1, 2, 0, 1),
-      Array(1, 3, 2, 2, 3),
-      Array(1, 1, 3, 3, 0),
-      Array(2, 2, 0, 1, 1),
-      Array(0, 0, 3, 1, 2))
-      .const
-      .reshape(1, 5, 5, 1)
-
-    val filters1 = Tensor.matrix[Double](
-      Array(2, 3),
-      Array(0, 1))
-      .const
-      .reshape(2, 2, 1, 1)
 
     "called with Same padding" should {
 
@@ -182,6 +184,123 @@ class KernelsSpec extends AnyWordSpec with Matchers {
           Array(2.0, 6.0, 6.0, 6.0, 4.0),
           Array(2.0, 6.0, 6.0, 6.0, 4.0),
           Array(0.0, 1.0, 1.0, 1.0, 1.0))
+        grad.roundAt(2).reshape(5, 5).eval shouldBe expected
+      }
+    }
+  }
+
+  "pool2D" when {
+
+    "called with Same padding" should {
+
+      /*
+      Pooling is a very simple concept, we have a sliding window with some aggregation (reduce) function,
+      in case of MAX function we simply choose the largest element and produce it as an output
+       */
+      "calculate MAX pooling and preserve original HW by auto-padding with stride 1" in {
+        val pooled = Pool2D(input = input1, padding = Same, reduce = Max)
+        pooled.shape shouldBe Shape(1, 5, 5, 1)
+        val expected = Tensor.matrix[Double](
+          Array(3.0, 3.0, 2.0, 3.0, 3.0),
+          Array(3.0, 3.0, 3.0, 3.0, 3.0),
+          Array(2.0, 3.0, 3.0, 3.0, 1.0),
+          Array(2.0, 3.0, 3.0, 2.0, 2.0),
+          Array(0.0, 3.0, 3.0, 2.0, 2.0))
+        pooled.roundAt(2).reshape(5, 5).eval shouldBe expected
+      }
+
+      "calculate AVG pooling and preserve original HW by auto-padding with stride 1" in {
+        val pooled = Pool2D(input = input1, padding = Same, reduce = Avg)
+        pooled.shape shouldBe Shape(1, 5, 5, 1)
+        val expected = Tensor.matrix[Double](
+          Array(1.75, 2.0, 1.5, 1.5, 2.0),
+          Array(1.5, 2.25, 2.5, 2.0, 1.5),
+          Array(1.5, 1.5, 1.75, 1.25, 0.5),
+          Array(1.0, 1.25, 1.25, 1.25, 1.5),
+          Array(0.0, 1.5, 2.0, 1.5, 2.0))
+        pooled.roundAt(2).reshape(5, 5).eval shouldBe expected
+      }
+
+      "calculate MAX pooling and preserve HW/2 by auto-padding with stride 2" in {
+        val pooled = Pool2D(input = input1, padding = Same, strides = List(2), reduce = Max)
+        pooled.shape shouldBe Shape(1, 3, 3, 1)
+        val expected = Tensor.matrix[Double](
+          Array(3.0, 2.0, 3.0),
+          Array(2.0, 3.0, 1.0),
+          Array(0.0, 3.0, 2.0))
+        pooled.roundAt(2).reshape(3, 3).eval shouldBe expected
+      }
+    }
+
+    "called with Valid padding" should {
+
+      "calculate convolution with no padding and reduce original HW with stride 1" in {
+        val pooled = Pool2D(input = input1, padding = Valid, reduce = Max)
+        pooled.shape shouldBe Shape(1, 4, 4, 1)
+        val expected = Tensor.matrix[Double](
+          Array(3.0, 3.0, 2.0, 3.0),
+          Array(3.0, 3.0, 3.0, 3.0),
+          Array(2.0, 3.0, 3.0, 3.0),
+          Array(2.0, 3.0, 3.0, 2.0))
+        pooled.roundAt(2).reshape(4, 4).eval shouldBe expected
+      }
+
+      "calculate convolution with no padding and reduce original HW with stride 2" in {
+        val pooled = Pool2D(input = input1, padding = Valid, strides = List(2), reduce = Max)
+        pooled.shape shouldBe Shape(1, 2, 2, 1)
+        val expected = Tensor.matrix[Double](
+          Array(3.0, 2.0),
+          Array(2.0, 3.0))
+        pooled.roundAt(2).reshape(2, 2).eval shouldBe expected
+      }
+    }
+
+    "called with Explicit padding" should {
+      "fail cause not supported" in {
+        the[IllegalArgumentException] thrownBy {
+          Pool2D(
+            input = input1,
+            padding = Explicit(height = (1, 0), width = (1, 0)),
+            strides = List(2),
+            reduce = Max)
+        } should have message "requirement failed: only [Same, Valid] paddings are supported"
+      }
+    }
+
+    "calculating gradient in respect to input" should {
+
+      /*
+      The gradient for MAX pooling is propagated to the [i-th, i-th] element of input
+      which has the MAX value inside of the pooling window, the rest elements will get 0.
+      If same element had MAX value in multiple windows the gradient will be sum of those values
+       */
+      "work for MAX pooling" in {
+        val pooled = Pool2D(input = input1, padding = Same, reduce = Max)
+        val grad = pooled.sum.grad(input1).returns[Double]
+        grad.shape shouldBe input1.shape
+        val expected = Tensor.matrix[Double](
+          Array(0.0, 0.0, 1.0, 0.0, 0.0),
+          Array(0.0, 4.0, 0.0, 0.0, 4.0),
+          Array(0.0, 0.0, 3.0, 1.0, 0.0),
+          Array(2.0, 0.0, 0.0, 0.0, 1.0),
+          Array(1.0, 0.0, 4.0, 0.0, 4.0))
+        grad.roundAt(2).reshape(5, 5).eval shouldBe expected
+      }
+
+      /*
+      The gradient for AVG pooling is similar to MAX, however it will be propagated to all elements
+      and the larger input elements will get the larger gradient
+       */
+      "work for AVG pooling" in {
+        val pooled = Pool2D(input = input1, padding = Same, reduce = Avg)
+        val grad = pooled.sum.grad(input1).returns[Double]
+        grad.shape shouldBe input1.shape
+        val expected = Tensor.matrix[Double](
+          Array(0.25, 0.5, 0.5, 0.5, 0.75),
+          Array(0.5, 1.0, 1.0, 1.0, 1.5),
+          Array(0.5, 1.0, 1.0, 1.0, 1.5),
+          Array(0.5, 1.0, 1.0, 1.0, 1.5),
+          Array(0.75, 1.5, 1.5, 1.5, 2.25))
         grad.roundAt(2).reshape(5, 5).eval shouldBe expected
       }
     }

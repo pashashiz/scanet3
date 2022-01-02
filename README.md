@@ -144,6 +144,7 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [x] Refactor type class hierarchy so `TensorType` was on top and `Numeric` and the rest would extend it.
 - [ ] Refactor tensor functions so the materialized type of args was only infered during compilation
       Also we would need to try simplifying tensor functions and add methods so we could compose functions (`compose`, `endThen`, etc)
+- [ ] Add DSL to build tensor requirements like `tensor require rank(4)`, `tensor require shape squratedMatrix`
 
 If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 
  

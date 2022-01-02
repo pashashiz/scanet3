@@ -10,7 +10,7 @@ abstract class Model extends Serializable {
   /**
    * Build a model
    *
-   * @param x training set, where first dimension equals to number of amples (batchh size)
+   * @param x training set, where first dimension equals to number of samples (batch size)
    * @param weights model weights
    * @return model
    */

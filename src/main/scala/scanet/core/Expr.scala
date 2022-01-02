@@ -153,7 +153,7 @@ case class DefaultCompiler[A](index: Option[Int], stages: Seq[Stage]) extends Co
       builder.setAttr(name, value)
   }
 
-  def withAttr(name: String, value: Seq[Long]): DefaultCompiler[A] = withStage {
+  def withAttr(name: String, value: Iterable[Long]): DefaultCompiler[A] = withStage {
     (_: Ctx, builder: OperationBuilder) =>
       builder.setAttr(name, value.toArray)
   }

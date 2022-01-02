@@ -1,5 +1,8 @@
 package scanet.core
 
+import scanet.core.syntax.intTfTypeInst
+import scanet.core.syntax.longTfTypeInst
+
 case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   require(dims.forall(_ > 0), "dimension size cannot be 0")
@@ -173,7 +176,11 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def -(other: Shape): Shape = minus(other)
 
+  def toArray: Array[Int] = dims.toArray
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
+
+  def toTensor: Tensor[Int] = Tensor.vector(toArray)
+  def toLongTensor: Tensor[Long] = Tensor.vector(toLongArray)
 
   override def toString: String = s"(${dims.mkString(", ")})"
 
