@@ -36,7 +36,7 @@ import scala.reflect.ClassTag
   override def eqv(x: A, y: A): Boolean = compare(x, y) == 0
 }
 
-@typeclass trait Semiring[A] extends TensorType[A] {
+@typeclass trait Semigroup[A] extends TensorType[A] {
 
   /** Add two elements.
     *
@@ -69,6 +69,13 @@ import scala.reflect.ClassTag
   // todo: figure out why + operator is not resolved
   @op("+", alias = true)
   def plus[B](left: A, right: B)(implicit c: Convertible[B, A]): A
+}
+
+@typeclass trait Monoid[A] extends Semigroup[A] {
+  def zero: A
+}
+
+@typeclass trait Semiring[A] extends Monoid[A] {
 
   /** Multiply 2 elements.
     *
@@ -123,7 +130,6 @@ import scala.reflect.ClassTag
 }
 
 @typeclass trait Rng[A] extends Semiring[A] {
-  def zero: A
   @op("-", alias = true)
   def minus[B](left: A, right: B)(implicit c: Convertible[B, A]): A
   // todo: figure out why unary_- operator is not resolved
@@ -146,7 +152,7 @@ import scala.reflect.ClassTag
 
 @typeclass trait Floating[A] extends Numeric[A]
 
-@typeclass trait Logical[A] extends TensorType[A] {
+@typeclass trait Logical[A] extends Monoid[A] with Order[A] {
   @op("&&", alias = true)
   def and(x: A, y: A): Boolean
   @op("||", alias = true)
@@ -157,7 +163,7 @@ import scala.reflect.ClassTag
   def not(x: A): Boolean
 }
 
-@typeclass trait Textual[S] extends TensorType[S]
+@typeclass trait Textual[S] extends Monoid[S] with Order[S]
 
 case object TensorTypeFloat extends Floating[Float] {
   override def tag: DataType = TensorType.FloatTag
@@ -263,6 +269,10 @@ case object TensorTypeBoolean extends Logical[Boolean] {
   override def or(x: Boolean, y: Boolean): Boolean = x || y
   override def xor(x: Boolean, y: Boolean): Boolean = x ^ y
   override def not(x: Boolean): Boolean = !x
+  override def zero: Boolean = false
+  override def compare(x: Boolean, y: Boolean): Int = x.compare(y)
+  override def plus[B](left: Boolean, right: B)(implicit c: Convertible[B, Boolean]): Boolean =
+    left && c.convert(right)
 }
 
 case object TensorTypeString extends Textual[String] {
@@ -270,6 +280,10 @@ case object TensorTypeString extends Textual[String] {
   override def jtag: Class[_ <: TType] = classOf[TString]
   override def classTag: ClassTag[String] = scala.reflect.classTag[String]
   override def codec: TensorCodec[String] = StringTensorCodec
+  override def compare(x: String, y: String): Int = x.compare(y)
+  override def zero: String = ""
+  override def plus[B](left: String, right: B)(implicit c: Convertible[B, String]): String =
+    left + c.convert(right)
 }
 
 object TensorType {
@@ -317,6 +331,8 @@ object TensorType {
       with TensorType.ToTensorTypeOps
       with Order.ToOrderOps
       with Eq.ToEqOps
+      with Semigroup.ToSemigroupOps
+      with Monoid.ToMonoidOps
       with Semiring.ToSemiringOps
       with Rng.ToRngOps
       with Rig.ToRigOps

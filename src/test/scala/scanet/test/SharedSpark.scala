@@ -11,6 +11,7 @@ trait SharedSpark extends BeforeAndAfterAll {
   @transient private var _spark: SparkSession = _
 
   def spark: SparkSession = _spark
+  lazy val implicits = spark.implicits
   def sc: SparkContext = _spark.sparkContext
 
   implicit protected def reuseContextIfPossible: Boolean = false

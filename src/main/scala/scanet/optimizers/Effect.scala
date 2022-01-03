@@ -1,6 +1,6 @@
 package scanet.optimizers
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Dataset
 import scanet.core.{Convertible, Floating, Numeric, TensorBoard}
 import scanet.estimators._
 import scanet.math.syntax._
@@ -33,7 +33,7 @@ object Effect {
   }
 
   case class RecordAccuracy[E: Floating](
-      ds: RDD[Array[E]],
+      ds: Dataset[Record[E]],
       console: Boolean = true,
       tensorboard: Boolean = false,
       dir: String = "board")(implicit c: Convertible[E, Float])

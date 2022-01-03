@@ -1,11 +1,12 @@
 package scanet
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Dataset
 import scanet.core.Session.withing
 import scanet.core.{Expr, Numeric, TF2}
 import scanet.math.syntax._
 import scanet.models.TrainedModel
-import scanet.optimizers.Tensor2Iterator
+import scanet.optimizers.syntax._
+import scanet.optimizers.{Record, TensorIterator}
 
 import scala.collection.immutable.Seq
 
@@ -13,16 +14,17 @@ package object estimators {
 
   def accuracy[A: Numeric](
       model: TrainedModel[A],
-      ds: RDD[Array[A]]): Float = {
+      ds: Dataset[Record[A]]): Float = {
     val batchSize = 10000
-    val brModel = ds.sparkContext.broadcast(model)
-    val (positives, total) = ds
+    val brModel = ds.sparkSession.sparkContext.broadcast(model)
+    val shapes = ds.shapes
+    val (positives, total) = ds.rdd
       .mapPartitions(it => {
         val model = brModel.value
-        val batches = Tensor2Iterator(
-          it,
-          batchSize,
-          splitAt = size => size - model.outputs(),
+        val batches = TensorIterator(
+          rows = it,
+          shapes = shapes,
+          batch = batchSize,
           withPadding = false)
         withing(session => {
           val positive = TF2[Expr, A, Expr, A, Expr[Int]]((x, y) => {

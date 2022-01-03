@@ -30,10 +30,12 @@ abstract class Model extends Serializable {
   /** @param features number of features in a dataset
    * @return shape of weights tensor for each layer
    */
+  @deprecated("weightsShapes")
   def shapes(features: Int): Seq[Shape]
 
   /** @return number of model outputs
    */
+  @deprecated("outputShape")
   def outputs(): Int
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)

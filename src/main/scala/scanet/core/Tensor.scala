@@ -202,11 +202,11 @@ object Tensor {
     apply(data, Shape(rowSizes.length, rowSizes.head))
   }
 
-  def zeros[A: Numeric](shape: Int*): Tensor[A] =
+  def zeros[A: Monoid](shape: Int*): Tensor[A] =
     zeros(Shape(shape.toList))
 
-  def zeros[A: Numeric](shape: Shape): Tensor[A] = {
-    Tensor(Array.fill(shape.power)(Numeric[A].zero)(TensorType[A].classTag), shape)
+  def zeros[A: Monoid](shape: Shape): Tensor[A] = {
+    Tensor(Array.fill(shape.power)(Monoid[A].zero)(TensorType[A].classTag), shape)
   }
 
   def ones[A: Numeric](shape: Int*): Tensor[A] =

@@ -1,7 +1,7 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
+import scanet.core.{Shape, Tensor}
 import scanet.math.syntax._
 import scanet.models.Math.`x^2`
 import scanet.models.LinearRegression
@@ -40,7 +40,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile()
-    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
+    val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f
   }
@@ -56,7 +56,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile()
-    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
+    val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f
   }
@@ -73,7 +73,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .each(1.epochs, RecordLoss())
       .run()
     val loss = trained.loss.compile()
-    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
+    val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f
   }

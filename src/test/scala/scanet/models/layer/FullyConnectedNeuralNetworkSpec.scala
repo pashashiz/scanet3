@@ -8,7 +8,7 @@ import scanet.models.Activation._
 import scanet.models.Loss._
 import scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import scanet.optimizers.syntax._
-import scanet.optimizers.{Adam, Tensor2Iterator}
+import scanet.optimizers.{Adam, Record, TRecord}
 import scanet.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
@@ -19,7 +19,9 @@ class FullyConnectedNeuralNetworkSpec
     with Datasets {
 
   "fully connected neural network with 2 layers (4, 1)" should "minimize logistic regression" in {
-    val ds = logisticRegression.map(a => Array(a(0) / 100, a(1) / 100, a(2)))
+    val impl = spark.implicits
+    import impl._
+    val ds = logisticRegression
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
     val trained = ds
       .train(model)
@@ -30,7 +32,7 @@ class FullyConnectedNeuralNetworkSpec
       .each(1.epochs, RecordLoss())
       .stopAfter(50.epochs)
       .run()
-    val (x, y) = Tensor2Iterator(ds.collect.iterator, 100).next()
+    val TRecord(x, y) = ds.firstTensor(100)
     val loss = trained.loss.compile()
     loss(x, y).toScalar should be <= 0.4f
     accuracy(trained, ds) should be >= 0.9f

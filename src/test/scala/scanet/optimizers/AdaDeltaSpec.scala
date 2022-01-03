@@ -23,7 +23,7 @@ class AdaDeltaSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile()
-    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
+    val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 2000 epochs
     loss(x, y).toScalar should be <= 50f
   }

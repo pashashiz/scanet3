@@ -1,10 +1,11 @@
 package scanet.optimizers
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Dataset
 import scanet.core.{Tensor, _}
 import scanet.math.syntax._
 import scanet.math.Dist
 import scanet.models.{Loss, LossModel, Model, TrainedModel}
+import scanet.optimizers.syntax._
 import scanet.optimizers.Condition.always
 import scanet.optimizers.Optimizer.BuilderState._
 import scanet.optimizers.Optimizer.{sessionsPool, tfCache}
@@ -38,7 +39,7 @@ case class Optimizer[A: Floating](
     model: Model,
     loss: Loss,
     initArgs: Shape => Tensor[A],
-    dataset: RDD[Array[A]],
+    dataset: Dataset[Record[A]],
     batchSize: Int,
     minimizing: Boolean,
     stop: Condition[StepContext[A]],
@@ -47,8 +48,8 @@ case class Optimizer[A: Floating](
   private val lossModel = model.withLoss(loss)
 
   def run(): TrainedModel[A] = {
-    val ds = dataset.cache()
-    val sc = ds.sparkContext
+    val ds: Dataset[Record[A]] = dataset.cache()
+    val sc = ds.sparkSession.sparkContext
 
     @tailrec
     def optimize(
@@ -57,9 +58,15 @@ case class Optimizer[A: Floating](
         meta: Seq[Tensor[A]]): Seq[Tensor[A]] = {
       val weightsBr = sc.broadcast(weights)
       val metaBr = sc.broadcast(meta)
-      val result = ds
+      val shapes = ds.shapes
+      val result = ds.rdd
         .mapPartitions(it =>
-          Iterator(optimizeOnPartition(it, prevStep.iter, weightsBr.value, metaBr.value)))
+          Iterator(optimizeOnPartition(
+            it,
+            shapes,
+            prevStep.iter,
+            weightsBr.value,
+            metaBr.value)))
         .treeReduce(averageMetaAndWeights)
       val step: Step[A] = prevStep.nextEpoch.incIter(result.iterations)
       val stepCtx = StepContext(step, result, lossModel)
@@ -75,17 +82,17 @@ case class Optimizer[A: Floating](
   }
 
   private def optimizeOnPartition(
-      it: scala.Iterator[Array[A]],
+      it: scala.Iterator[Record[A]],
+      shapes: (Shape, Shape),
       globalIter: Int,
       weights: Seq[Tensor[A]],
       meta: Seq[Tensor[A]]): StepResult[A] = {
     val result = sessionsPool.withing(session => {
-      val batches = Tensor2Iterator(it, batchSize, splitAt = size => size - model.outputs())
+      val batches = TensorIterator(it, shapes, batchSize)
       val (weightsInitialized, metaInitialized) =
         if (globalIter == 0) {
-          val features = batches.columns - model.outputs()
-          val shapes = model.shapes(features)
-          (shapes.map(initArgs(_)).toList, shapes.map(alg.initMeta[A](_)).toList)
+          val weightShapes = model.shapes(shapes._1.power)
+          (weightShapes.map(initArgs(_)).toList, weightShapes.map(alg.initMeta[A](_)).toList)
         } else {
           (weights, meta)
         }
@@ -189,7 +196,7 @@ object Optimizer {
     def initWith(args: Shape => Tensor[A]): Builder[A, State] =
       copy(optimizer = optimizer.copy(initArgs = args))
 
-    def on(dataset: RDD[Array[A]]): Builder[A, State with WithDataset] =
+    def on(dataset: Dataset[Record[A]]): Builder[A, State with WithDataset] =
       copy(optimizer = optimizer.copy(dataset = dataset))
 
     def stopWhen(condition: Condition[StepContext[A]]): Builder[A, State with WithStopCondition] =
