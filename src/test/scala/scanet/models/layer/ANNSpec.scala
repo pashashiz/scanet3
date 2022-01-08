@@ -1,26 +1,19 @@
 package scanet.models.layer
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.{Shape, Tensor, TensorBoard}
+import scanet.core.{Shape, Tensor}
 import scanet.estimators.accuracy
-import scanet.images.Grayscale
 import scanet.models.Activation._
 import scanet.models.Loss._
-import scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
+import scanet.optimizers.Effect.RecordLoss
 import scanet.optimizers.syntax._
-import scanet.optimizers.{Adam, Record, TRecord}
+import scanet.optimizers.{Adam, TRecord}
 import scanet.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-class FullyConnectedNeuralNetworkSpec
-    extends AnyFlatSpec
-    with CustomMatchers
-    with SharedSpark
-    with Datasets {
+class ANNSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
 
   "fully connected neural network with 2 layers (4, 1)" should "minimize logistic regression" in {
-    val impl = spark.implicits
-    import impl._
     val ds = logisticRegression
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
     val trained = ds
@@ -43,34 +36,16 @@ class FullyConnectedNeuralNetworkSpec
 
   it should "produce right graph of a result function given x shape" ignore {
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-    model.displayResult[Float](x = Shape(4, 3))
+    model.displayResult[Float](input = Shape(3))
   }
 
   it should "produce right graph of a loss function given x shape" ignore {
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-    model.withLoss(BinaryCrossentropy).displayLoss[Float](x = Shape(4, 3))
+    model.withLoss(BinaryCrossentropy).displayLoss[Float](input = Shape(3))
   }
 
   it should "produce right graph of loss gradient given x shape" ignore {
     val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-    model.withLoss(BinaryCrossentropy).displayGrad[Float](x = Shape(4, 3))
-  }
-
-  "MNIST dataset" should "be trained with Softmax" ignore {
-    val (trainingDs, testDs) = MNIST()
-    val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
-    val trained = trainingDs
-      .train(model)
-      .loss(CategoricalCrossentropy)
-      .using(Adam(0.01f))
-      .batch(1000)
-      .each(1.epochs, RecordLoss())
-      .each(10.epochs, RecordAccuracy(testDs))
-      .stopAfter(25.epochs)
-      .run()
-    accuracy(trained, testDs) should be >= 0.95f
-    TensorBoard("board")
-      .addImage("layer-1", trained.weights(0).reshape(50, 785, 1), Grayscale())
-      .addImage("layer-2", trained.weights(1).reshape(10, 51, 1), Grayscale())
+    model.withLoss(BinaryCrossentropy).displayGrad[Float](Shape(3))
   }
 }

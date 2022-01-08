@@ -50,8 +50,7 @@ object MNIST {
         case (_, (images, labels)) => Record(images, labels)
       }
       .toDS()
-      // todo: Shape(28, 28)
-      .withShapes(Shape(28 * 28), Shape(10))
+      .withShapes(Shape(28, 28, 1), Shape(10))
   }
 
   def readImages(stream: DataInputStream, size: Int): Seq[(Int, Array[Float])] = {

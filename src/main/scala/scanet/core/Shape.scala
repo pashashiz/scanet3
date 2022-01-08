@@ -82,6 +82,20 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     }
   }
 
+  def >>>(size: Int, using: Int): Shape = alignLeft(rank + size, using)
+  def >>>(size: Int): Shape = >>>(size, 1)
+  def <<<(size: Int, using: Int): Shape = alignRight(rank + size, using)
+  def <<<(size: Int): Shape = <<<(size, 1)
+
+  def >>(size: Int): Shape = {
+    require(rank >= size, s"cannot $this >> $size, cause rank should be >= $size")
+    Shape(dims.dropRight(size))
+  }
+  def <<(size: Int): Shape = {
+    require(rank >= size, s"cannot $this << $size, cause rank should be >= $size")
+    Shape(dims.drop(size))
+  }
+
   def canPrune: Int = dims.takeWhile(_ == 1).size
   def pruneAll: Shape = Shape(dims.dropWhile(_ == 1))
   def prune(max: Int): Shape = {

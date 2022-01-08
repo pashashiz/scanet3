@@ -1,7 +1,9 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, OutputSeq}
+import scanet.core.{Expr, Floating, OutputSeq, Shape}
 import scanet.math.syntax._
+
+import scala.collection.immutable
 
 /** Layer which composes 2 other layers
   *
@@ -21,16 +23,16 @@ case class Composed(left: Layer, right: Layer) extends Layer {
     left.penalty(leftWeights) plus left.penalty(rightWeights)
   }
 
-  override def outputs() = right.outputs()
+  override def outputShape(input: Shape): Shape = right.outputShape(left.outputShape(input))
 
-  override def shapes(features: Int) = {
-    val leftShapes = left.shapes(features)
-    val rightOutputs = leftShapes.last.head
-    val rightShapes = right.shapes(rightOutputs)
+  override def weightsCount: Int = left.weightsCount + right.weightsCount
+
+  override def weightsShapes(input: Shape): immutable.Seq[Shape] = {
+    val leftShapes = left.weightsShapes(input)
+    val rightShapes = right.weightsShapes(left.outputShape(input))
     leftShapes ++ rightShapes
   }
 
-  private def split[E: Floating](weights: OutputSeq[E]) = {
-    weights.splitAt(left.shapes(0).size)
-  }
+  private def split[E: Floating](weights: OutputSeq[E]) =
+    weights.splitAt(left.weightsCount)
 }

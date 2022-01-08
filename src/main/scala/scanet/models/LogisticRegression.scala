@@ -24,7 +24,10 @@ case object LogisticRegression extends Model {
   private def reshape[A: TensorType](weights: Expr[A]): Expr[A] =
     weights.reshape(1, weights.shape.head)
 
-  override def shapes(features: Int): Seq[Shape] = Seq(Shape(features + 1))
+  override def weightsShapes(input: Shape): Seq[Shape] = {
+    require(input.rank == 1, "features should have a shape (features)")
+    Seq(Shape(input(0) + 1))
+  }
 
-  override def outputs(): Int = 1
+  override def outputShape(input: Shape): Shape = Shape(1)
 }

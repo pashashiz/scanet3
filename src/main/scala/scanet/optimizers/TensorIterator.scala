@@ -39,8 +39,8 @@ class TensorIterator[A: Monoid](
       }
     }
     (
-      Tensor[A](x, Shape(x.length / sizeX, sizeX)),
-      Tensor[A](y, Shape(y.length / sizeY, sizeY)))
+      Tensor[A](x, (x.length / sizeX) +: shapeX),
+      Tensor[A](y, (y.length / sizeY) +: shapeY))
   }
 
   private def addPadding(x: Array[A], from: Int, until: Int): Unit = {

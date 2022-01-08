@@ -34,5 +34,10 @@ case class Dense(outputs: Int, activation: Activation, reg: Regularization = Zer
   override def penalty[E: Floating](weights: OutputSeq[E]) =
     reg.build(weights.head)
 
-  override def shapes(features: Int) = Seq(Shape(outputs, features + 1))
+  override def weightsShapes(input: Shape): Seq[Shape] = {
+    require(input.rank == 1, "features should have a shape (features)")
+    Seq(Shape(outputs, input(0) + 1))
+  }
+
+  override def outputShape(input: Shape): Shape = Shape(outputs)
 }

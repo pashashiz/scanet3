@@ -17,8 +17,8 @@ object Math {
     override def penalty[E: Floating](weights: OutputSeq[E]) =
       zeros[E](Shape())
 
-    override def shapes(features: Int): Seq[Shape] = Seq(Shape())
+    override def weightsShapes(input: Shape): Seq[Shape] = Seq(Shape())
 
-    override def outputs(): Int = 1
+    override def outputShape(input: Shape): Shape = Shape(1)
   }
 }

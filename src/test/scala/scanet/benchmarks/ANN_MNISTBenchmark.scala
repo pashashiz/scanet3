@@ -6,20 +6,20 @@ import scanet.estimators.accuracy
 import scanet.math.syntax._
 import scanet.models.Activation.{Sigmoid, Softmax}
 import scanet.models.Loss.CategoricalCrossentropy
-import scanet.models.layer.Dense
+import scanet.models.layer.{Dense, Flatten}
 import scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import scanet.optimizers._
 import scanet.optimizers.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-trait MNISTWithANNBehaviours {
+trait ANN_MNISTBehaviours {
 
   this: AnyWordSpec with CustomMatchers with SharedSpark with Datasets =>
 
   def successfullyTrainedWith(alg: Algorithm): Unit = {
     "be successfully trained" in {
       val (trainingDs, testDs) = MNIST()
-      val model = Dense(50, Sigmoid) >> Dense(10, Softmax)
+      val model = Flatten() >> Dense(50, Sigmoid) >> Dense(10, Softmax)
       val trained = trainingDs
         .train(model)
         .loss(CategoricalCrossentropy)
@@ -35,12 +35,12 @@ trait MNISTWithANNBehaviours {
 }
 
 @Slow
-class MNISTWithANNBenchmark
+class ANN_MNISTBenchmark
     extends AnyWordSpec
     with CustomMatchers
     with SharedSpark
     with Datasets
-    with MNISTWithANNBehaviours {
+    with ANN_MNISTBehaviours {
 
   "MNIST dataset with Fully Connected Neural Network architecture" when {
 

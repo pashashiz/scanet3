@@ -91,7 +91,8 @@ case class Optimizer[A: Floating](
       val batches = TensorIterator(it, shapes, batchSize)
       val (weightsInitialized, metaInitialized) =
         if (globalIter == 0) {
-          val weightShapes = model.shapes(shapes._1.power)
+          // todo: run tests
+          val weightShapes = model.weightsShapes(shapes._1)
           (weightShapes.map(initArgs(_)).toList, weightShapes.map(alg.initMeta[A](_)).toList)
         } else {
           (weights, meta)

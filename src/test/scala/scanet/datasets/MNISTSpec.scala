@@ -2,6 +2,7 @@ package scanet.datasets
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tags.Slow
 import scanet.core.{Shape, Tensor, TensorBoard}
 import scanet.images.Grayscale
 import scanet.test.SharedSpark
@@ -9,6 +10,7 @@ import scanet.core.syntax._
 
 import scala.collection.mutable
 
+@Slow
 class MNISTSpec extends AnyFlatSpec with Matchers with SharedSpark {
 
   "MNIST training set" should "be downloaded" in {

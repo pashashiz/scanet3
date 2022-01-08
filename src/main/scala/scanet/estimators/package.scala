@@ -30,7 +30,7 @@ package object estimators {
           val positive = TF2[Expr, A, Expr, A, Expr[Int]]((x, y) => {
             val yPredicted = model.buildResult(x).round
             val matchedOutputs = (y.cast[A] :== yPredicted).cast[Int].sum(Seq(1))
-            (matchedOutputs :== model.outputs().const).cast[Int].sum
+            (matchedOutputs :== model.outputShape(x.shape << 1).last.const).cast[Int].sum
           }).compile(session)
           val result = batches.foldLeft((0, 0))((acc, next) => {
             val (x, y) = next

@@ -12,10 +12,11 @@ import scala.collection.immutable.Seq
 
 sealed trait Padding {
 
-  def shape(format: ConvFormat, input: Shape, reduceWindow: Shape, strides: Seq[Int]): Shape =
+  def shape(format: ConvFormat, input: Shape, reduceWindow: Shape, strides: Seq[Int]): Shape = {
     format.hwAxis.foldLeft(input) { (original, axis) =>
       original.updated(axis, size(format, axis, input(axis), reduceWindow(axis), strides(axis)))
     }
+  }
 
   def size(format: ConvFormat, inputAxis: Int, input: Int, window: Int, stride: Int): Int
 
@@ -107,6 +108,7 @@ sealed trait ConvFormat {
   def hAxis: Int
   def wAxis: Int
   def hwAxis: Seq[Int] = Seq(hAxis, wAxis)
+  def cAxis: Int
   def fill(dense: Seq[Int], others: Int = 1, power: Int = 4, as: String): Seq[Int] = {
     dense match {
       case both +: Nil => Seq.fill(power)(others).updated(hAxis, both).updated(wAxis, both)
@@ -128,12 +130,14 @@ object ConvFormat {
   case object NHWC extends ConvFormat {
     override def hAxis: Int = 1
     override def wAxis: Int = 2
+    override def cAxis: Int = 3
   }
 
   /** Format in which the input tensor has a form of `batch_shape + [in_channels, in_height, in_width]` */
   case object NCHW extends ConvFormat {
     override def hAxis: Int = 2
     override def wAxis: Int = 3
+    override def cAxis: Int = 1
   }
 }
 
@@ -148,8 +152,13 @@ case class Conv2D[A: Floating] private (
   override def name: String = "Conv2D"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
 
-  override val shape: Shape =
-    padding.shape(format, input.shape, format.shapeOf(filters.shape(0), filters.shape(1)), strides)
+  override val shape: Shape = {
+    // input   = (batch_shape, in_height, in_width, in_channels)
+    // filters = (filter_height, filter_width, in_channels, out_channels)
+    // output  = (batch_shape, out_height, out_width, out_channels)
+    val convolved = padding.shape(format, input.shape, format.shapeOf(filters.shape(0), filters.shape(1)), strides)
+    convolved.updated(format.cAxis, filters.shape(3))
+  }
 
   override def inputs: Seq[Expr[_]] = Seq(input, filters)
 

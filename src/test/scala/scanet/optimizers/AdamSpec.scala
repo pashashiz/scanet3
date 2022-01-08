@@ -28,12 +28,9 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
     val TRecord(x, y) = ds.firstTensor(97)
     loss(x, y).toScalar should be <= 10f
     val stop = System.currentTimeMillis()
-    println(s"took ${stop - start}")
   }
 
   it should "minimize logistic regression" in {
-    val impl = spark.implicits
-    import impl._
     val ds = logisticRegression
     val trained = ds
       .train(LogisticRegression)
