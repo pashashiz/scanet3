@@ -19,7 +19,7 @@ trait ANN_MNISTBehaviours {
   def successfullyTrainedWith(alg: Algorithm): Unit = {
     "be successfully trained" in {
       val (trainingDs, testDs) = MNIST()
-      val model = Flatten() >> Dense(50, Sigmoid) >> Dense(10, Softmax)
+      val model = Flatten >> Dense(50, Sigmoid) >> Dense(10, Softmax)
       val trained = trainingDs
         .train(model)
         .loss(CategoricalCrossentropy)

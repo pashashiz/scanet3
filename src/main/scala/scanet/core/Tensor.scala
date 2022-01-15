@@ -127,7 +127,7 @@ class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
 
   private def showAll(width: Int, baseShift: String = ""): String = {
     if (isScalar) {
-      toScalar.toString.padTo(width, " ").mkString
+      toScalar.toString.padTo(width, ' ').mkString
     } else {
       val nl = System.lineSeparator
       val children = foldLeft("")((acc, next) => {

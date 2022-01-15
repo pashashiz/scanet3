@@ -24,7 +24,11 @@ parameters are averaged and broadcasted back to each worker.
 The input data is expected to be `RDD[Array[TensorType]`. 
 Usually, `TensorType` is choosen to be `Float` since it performs best on GPU, also `Double` can be used.
 
-Example of a simple MNIST dataset classifier:
+## Examples
+
+### ANN
+
+Example of a simple MNIST dataset classifier with Fully Connected Neural Network:
 
 ``` scala
 val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 30000)
@@ -43,6 +47,28 @@ accuracy(trained, testDs) should be >= 0.95f
 Here, `loss` and `accuracy` will be logged and added to `TensorBoard` as live trends. To run tensorboard execute:
 ```sh
 tensorboard --logdir board
+```
+
+### CNN
+
+Same but with CNN (Convolutional Neural Network)
+```scala
+val (trainingDs, testDs) = MNIST()
+val model =
+  Conv2D(32, activation = ReLU()) >> Pool2D() >>
+  Conv2D(64, activation = ReLU()) >> Pool2D() >>
+  Flatten >> Dense(10, Softmax)
+val trained = trainingDs
+  .train(model)
+  .loss(CategoricalCrossentropy)
+  .using(Adam(0.001f))
+  .batch(100)
+  .initWith(shape => Tensor.rand(shape, range = Some(-0.1f, 0.1f)))
+  .each(1.epochs, RecordLoss())
+  .each(1.epochs, RecordAccuracy(testDs))
+  .stopAfter(3.epochs)
+  .run()
+accuracy(trained, testDs) should be >= 0.98f
 ```
 
 ## What we are doing right now

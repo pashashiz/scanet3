@@ -6,6 +6,12 @@ import scanet.models.Activation
 
 import scala.collection.immutable.Seq
 
+/** A layer which applies activation function to the input.
+  *
+  * Could also be constructed as: {{{activation.layer}}}
+  *
+  * @param activation activation function
+  */
 case class Activate(activation: Activation) extends Layer {
 
   override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {

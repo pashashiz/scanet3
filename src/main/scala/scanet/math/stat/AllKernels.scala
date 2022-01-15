@@ -1,6 +1,6 @@
 package scanet.math.stat
 
-import scanet.core.{Expr, Numeric, TensorType}
+import scanet.core.{Expr, Numeric}
 import scanet.math.alg.kernels.syntax._
 
 import scala.collection.immutable.Seq

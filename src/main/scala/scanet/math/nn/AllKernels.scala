@@ -1,10 +1,9 @@
 package scanet.math.nn
 
 import scanet.core
-import scanet.core.syntax._
 import scanet.core.Require.fail
-import scanet.core.{DefaultCompiler, Expr, Floating, Grad, Shape, Tensor, TensorType}
-import scanet.math.logical.AllKernels
+import scanet.core.syntax._
+import scanet.core._
 import scanet.math.nn.ConvFormat._
 import scanet.math.nn.Padding._
 
@@ -451,7 +450,7 @@ trait AllKernels {
     *                See [[https://www.tensorflow.org/api_docs/python/tf/nn#notes_on_padding_2) here]] for more information.
     * @param format Specifies whether the channel dimension of the input and output is the last dimension, see [[NHWC]] and [[NCHW]]
     * @param reduce Reduction function either [[Reduce.Max]] or [[Reduce.Avg]]
-    * @return The max pooled output tensor. The shape depends on `format` and `padding` (same as for [[conv2D]]
+    * @return The pooled output tensor. The shape depends on `format` and `padding` (same as for [[conv2D]]
     */
   def pool2D[A: Floating](
       input: Expr[A],

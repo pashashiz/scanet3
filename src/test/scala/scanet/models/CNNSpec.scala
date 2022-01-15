@@ -22,18 +22,17 @@ class CNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       val model =
         Conv2D(32, activation = ReLU()) >> Pool2D() >>
         Conv2D(64, activation = ReLU()) >> Pool2D() >>
-        Flatten() >> Dense(10, Softmax)
+        Flatten >> Dense(10, Softmax)
       val trained = trainingDs
         .train(model)
         .loss(CategoricalCrossentropy)
         .using(Adam(0.001f))
         .batch(100)
-        .initWith(shape => Tensor.rand(shape, range = Some(-0.1f, 0.1f)))
+        .initWith(shape => Tensor.rand(shape, range = Some((-0.1f, 0.1f))))
         .each(1.epochs, RecordLoss())
         .each(1.epochs, RecordAccuracy(testDs))
         .stopAfter(3.epochs)
         .run()
-      println(accuracy(trained, testDs))
       accuracy(trained, testDs) should be >= 0.98f
     }
   }

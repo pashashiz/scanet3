@@ -33,7 +33,7 @@ class Pool2DLayerSpec extends AnyWordSpec with CustomMatchers {
 
     "have string repr" in {
       val model = Pool2D(window = (2, 2))
-      model.toString shouldBe "Pool2D((2,2),(1,1),Valid,NHWC)"
+      model.toString shouldBe "Pool2D((2,2),(1,1),Valid,NHWC,Max)"
     }
   }
 }

@@ -41,7 +41,7 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
 
     "train on MNIST dataset" in {
       val (trainingDs, testDs) = MNIST()
-      val model = Flatten() >> Dense(50, Sigmoid) >> Dense(10, Softmax)
+      val model = Flatten >> Dense(50, Sigmoid) >> Dense(10, Softmax)
       val trained = trainingDs
         .train(model)
         .loss(CategoricalCrossentropy)
@@ -52,25 +52,28 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
         .stopAfter(25.epochs)
         .run()
       accuracy(trained, testDs) should be >= 0.95f
-      //    TensorBoard("board")
-      //      .addImage("layer-1", trained.weights(0).reshape(50, 785, 1), Grayscale())
-      //      .addImage("layer-2", trained.weights(1).reshape(10, 51, 1), Grayscale())
+
+//      import scanet.images.Grayscale
+//      TensorBoard("board")
+//        .addImage("1#Dense", trained.weights(0).reshape(50, 784, 1), Grayscale())
+//        .addImage("2#Bias", trained.weights(1).reshape(1, 50, 1), Grayscale())
+//        .addImage("3#Dense", trained.weights(2).reshape(10, 50, 1), Grayscale())
+//        .addImage("4#Bias", trained.weights(3).reshape(1, 10, 1), Grayscale())
     }
 
     "produce right graph of a result function given x shape" ignore {
       val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-      model.displayResult[Float](input = Shape(3))
+      model.displayResult[Float](input = Shape(3), "board")
     }
 
     "produce right graph of a loss function given x shape" ignore {
       val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-      model.withLoss(BinaryCrossentropy).displayLoss[Float](input = Shape(3))
+      model.withLoss(BinaryCrossentropy).displayLoss[Float](input = Shape(3), "board")
     }
 
     "produce right graph of loss gradient given x shape" ignore {
       val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
-      model.withLoss(BinaryCrossentropy).displayGrad[Float](Shape(3))
+      model.withLoss(BinaryCrossentropy).displayGrad[Float](Shape(3), "board")
     }
-
   }
 }
