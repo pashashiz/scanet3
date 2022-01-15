@@ -33,6 +33,12 @@ case class Composed(left: Layer, right: Layer) extends Layer {
     leftShapes ++ rightShapes
   }
 
+  override def initWeights[E: Floating](input: Shape): OutputSeq[E] = {
+    val leftShapes = left.initWeights[E](input)
+    val rightShapes = right.initWeights[E](left.outputShape(input))
+    leftShapes ++ rightShapes
+  }
+
   private def split[E: Floating](weights: OutputSeq[E]) =
     weights.splitAt(left.weightsCount)
 

@@ -2,7 +2,6 @@ package scanet.models
 
 import org.scalatest.tags.Slow
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Tensor
 import scanet.estimators.accuracy
 import scanet.models.Activation._
 import scanet.models.Loss._
@@ -26,14 +25,13 @@ class CNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       val trained = trainingDs
         .train(model)
         .loss(CategoricalCrossentropy)
-        .using(Adam(0.001f))
+        .using(Adam())
         .batch(100)
-        .initWith(shape => Tensor.rand(shape, range = Some((-0.1f, 0.1f))))
         .each(1.epochs, RecordLoss())
         .each(1.epochs, RecordAccuracy(testDs))
         .stopAfter(3.epochs)
         .run()
-      accuracy(trained, testDs) should be >= 0.98f
+      accuracy(trained, testDs) should be >= 0.985f
     }
   }
 }

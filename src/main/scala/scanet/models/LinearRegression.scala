@@ -1,6 +1,7 @@
 package scanet.models
 
 import scanet.models.Activation.Identity
+import scanet.models.Initializer.{GlorotUniform, Zeros}
 import scanet.models.Regularization.Zero
 import scanet.models.layer.Dense
 
@@ -16,6 +17,16 @@ object LinearRegression {
     *
     * That is equivalent to `layer.Dense(1, Identity, reg, bias)`
     */
-  def apply(reg: Regularization = Zero, bias: Boolean = true): Model =
-    Dense(outputs = 1, activation = Identity, reg = reg, bias = bias)
+  def apply(
+      reg: Regularization = Zero,
+      bias: Boolean = true,
+      kernelInitializer: Initializer = Zeros,
+      biasInitializer: Initializer = Zeros): Model =
+    Dense(
+      outputs = 1,
+      activation = Identity,
+      reg = reg,
+      bias = bias,
+      kernelInitializer = kernelInitializer,
+      biasInitializer = biasInitializer)
 }

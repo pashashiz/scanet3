@@ -39,19 +39,22 @@ object Initializer {
     override def toString: String = "Ones"
   }
 
-  case class RandomUniform(min: Float = -0.05f, max: Float = 0.05f, seed: Option[Long])
+  case class RandomUniform(min: Float = -0.05f, max: Float = 0.05f, seed: Option[Long] = None)
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =
-      rand[E](shape, Dist.Uniform, seed, scale = Some((max - min) / 2), shift = Some(min + max))
+      rand[E](shape, Dist.Uniform, seed, scale = Some(max - min), shift = Some(min))
   }
 
-  case class RandomNormal(mean: Float = 0.0f, std: Float = 0.05f, seed: Option[Long])
+  case class RandomNormal(mean: Float = 0.0f, std: Float = 0.05f, seed: Option[Long] = None)
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =
       rand[E](shape, Dist.Normal, seed, scale = Some(std), shift = Some(mean))
   }
 
-  case class RandomNormalTruncated(mean: Float = 0.0f, std: Float = 0.05f, seed: Option[Long])
+  case class RandomNormalTruncated(
+      mean: Float = 0.0f,
+      std: Float = 0.05f,
+      seed: Option[Long] = None)
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =
       rand[E](shape, Dist.NormalTruncated, seed, scale = Some(std), shift = Some(mean))
@@ -72,7 +75,7 @@ object Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] = {
       val (fanIn, fanOut) = fans(shape)
       val limit = math.sqrt(6f / (fanIn + fanOut)).toFloat
-      rand[E](shape, Dist.Uniform, seed, scale = Some(limit))
+      rand[E](shape, Dist.Uniform, seed, scale = Some(2 * limit), shift = Some(-limit))
     }
   }
 
@@ -109,7 +112,7 @@ object Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] = {
       val (fanIn, _) = fans(shape)
       val limit = math.sqrt(6f / fanIn).toFloat
-      rand[E](shape, Dist.Uniform, seed, scale = Some(limit))
+      rand[E](shape, Dist.Uniform, seed, scale = Some(2 * limit), shift = Some(-limit))
     }
   }
 
@@ -145,7 +148,7 @@ object Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] = {
       val (fanIn, _) = fans(shape)
       val limit = math.sqrt(3f / fanIn).toFloat
-      rand[E](shape, Dist.Uniform, seed, scale = Some(limit))
+      rand[E](shape, Dist.Uniform, seed, scale = Some(2 * limit), shift = Some(-limit))
     }
   }
 

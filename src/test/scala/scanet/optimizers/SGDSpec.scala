@@ -9,6 +9,7 @@ import scanet.models.Math.`x^2`
 import scanet.optimizers.Effect.RecordLoss
 import scanet.optimizers.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
+import scala.collection.immutable.Seq
 
 class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
 
@@ -17,7 +18,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .minimize[Float](`x^2`)
       .loss(Identity)
       .using(SGD(rate = 0.1f))
-      .initWith(_ => Tensor.scalar(5.0f))
+      .initWeights(Seq(Tensor.scalar(5.0f)))
       .each(1.epochs, RecordLoss())
       .on(zero)
       .stopAfter(100.epochs)
@@ -34,7 +35,6 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(SGD())
-      .initWith(s => Tensor.zeros(s))
       .each(1.epochs, RecordLoss())
       .batch(97)
       .stopAfter(100.epochs)
@@ -51,7 +51,6 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(SGD(momentum = 0.1f))
-      .initWith(s => Tensor.zeros(s))
       .batch(97)
       .stopAfter(100.epochs)
       .run()
@@ -67,7 +66,6 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(SGD(momentum = 0.1f, nesterov = true))
-      .initWith(s => Tensor.zeros(s))
       .batch(97)
       .stopAfter(100.epochs)
       .each(1.epochs, RecordLoss())

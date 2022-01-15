@@ -23,7 +23,7 @@ class InitializerSpec extends AnyWordSpec with CustomMatchers {
   "random uniform initializer" should {
     "initialize a tensor withing given range" in {
       val rn = RandomUniform(min = -1, max = 1, seed = Some(1))
-      rn.build[Float](Shape(3)).roundAt(2).eval shouldBe Tensor.vector(0.81f, 0.08f, 0.89f)
+      rn.build[Float](Shape(3)).roundAt(2).eval shouldBe Tensor.vector(0.63f, -0.84f, 0.78f)
     }
   }
 
@@ -44,7 +44,7 @@ class InitializerSpec extends AnyWordSpec with CustomMatchers {
   "Glorot (Xavier) uniform initializer" should {
     "initialize a tensor using uniform distribution and scale based on number of weights" in {
       val rn = GlorotUniform(seed = Some(1))
-      rn.build[Float](Shape(3)).roundAt(2).eval shouldBe Tensor.vector(0.81f, 0.08f, 0.89f)
+      rn.build[Float](Shape(3)).roundAt(2).eval shouldBe Tensor.vector(0.63f, -0.84f, 0.78f)
     }
   }
 

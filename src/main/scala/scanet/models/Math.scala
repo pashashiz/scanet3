@@ -20,5 +20,7 @@ object Math {
     override def weightsShapes(input: Shape): Seq[Shape] = Seq(Shape())
 
     override def outputShape(input: Shape): Shape = Shape(1)
+
+    override def initWeights[E: Floating](input: Shape): OutputSeq[E] = Seq(zeros[E](Shape()))
   }
 }

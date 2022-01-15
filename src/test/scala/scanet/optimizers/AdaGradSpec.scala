@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
 import scanet.math.syntax._
 import scanet.models.LinearRegression
 import scanet.models.Loss._
@@ -16,7 +15,6 @@ class AdaGradSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
       .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(AdaGrad(rate = 1f))
-      .initWith(Tensor.zeros(_))
       .batch(97)
       .stopAfter(100.epochs)
       .run()
