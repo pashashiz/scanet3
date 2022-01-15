@@ -58,11 +58,11 @@ trait AllKernels {
     * @param dist random distribution, could be:
     *             - [[Uniform]] Outputs random values from a uniform distribution.
     *               The generated values follow a uniform distribution in the range `[0, 1)`.
-    *              - [[Normal]] Outputs random values from a normal distribution.
-    *                The generated values will have mean 0 and standard deviation 1.
-    *              - [[NormalTruncated]] Outputs random values from a truncated normal distribution.
-    *                The generated values follow a normal distribution with mean 0 and standard deviation 1,
-    *                except that values whose magnitude is more than 2 standard deviations from the mean are dropped and re-picked.
+    *             - [[Normal]] Outputs random values from a normal distribution.
+    *               The generated values will have mean 0 and standard deviation 1.
+    *             - [[NormalTruncated]] Outputs random values from a truncated normal distribution.
+    *               The generated values follow a normal distribution with mean 0 and standard deviation 1,
+    *               except that values whose magnitude is more than 2 standard deviations from the mean are dropped and re-picked.
     * @param seed the seed value to start generation from, when [[None]] the random value will be used
     * @param scale the value to multiply the generated tensor by
     */
