@@ -412,6 +412,8 @@ trait AllKernels {
 
   def ones[A: Numeric](shape: Shape): Expr[A] = fill(shape)(Numeric[A].one)
 
+  // rand[Float](shape, dist = Uniform | Normal | NormalTruncated, seed = rand, scale = 1) -> [0, 1]
+
   def plus[A: Numeric, C](left: Expr[A], right: C)(
       implicit c: Convertible[C, Expr[A]]): Expr[A] = Plus(left, c.convert(right))
 
