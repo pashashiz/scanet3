@@ -1,11 +1,10 @@
 package scanet.math.rand
 
 import scanet.core
-import scanet.core.syntax._
-import scanet.math.alg.kernels.syntax._
 import scanet.core._
-import scanet.math.alg.AllKernels
+import scanet.core.syntax._
 import scanet.math.alg.kernels.AllSyntax
+import scanet.math.alg.kernels.syntax._
 import scanet.math.rand.Dist._
 
 import scala.collection.immutable.Seq
