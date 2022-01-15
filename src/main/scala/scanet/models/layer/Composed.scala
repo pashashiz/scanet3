@@ -20,7 +20,7 @@ case class Composed(left: Layer, right: Layer) extends Layer {
 
   override def penalty[E: Floating](weights: OutputSeq[E]) = {
     val (leftWeights, rightWeights) = split(weights)
-    left.penalty(leftWeights) plus left.penalty(rightWeights)
+    left.penalty(leftWeights) plus right.penalty(rightWeights)
   }
 
   override def outputShape(input: Shape): Shape = right.outputShape(left.outputShape(input))
@@ -35,4 +35,6 @@ case class Composed(left: Layer, right: Layer) extends Layer {
 
   private def split[E: Floating](weights: OutputSeq[E]) =
     weights.splitAt(left.weightsCount)
+
+  override def toString: String = s"$left >> $right"
 }

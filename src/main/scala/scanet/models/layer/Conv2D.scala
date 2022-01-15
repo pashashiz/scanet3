@@ -20,14 +20,27 @@ import scala.collection.immutable.Seq
 // input   = (batch_shape, in_height, in_width, in_channels)          = (1, 5, 5, 1)
 // filters = (filter_height, filter_width, in_channels, out_channels) = (2, 2, 1, 1)
 // output  = (batch_shape, out_height, out_width, out_channels)       = (1, 5, 5, 1)
-case class Conv2D(
+
+object Conv2D {
+  def apply(
+      filters: Int,
+      kernel: (Int, Int) = (3, 3),
+      strides: (Int, Int) = (1, 1),
+      padding: Padding = Valid,
+      format: ConvFormat = NHWC,
+      activation: Activation = Identity,
+      bias: Boolean = false): Layer = {
+    val conv = new Conv2D(filters, kernel, strides, padding, format)
+    conv ?>> (bias, Bias(filters)) ?>> (activation.ni, activation.layer)
+  }
+}
+
+case class Conv2D private (
     filters: Int,
-    kernel: (Int, Int) = (3, 3),
-    strides: (Int, Int) = (1, 1),
-    padding: Padding = Valid,
-    format: ConvFormat = NHWC,
-    activation: Activation = Identity,
-    bias: Boolean = true)
+    kernel: (Int, Int),
+    strides: (Int, Int),
+    padding: Padding,
+    format: ConvFormat)
     extends Layer {
 
   def filterHeight: Int = kernel._1
@@ -35,13 +48,12 @@ case class Conv2D(
 
   override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
     require(weights.size == 1, "Conv2D layer can have only one set of weights")
-    val convolved = conv2D[E](
+    conv2D[E](
       input = x,
       filters = weights.head,
       strides = Seq(strides._1, strides._2),
       padding = padding,
       format = format)
-    activation.build(convolved)
   }
 
   override def penalty[E: Floating](weights: OutputSeq[E]): Expr[E] = zeros[E](Shape())

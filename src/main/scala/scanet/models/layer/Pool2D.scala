@@ -12,7 +12,7 @@ import scala.collection.immutable.Seq
 case class Pool2D(
     window: (Int, Int) = (2, 2),
     strides: (Int, Int) = (1, 1),
-    padding: Padding = Same,
+    padding: Padding = Valid,
     format: ConvFormat = NHWC)
     extends Layer {
 

@@ -14,7 +14,7 @@ class NadamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Da
   "Nadam" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = ds
-      .train(LinearRegression)
+      .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(Nadam())
       .initWith(Tensor.zeros(_))

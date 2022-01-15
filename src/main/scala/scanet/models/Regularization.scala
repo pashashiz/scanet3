@@ -17,7 +17,7 @@ object Regularization {
 
   /** Absence of Regularization
     */
-  object Zero extends Regularization {
+  case object Zero extends Regularization {
     override def build[A: Floating](weights: Expr[A]) = zeros[A](Shape())
   }
 

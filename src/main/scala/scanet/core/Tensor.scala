@@ -31,7 +31,7 @@ class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
     Array.tabulate(positions.length)(i => buffer.read(positions(i)))(TensorType[A].classTag)
   }
 
-  def hasView: Boolean = !view.isIdentity
+  def hasView: Boolean = Shape.of(native.shape().asArray()) != view.shape
 
   /** If any slice or reshape operation was applied before a new tensor
     * will be returned which is based on a compacted byte buffer,

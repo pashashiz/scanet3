@@ -31,16 +31,9 @@ abstract class Model extends Serializable {
     inputBatched(0) +: outputShape(input)
   }
 
-  def weightsCount: Int = 1
   def weightsShapes(input: Shape): Seq[Shape]
-  def trainable: Boolean = weightsCount > 0
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
-
-  def withBias[E: Floating](x: Expr[E], bias: Expr[E]): Expr[E] = {
-    val rows = x.shape.dims.head
-    fillOutput[E](rows, 1)(bias).joinAlong(x, 1)
-  }
 
   def displayResult[E: Floating](input: Shape, dir: String = ""): Unit = {
     val inputWithBatch = input >>> 1
@@ -91,7 +84,7 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
       dir = dir)
   }
 
-  override def toString: String = s"$model:$lossF"
+  override def toString: String = s"$lossF($model)"
 }
 
 class TrainedModel[E: Floating](val lossModel: LossModel, val weights: Seq[Tensor[E]]) {

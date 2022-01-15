@@ -2,6 +2,7 @@ package scanet.models
 
 import scanet.core.{Expr, Floating}
 import scanet.math.syntax._
+import scanet.models.layer.{Activate, Layer}
 
 import scala.collection.immutable.Seq
 
@@ -15,7 +16,11 @@ import scala.collection.immutable.Seq
   * }}}
   */
 trait Activation {
+  def identity: Boolean = false
+  def nonIdentity: Boolean = !identity
+  def ni: Boolean = nonIdentity
   def build[A: Floating](in: Expr[A]): Expr[A]
+  def layer: Layer = Activate(this)
 }
 
 object Activation {
@@ -25,6 +30,7 @@ object Activation {
     * Identity is usually used for linear regression.
     */
   case object Identity extends Activation {
+    override def identity = true
     override def build[A: Floating](in: Expr[A]): Expr[A] = in
   }
 

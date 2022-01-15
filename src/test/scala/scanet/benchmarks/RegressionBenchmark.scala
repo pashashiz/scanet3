@@ -19,7 +19,7 @@ trait RegressionBehaviours {
     "be successfully trained" in {
       val ds = facebookComments
       val trained = ds
-        .train(LinearRegression)
+        .train(LinearRegression())
         .loss(MeanSquaredError)
         .using(SGD())
         .batch(1000)

@@ -14,7 +14,7 @@ class AdaDeltaSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with
   "AdaDelta" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = ds
-      .train(LinearRegression)
+      .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(AdaDelta())
       .initWith(Tensor.zeros(_))
