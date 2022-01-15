@@ -1,49 +1,60 @@
 package scanet.optimizers
 
-import scanet.core.{Shape, Tensor, TensorType}
-import scanet.math.Numeric
+import scanet.core.{Monoid, Shape, Tensor, TensorType}
 
 // low-level mutable implementation
-class TensorIterator[A: TensorType: Numeric](
-    private val rows: Iterator[Array[A]],
+// NOTE: maybe rewrite to have generic N slices...
+class TensorIterator[A: Monoid](
+    private val rows: Iterator[Record[A]],
+    private val shapes: (Shape, Shape),
     private val batch: Int,
     private val withPadding: Boolean)
-    extends Iterator[Tensor[A]] {
+    extends Iterator[(Tensor[A], Tensor[A])] {
 
-  private val buff: BufferedIterator[Array[A]] = rows.buffered
-  val columns: Int = buff.headOption.map(_.length).getOrElse(0)
+  private val buff: BufferedIterator[Record[A]] = rows.buffered
+  val (shapeX: Shape, shapeY: Shape) = shapes
+  private val sizeX = shapeX.power
+  private val sizeY = shapeY.power
 
   override def hasNext: Boolean = buff.hasNext
 
-  override def next(): Tensor[A] = {
-    if (columns == 0) {
-      Tensor.zeros[A]()
-    } else {
-      val power = batch * columns
-      var array: Array[A] = Array.ofDim[A](power)(TensorType[A].classTag)
-      var cursor = 0
-      while (buff.hasNext && cursor < batch) {
-        Array.copy(buff.next(), 0, array, cursor * columns, columns)
-        cursor = cursor + 1
-      }
-      if (cursor < batch) {
-        if (withPadding) {
-          val padding = power - cursor * columns
-          val zero = Array.fill[A](padding)(Numeric[A].zero)(TensorType[A].classTag)
-          Array.copy(zero, 0, array, cursor * columns, padding)
-        } else {
-          array = array.slice(0, cursor * columns)
-        }
-      }
-      Tensor[A](array, Shape(array.length / columns, columns))
+  override def next(): (Tensor[A], Tensor[A]) = {
+    val powerX = batch * sizeX
+    val powerY = batch * sizeY
+    var x: Array[A] = Array.ofDim[A](powerX)(TensorType[A].classTag)
+    var y: Array[A] = Array.ofDim[A](powerY)(TensorType[A].classTag)
+    var cursor = 0
+    while (buff.hasNext && cursor < batch) {
+      val Record(nextX, nextY) = buff.next()
+      Array.copy(nextX, 0, x, cursor * sizeX, sizeX)
+      Array.copy(nextY, 0, y, cursor * sizeY, sizeY)
+      cursor = cursor + 1
     }
+    if (cursor < batch) {
+      if (withPadding) {
+        (addPadding(x, cursor * sizeX, powerX), addPadding(y, cursor * sizeY, powerY))
+      } else {
+        x = x.slice(0, cursor * sizeX)
+        y = y.slice(0, cursor * sizeY)
+      }
+    }
+    (
+      Tensor[A](x, (x.length / sizeX) +: shapeX),
+      Tensor[A](y, (y.length / sizeY) +: shapeY))
+  }
+
+  private def addPadding(x: Array[A], from: Int, until: Int): Unit = {
+    val size = until - from
+    val zeroX = Array.fill[A](size)(Monoid[A].zero)(TensorType[A].classTag)
+    Array.copy(zeroX, 0, x, from, size)
   }
 }
 
 object TensorIterator {
-  def apply[A: TensorType: Numeric](
-      rows: Iterator[Array[A]],
+  def apply[A: Monoid](
+      rows: Iterator[Record[A]],
+      shapes: (Shape, Shape),
       batch: Int,
       withPadding: Boolean = true): TensorIterator[A] =
-    new TensorIterator(rows, batch, withPadding)
+    new TensorIterator(rows, shapes, batch, withPadding)
 }

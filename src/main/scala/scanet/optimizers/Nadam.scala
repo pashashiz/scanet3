@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import scanet.core._
-import scanet.math.{Floating, Numeric}
 import scanet.syntax._
 
 /** Much like Adam is essentially RMSprop with momentum, Nadam is Adam with Nesterov momentum.
@@ -21,13 +20,13 @@ case class Nadam(
     initAcc: Float = 0.001f)
     extends Algorithm {
 
-  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
     val m = fill[Float](shape)(initAcc).cast[T]
     val v = fill[Float](shape)(initAcc).cast[T]
     (m zip v).eval
   }
 
-  override def delta[T: Floating: Numeric: TensorType](
+  override def delta[T: Floating](
       grad: Expr[T],
       meta: Expr[T],
       iter: Expr[Int]): Delta[T] = {

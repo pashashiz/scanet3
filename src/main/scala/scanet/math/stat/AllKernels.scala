@@ -1,7 +1,6 @@
 package scanet.math.stat
 
-import scanet.core.{Expr, TensorType}
-import scanet.math.Numeric
+import scanet.core.{Expr, Numeric}
 import scanet.math.alg.kernels.syntax._
 
 import scala.collection.immutable.Seq
@@ -11,7 +10,7 @@ trait AllKernels {
   /** Computes the variance of elements across all dimensions of a tensor.
     * The result is a scalar tensor
     */
-  def variance[A: TensorType: Numeric](tensor: Expr[A]): Expr[A] =
+  def variance[A: Numeric](tensor: Expr[A]): Expr[A] =
     variance(tensor, 0 until tensor.rank)
 
   /** Computes the variance of elements across dimensions of a tensor
@@ -21,7 +20,7 @@ trait AllKernels {
     * of the entries in `axis`, which must be unique. If `keepDims` is `true`, the
     * reduced dimensions are retained with length 1.
     */
-  def variance[A: TensorType: Numeric](
+  def variance[A: Numeric](
       tensor: Expr[A],
       axis: Seq[Int],
       keepDims: Boolean = false): Expr[A] = {
@@ -32,7 +31,7 @@ trait AllKernels {
   /** Computes the standard deviation of elements across all dimensions of a tensor.
     * The result is a scalar tensor
     */
-  def std[A: TensorType: Numeric](tensor: Expr[A]): Expr[A] =
+  def std[A: Numeric](tensor: Expr[A]): Expr[A] =
     std(tensor, 0 until tensor.rank)
 
   /** Computes the standard deviation of elements across dimensions of a tensor
@@ -42,7 +41,7 @@ trait AllKernels {
     * of the entries in `axis`, which must be unique. If `keepDims` is `true`, the
     * reduced dimensions are retained with length 1.
     */
-  def std[A: TensorType: Numeric](
+  def std[A: Numeric](
       tensor: Expr[A],
       axis: Seq[Int],
       keepDims: Boolean = false): Expr[A] =
@@ -51,7 +50,7 @@ trait AllKernels {
 
 object kernels extends AllKernels {
 
-  class NumericOps[A: TensorType: Numeric](expr: Expr[A]) {
+  class NumericOps[A: Numeric](expr: Expr[A]) {
     import scanet.math.stat.{kernels => f}
 
     /** @see [[f.variance]] */
@@ -70,7 +69,7 @@ object kernels extends AllKernels {
   }
 
   trait AllSyntax extends AllKernels {
-    implicit def toStatKernelNumericOps[A: TensorType: Numeric](expr: Expr[A]): NumericOps[A] =
+    implicit def toStatKernelNumericOps[A: Numeric](expr: Expr[A]): NumericOps[A] =
       new NumericOps[A](expr)
   }
 

@@ -1,4 +1,4 @@
-# ScalaNet
+# Scanet
 
 [![Build Status](https://travis-ci.org/pashashiz/scanet3.svg?branch=master)](https://travis-ci.org/pashashiz/scanet3)
 
@@ -24,7 +24,11 @@ parameters are averaged and broadcasted back to each worker.
 The input data is expected to be `RDD[Array[TensorType]`. 
 Usually, `TensorType` is choosen to be `Float` since it performs best on GPU, also `Double` can be used.
 
-Example of a simple MNIST dataset classifier:
+## Examples
+
+### ANN
+
+Example of a simple MNIST dataset classifier with Fully Connected Neural Network:
 
 ``` scala
 val (trainingDs, testDs) = MNIST.load(sc, trainingSize = 30000)
@@ -43,6 +47,28 @@ accuracy(trained, testDs) should be >= 0.95f
 Here, `loss` and `accuracy` will be logged and added to `TensorBoard` as live trends. To run tensorboard execute:
 ```sh
 tensorboard --logdir board
+```
+
+### CNN
+
+Same but with CNN (Convolutional Neural Network)
+```scala
+val (trainingDs, testDs) = MNIST()
+val model =
+  Conv2D(32, activation = ReLU()) >> Pool2D() >>
+  Conv2D(64, activation = ReLU()) >> Pool2D() >>
+  Flatten >> Dense(10, Softmax)
+val trained = trainingDs
+  .train(model)
+  .loss(CategoricalCrossentropy)
+  .using(Adam(0.001f))
+  .batch(100)
+  .initWith(shape => Tensor.rand(shape, range = Some(-0.1f, 0.1f)))
+  .each(1.epochs, RecordLoss())
+  .each(1.epochs, RecordAccuracy(testDs))
+  .stopAfter(3.epochs)
+  .run()
+accuracy(trained, testDs) should be >= 0.98f
 ```
 
 ## What we are doing right now
@@ -78,13 +104,18 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [x] Adamax
 - [x] AMSGrad
 
+### Statistics
+- [x] Variance/STD
+- [ ] Covariance/Correlation Matrix
+- [ ] Lots of other useful algs to analize the data set
+
 ### Models
 - [x] Linear Regression
 - [ ] Simple math models for benchmarks
 - [x] Binary Logistic Regression
 - [x] ANN (Multilayer Perceptron NN)
 - [x] kernel regularization
-- [ ] Layers Dropout, Normalization
+- [ ] Layers Dropout, Batch Normalization
 - [ ] Convolutional NN
 - [ ] Recurent NN
 - [ ] others
@@ -126,6 +157,20 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [ ] Compare with existing implementations using local CPU
 - [ ] Compare with existing implementations using one GPU
 - [ ] Compare with existing implementations using distributed mode on GCP DataProc
+
+### Other useful things
+- [ ] While training analyze the weights histograms to make sure the deep NN do not saturate
+- [ ] Grid/Random hyper parameters search
+- [ ] Different weight initializers (Xavier)
+- [ ] Decay learning rate over time (step, exponential, 1/t decay)
+- [ ] Try using in interactive notebook
+- [ ] Add graph library so we could plot some charts and publish them in `tensorboard` or `notebook` (maybe fork and upgrade `vegas` to scala `2.12` ot try `evil-plot`)
+
+### Refactoring
+- [x] Refactor type class hierarchy so `TensorType` was on top and `Numeric` and the rest would extend it.
+- [ ] Refactor tensor functions so the materialized type of args was only infered during compilation
+      Also we would need to try simplifying tensor functions and add methods so we could compose functions (`compose`, `endThen`, etc)
+- [ ] Add DSL to build tensor requirements like `tensor require rank(4)`, `tensor require shape squratedMatrix`
 
 If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 
  

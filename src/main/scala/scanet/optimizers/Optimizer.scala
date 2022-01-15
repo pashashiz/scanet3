@@ -1,10 +1,11 @@
 package scanet.optimizers
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.Dataset
 import scanet.core.{Tensor, _}
 import scanet.math.syntax._
-import scanet.math.{Convertible, Dist, Floating, Numeric}
+import scanet.math.Dist
 import scanet.models.{Loss, LossModel, Model, TrainedModel}
+import scanet.optimizers.syntax._
 import scanet.optimizers.Condition.always
 import scanet.optimizers.Optimizer.BuilderState._
 import scanet.optimizers.Optimizer.{sessionsPool, tfCache}
@@ -13,32 +14,32 @@ import scala.annotation.tailrec
 import scala.collection._
 import scala.collection.immutable.Seq
 
-case class Step[A: Numeric: TensorType](epoch: Int = 0, iter: Int = 0) {
+case class Step[A: Numeric](epoch: Int = 0, iter: Int = 0) {
   def nextIter: Step[A] = incIter(1)
   def incIter(number: Int): Step[A] = copy(iter = iter + number)
   def nextEpoch: Step[A] = copy(epoch = epoch + 1)
   override def toString: String = s"$epoch:$iter"
 }
 
-case class StepResult[A: Numeric: TensorType](
+case class StepResult[A: Numeric](
     iterations: Int,
     weights: Seq[Tensor[A]],
     meta: Seq[Tensor[A]],
     loss: A)
 
-case class StepContext[A: Numeric: TensorType](
+case class StepContext[A: Numeric](
     step: Step[A],
     result: StepResult[A],
     lossModel: LossModel)
 
 // E - type of input dataset to train on, could have any numeric values
 // R - type to use on a model, could be only Float or Double
-case class Optimizer[A: Numeric: Floating: TensorType](
+case class Optimizer[A: Floating](
     alg: Algorithm,
     model: Model,
     loss: Loss,
     initArgs: Shape => Tensor[A],
-    dataset: RDD[Array[A]],
+    dataset: Dataset[Record[A]],
     batchSize: Int,
     minimizing: Boolean,
     stop: Condition[StepContext[A]],
@@ -47,8 +48,8 @@ case class Optimizer[A: Numeric: Floating: TensorType](
   private val lossModel = model.withLoss(loss)
 
   def run(): TrainedModel[A] = {
-    val ds = dataset.cache()
-    val sc = ds.sparkContext
+    val ds: Dataset[Record[A]] = dataset.cache()
+    val sc = ds.sparkSession.sparkContext
 
     @tailrec
     def optimize(
@@ -57,9 +58,15 @@ case class Optimizer[A: Numeric: Floating: TensorType](
         meta: Seq[Tensor[A]]): Seq[Tensor[A]] = {
       val weightsBr = sc.broadcast(weights)
       val metaBr = sc.broadcast(meta)
-      val result = ds
+      val shapes = ds.shapes
+      val result = ds.rdd
         .mapPartitions(it =>
-          Iterator(optimizeOnPartition(it, prevStep.iter, weightsBr.value, metaBr.value)))
+          Iterator(optimizeOnPartition(
+            it,
+            shapes,
+            prevStep.iter,
+            weightsBr.value,
+            metaBr.value)))
         .treeReduce(averageMetaAndWeights)
       val step: Step[A] = prevStep.nextEpoch.incIter(result.iterations)
       val stepCtx = StepContext(step, result, lossModel)
@@ -75,19 +82,21 @@ case class Optimizer[A: Numeric: Floating: TensorType](
   }
 
   private def optimizeOnPartition(
-      it: scala.Iterator[Array[A]],
+      it: scala.Iterator[Record[A]],
+      shapes: (Shape, Shape),
       globalIter: Int,
       weights: Seq[Tensor[A]],
       meta: Seq[Tensor[A]]): StepResult[A] = {
     val result = sessionsPool.withing(session => {
-      val batches = Tensor2Iterator(it, batchSize, splitAt = size => size - model.outputs())
-      val (weightsInitialized, metaInitialized) = if (globalIter == 0) {
-        val features = batches.columns - model.outputs()
-        val shapes = model.shapes(features)
-        (shapes.map(initArgs(_)).toList, shapes.map(alg.initMeta[A](_)).toList)
-      } else {
-        (weights, meta)
-      }
+      val batches = TensorIterator(it, shapes, batchSize)
+      val (weightsInitialized, metaInitialized) =
+        if (globalIter == 0) {
+          // todo: run tests
+          val weightShapes = model.weightsShapes(shapes._1)
+          (weightShapes.map(initArgs(_)).toList, weightShapes.map(alg.initMeta[A](_)).toList)
+        } else {
+          (weights, meta)
+        }
       val loss = compileLoss(session)
       val calc = compileCalc(session)
       @tailrec
@@ -144,7 +153,7 @@ case class Optimizer[A: Numeric: Floating: TensorType](
     })
   }
 
-  private def avg[X: Numeric: TensorType]: TF2[X, Seq[Tensor[X]], X, Seq[Tensor[X]], OutputSeq[X]] =
+  private def avg[X: Numeric]: TF2[X, Seq[Tensor[X]], X, Seq[Tensor[X]], OutputSeq[X]] =
     TF2[OutputSeq, X, OutputSeq, X, OutputSeq[X]]((arg1, arg2) => {
       (arg1 zip arg2).map { case (l, r) => (l + r) / 2.0f.const.cast[X] }
     })
@@ -176,7 +185,7 @@ object Optimizer {
     type Complete = WithAlg with WithFunc with WithLoss with WithDataset with WithStopCondition
   }
 
-  case class Builder[A: Numeric: Floating: TensorType, State <: BuilderState](
+  case class Builder[A: Floating, State <: BuilderState](
       optimizer: Optimizer[A])(implicit c: Convertible[Int, A]) {
 
     def loss(loss: Loss): Builder[A, State with WithLoss] =
@@ -188,7 +197,7 @@ object Optimizer {
     def initWith(args: Shape => Tensor[A]): Builder[A, State] =
       copy(optimizer = optimizer.copy(initArgs = args))
 
-    def on(dataset: RDD[Array[A]]): Builder[A, State with WithDataset] =
+    def on(dataset: Dataset[Record[A]]): Builder[A, State with WithDataset] =
       copy(optimizer = optimizer.copy(dataset = dataset))
 
     def stopWhen(condition: Condition[StepContext[A]]): Builder[A, State with WithStopCondition] =
@@ -218,7 +227,7 @@ object Optimizer {
     def run()(implicit ev: State =:= Complete): TrainedModel[A] = build.run()
   }
 
-  def minimize[R: Numeric: Floating: TensorType: Dist](model: Model)(
+  def minimize[R: Floating: Dist](model: Model)(
       implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
     Builder(
       Optimizer(
@@ -232,7 +241,7 @@ object Optimizer {
         stop = always,
         doOnEach = Seq()))
 
-  def maximize[R: Numeric: Floating: TensorType: Dist](model: Model)(
+  def maximize[R: Floating: Dist](model: Model)(
       implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
     Builder(
       Optimizer(

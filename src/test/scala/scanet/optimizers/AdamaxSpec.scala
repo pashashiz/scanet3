@@ -14,7 +14,7 @@ class AdamaxSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with D
   "Adamax" should "minimize linear regression" in {
     val ds = linearFunction
     val trained = ds
-      .train(LinearRegression)
+      .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(Adamax())
       .initWith(Tensor.zeros(_))
@@ -23,7 +23,7 @@ class AdamaxSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with D
       .stopAfter(70.epochs)
       .run()
     val loss = trained.loss.compile()
-    val (x, y) = Tensor2Iterator(ds.collect.iterator, 97).next()
+    val TRecord(x, y) = ds.firstTensor(97)
     loss(x, y).toScalar should be <= 9f
   }
 }

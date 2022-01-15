@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import scanet.core._
-import scanet.math.{Floating, Numeric}
 import scanet.syntax._
 
 /** `Adadelta` optimization is a stochastic gradient descent method that is based on adaptive
@@ -23,13 +22,13 @@ import scanet.syntax._
 case class AdaDelta(rate: Float = 1.0f, rho: Float = 0.9f, epsilon: Float = 1e-7f)
     extends Algorithm {
 
-  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
     val avgGrad = zeros[T](shape)
     val avgDelta = zeros[T](shape)
     (avgGrad zip avgDelta).eval
   }
 
-  override def delta[T: Floating: Numeric: TensorType](
+  override def delta[T: Floating](
       grad: Expr[T],
       meta: Expr[T],
       iter: Expr[Int]): Delta[T] = {

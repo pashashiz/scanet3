@@ -387,9 +387,16 @@ class KernelsSpec extends AnyWordSpec with Matchers {
   "matmul" should {
 
     "multiply 2 matrices" in {
-      val a = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6))
-      val b = Tensor.matrix(Array(1, 2), Array(1, 2), Array(1, 2))
-      val c = Tensor.matrix(Array(6, 12), Array(15, 30))
+      val a = Tensor.matrix(
+        Array(1, 2, 3),
+        Array(4, 5, 6))
+      val b = Tensor.matrix(
+        Array(1, 2),
+        Array(1, 2),
+        Array(1, 2))
+      val c = Tensor.matrix(
+        Array(6, 12),
+        Array(15, 30))
       (a.const matmul b.const).eval should be(c)
     }
 
@@ -410,6 +417,9 @@ class KernelsSpec extends AnyWordSpec with Matchers {
     "have correct gradient when 2 matrices are given and left side is a differentiable variable" in {
       val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
       val a = Tensor.matrix(Array(5, 10), Array(15, 20), Array(25, 30)).const
+      // parent grad matmul a.transpose
+      // |1 1| x |5  15 25| = |15, 35, 55|
+      // |1 1|   |10 20 30|   |15, 35, 55|
       val grad = Tensor.matrix(Array(15, 35, 55), Array(15, 35, 55))
       ((x matmul a).sum grad x).returns[Float].eval should be(grad)
     }

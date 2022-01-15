@@ -1,23 +1,22 @@
 package scanet.models
 
-import scanet.core.{Expr, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating}
 import scanet.math.syntax._
 
 trait Loss {
-  def build[A: Numeric: Floating: TensorType](predicted: Expr[A], expected: Expr[A]): Expr[A]
+  def build[A: Floating](predicted: Expr[A], expected: Expr[A]): Expr[A]
 }
 
 object Loss {
 
   case object Identity extends Loss {
-    override def build[A: Numeric: Floating: TensorType](
+    override def build[A: Floating](
         predicted: Expr[A],
         expected: Expr[A]): Expr[A] = predicted
   }
 
   case object MeanSquaredError extends Loss {
-    override def build[A: Numeric: Floating: TensorType](
+    override def build[A: Floating](
         predicted: Expr[A],
         expected: Expr[A]): Expr[A] = {
       (predicted - expected).sqr.mean
@@ -25,7 +24,7 @@ object Loss {
   }
 
   case object BinaryCrossentropy extends Loss {
-    override def build[A: Numeric: Floating: TensorType](
+    override def build[A: Floating](
         predicted: Expr[A],
         expected: Expr[A]): Expr[A] = {
       val one = 1.0f.const.cast[A]
@@ -43,7 +42,7 @@ object Loss {
   }
 
   case object CategoricalCrossentropy extends Loss {
-    override def build[A: Numeric: Floating: TensorType](
+    override def build[A: Floating](
         predicted: Expr[A],
         expected: Expr[A]): Expr[A] = {
       val epsilon = 1e-8f.const.cast[A]

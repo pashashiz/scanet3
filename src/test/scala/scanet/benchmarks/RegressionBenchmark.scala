@@ -2,6 +2,7 @@ package scanet.benchmarks
 
 import org.scalatest.tags.Slow
 import org.scalatest.wordspec.AnyWordSpec
+import scanet.core.Shape
 import scanet.math.syntax._
 import scanet.models.LinearRegression
 import scanet.models.Loss.MeanSquaredError
@@ -18,7 +19,7 @@ trait RegressionBehaviours {
     "be successfully trained" in {
       val ds = facebookComments
       val trained = ds
-        .train(LinearRegression)
+        .train(LinearRegression())
         .loss(MeanSquaredError)
         .using(SGD())
         .batch(1000)
@@ -26,7 +27,7 @@ trait RegressionBehaviours {
         .stopAfter(10.epochs)
         .run()
       val loss = trained.loss.compile()
-      val (x, y) = Tensor2Iterator(ds.collect.iterator, 1000).next()
+      val (x, y) = TensorIterator(ds.collect.iterator, (Shape(53), Shape(1)), 1000).next()
       loss(x, y).toScalar should be <= 1f
     }
   }

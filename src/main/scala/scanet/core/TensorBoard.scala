@@ -4,10 +4,8 @@ import java.lang.System.currentTimeMillis
 import java.net.InetAddress
 import java.nio.file.{Files, Paths}
 import java.time.Instant
-
 import com.google.protobuf.ByteString
 import scanet.images.{Channel, Image}
-import scanet.math.Convertible
 import scanet.native.TfRecords
 import org.tensorflow.proto.framework.Summary
 import org.tensorflow.proto.util.Event

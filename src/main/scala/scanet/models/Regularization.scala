@@ -1,7 +1,6 @@
 package scanet.models
 
-import scanet.core.{Expr, Shape, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating, Shape}
 import scanet.math.syntax._
 
 /** Function to compute regularization for a given weight tensor.
@@ -11,15 +10,15 @@ import scanet.math.syntax._
   * These penalties are summed into the loss function that the network optimizes.
   */
 trait Regularization extends Serializable {
-  def build[A: Numeric: Floating: TensorType](weights: Expr[A]): Expr[A]
+  def build[A: Floating](weights: Expr[A]): Expr[A]
 }
 
 object Regularization {
 
   /** Absence of Regularization
     */
-  object Zero extends Regularization {
-    override def build[A: Numeric: Floating: TensorType](weights: Expr[A]) = zeros[A](Shape())
+  case object Zero extends Regularization {
+    override def build[A: Floating](weights: Expr[A]) = zeros[A](Shape())
   }
 
   /** A regularizer that applies a `L1` regularization penalty.
@@ -29,7 +28,7 @@ object Regularization {
     * @param lambda regularization factor
     */
   case class L1(lambda: Float = 0.01f) extends Regularization {
-    override def build[A: Numeric: Floating: TensorType](weights: Expr[A]) =
+    override def build[A: Floating](weights: Expr[A]) =
       lambda.const.cast[A] * weights.abs.sum / 2f.const.cast[A]
   }
 
@@ -40,7 +39,7 @@ object Regularization {
     * @param lambda regularization factor
     */
   case class L2(lambda: Float = 0.01f) extends Regularization {
-    override def build[A: Numeric: Floating: TensorType](weights: Expr[A]) =
+    override def build[A: Floating](weights: Expr[A]) =
       lambda.const.cast[A] * weights.sqr.sum / 2f.const.cast[A]
   }
 }

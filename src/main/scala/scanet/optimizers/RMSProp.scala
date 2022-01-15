@@ -1,7 +1,6 @@
 package scanet.optimizers
 
-import scanet.core.{Expr, Shape, Tensor, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating, Shape, Tensor}
 import scanet.math.syntax._
 
 /** RMSprop, similar to Adadelta, is an improvement upon Adagrad's to resolve radically diminishing learning rates.
@@ -16,11 +15,11 @@ import scanet.math.syntax._
 case class RMSProp(rate: Float = 0.001f, rho: Float = 0.9f, epsilon: Float = 1e-7f)
     extends Algorithm {
 
-  override def initMeta[T: Floating: Numeric: TensorType](shape: Shape): Tensor[T] = {
+  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
     Tensor.zeros[T](shape)
   }
 
-  override def delta[T: Floating: Numeric: TensorType](
+  override def delta[T: Floating](
       grad: Expr[T],
       prevAvgGrad: Expr[T],
       iter: Expr[Int]): Delta[T] = {

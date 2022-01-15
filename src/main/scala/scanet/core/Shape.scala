@@ -1,5 +1,8 @@
 package scanet.core
 
+import scanet.core.syntax.intTfTypeInst
+import scanet.core.syntax.longTfTypeInst
+
 case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   require(dims.forall(_ > 0), "dimension size cannot be 0")
@@ -19,6 +22,7 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     indexes.reverse
   }
 
+  def apply(dim: Int): Int = dims(dim)
   def get(dim: Int): Int = dims(dim)
 
   def rank: Int = dims.size
@@ -76,6 +80,20 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     } else {
       this
     }
+  }
+
+  def >>>(size: Int, using: Int): Shape = alignLeft(rank + size, using)
+  def >>>(size: Int): Shape = >>>(size, 1)
+  def <<<(size: Int, using: Int): Shape = alignRight(rank + size, using)
+  def <<<(size: Int): Shape = <<<(size, 1)
+
+  def >>(size: Int): Shape = {
+    require(rank >= size, s"cannot $this >> $size, cause rank should be >= $size")
+    Shape(dims.dropRight(size))
+  }
+  def <<(size: Int): Shape = {
+    require(rank >= size, s"cannot $this << $size, cause rank should be >= $size")
+    Shape(dims.drop(size))
   }
 
   def canPrune: Int = dims.takeWhile(_ == 1).size
@@ -147,6 +165,8 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     Shape(filteredDims)
   }
 
+  def updated(axis: Int, value: Int): Shape = updateAll(value)(axis)
+
   def updateAll(value: Int)(axis: Int*): Shape = {
     require(
       axis.forall(_ < rank),
@@ -170,7 +190,11 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def -(other: Shape): Shape = minus(other)
 
+  def toArray: Array[Int] = dims.toArray
   def toLongArray: Array[Long] = dims.map(_.toLong).toArray
+
+  def toTensor: Tensor[Int] = Tensor.vector(toArray)
+  def toLongTensor: Tensor[Long] = Tensor.vector(toLongArray)
 
   override def toString: String = s"(${dims.mkString(", ")})"
 

@@ -1,10 +1,11 @@
 package scanet.research
 
-import scanet.core.{OutputSeq, Tensor}
+import scanet.core.{OutputSeq, Shape, Tensor}
 import scanet.models.Activation.Identity
 import scanet.models.Loss.MeanSquaredError
 import scanet.models.layer.Dense
 import scanet.syntax._
+
 import scala.collection.immutable.Seq
 
 object Neuron {
@@ -19,7 +20,7 @@ object Neuron {
     // y: expected values for bank account
     val y = Tensor.matrix(Array(40f), Array(10f))
     // we need to take some random weights with expected shape
-    println(neuron.shapes(2))
+    println(neuron.outputShape(Shape(2)))
     // (1, 3) -> 3 = 2 + 1 -> 1 is bias
     val w = Tensor.matrix(Array(0.6f, 0.35f, 0.9f))
     // to make a prediction we need to run a forward pass

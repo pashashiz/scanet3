@@ -1,8 +1,9 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, OutputSeq, TensorType}
-import scanet.math.{Floating, Numeric}
+import scanet.core.{Expr, Floating, OutputSeq, Shape}
 import scanet.math.syntax._
+
+import scala.collection.immutable
 
 /** Layer which composes 2 other layers
   *
@@ -11,27 +12,29 @@ import scanet.math.syntax._
   */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
-  override def build[E: Numeric: Floating: TensorType](x: Expr[E], weights: OutputSeq[E]) = {
+  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]) = {
     val (leftWeights, rightWeights) = split(weights)
     val leftOutput = left.build(x, leftWeights)
     right.build(leftOutput, rightWeights)
   }
 
-  override def penalty[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) = {
+  override def penalty[E: Floating](weights: OutputSeq[E]) = {
     val (leftWeights, rightWeights) = split(weights)
-    left.penalty(leftWeights) plus left.penalty(rightWeights)
+    left.penalty(leftWeights) plus right.penalty(rightWeights)
   }
 
-  override def outputs() = right.outputs()
+  override def outputShape(input: Shape): Shape = right.outputShape(left.outputShape(input))
 
-  override def shapes(features: Int) = {
-    val leftShapes = left.shapes(features)
-    val rightOutputs = leftShapes.last.head
-    val rightShapes = right.shapes(rightOutputs)
+  override def weightsCount: Int = left.weightsCount + right.weightsCount
+
+  override def weightsShapes(input: Shape): immutable.Seq[Shape] = {
+    val leftShapes = left.weightsShapes(input)
+    val rightShapes = right.weightsShapes(left.outputShape(input))
     leftShapes ++ rightShapes
   }
 
-  private def split[E: Numeric: Floating: TensorType](weights: OutputSeq[E]) = {
-    weights.splitAt(left.shapes(0).size)
-  }
+  private def split[E: Floating](weights: OutputSeq[E]) =
+    weights.splitAt(left.weightsCount)
+
+  override def toString: String = s"$left >> $right"
 }

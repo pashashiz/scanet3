@@ -2,7 +2,20 @@ package scanet.core
 
 object Require {
 
+  def fail(error: String): Nothing =
+    throw new IllegalArgumentException(error)
+
+  private def nonEmptyJoin(words: String*) = words.filter(_.nonEmpty).mkString(" ")
+
   class RequireOps[A: TensorType](expr: Expr[A]) {
+
+    def requireRank(rank: Int, as: String = ""): Expr[A] = {
+      require(
+        expr.rank == rank,
+        nonEmptyJoin(as, s"tensor with rank=$rank is required but was rank=${expr.rank}"))
+      expr
+    }
+
     def requireSquareMatrixTail: Expr[A] = {
       require(
         expr.rank >= 2,

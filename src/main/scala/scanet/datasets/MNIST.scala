@@ -1,5 +1,11 @@
 package scanet.datasets
 
+import org.apache.spark.sql.{Dataset, SparkSession}
+import scanet.core.{Shape, Using}
+import scanet.optimizers.Record
+import scanet.optimizers.syntax._
+import scanet.core.syntax._
+
 import java.io.DataInputStream
 import java.net.URL
 import java.nio.channels.{Channels, FileChannel}
@@ -7,29 +13,31 @@ import java.nio.file.StandardOpenOption.WRITE
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.GZIPInputStream
 
-import org.apache.spark.SparkContext
-import org.apache.spark.rdd.RDD
-import scanet.core.Using
-
 object MNIST {
 
-  def load(trainingSize: Int, testSize: Int): (RDD[Array[Float]], RDD[Array[Float]]) = {
-    val sc = SparkContext.getOrCreate()
-    (loadTrainingSet(sc, trainingSize), loadTestSet(sc, testSize))
-  }
+  def load(trainingSize: Int = 60000, testSize: Int = 10000)(implicit
+  spark: SparkSession): (Dataset[Record[Float]], Dataset[Record[Float]]) =
+    (loadTrainingSet(trainingSize), loadTestSet(testSize))
 
-  def load(sc: SparkContext, trainingSize: Int = 60000, testSize: Int = 10000): (RDD[Array[Float]], RDD[Array[Float]]) =
-    (loadTrainingSet(sc, trainingSize), loadTestSet(sc, testSize))
+  def loadTrainingSet(size: Int)(implicit spark: SparkSession): Dataset[Record[Float]] =
+    loadDataSetFrom(
+      images = "train-images-idx3-ubyte.gz",
+      labels = "train-labels-idx1-ubyte.gz",
+      size)
 
-  def loadTrainingSet(sc: SparkContext, size: Int): RDD[Array[Float]] =
-    loadDataSetFrom(sc, images = "train-images-idx3-ubyte.gz", labels = "train-labels-idx1-ubyte.gz", size)
+  def loadTestSet(size: Int)(implicit spark: SparkSession): Dataset[Record[Float]] =
+    loadDataSetFrom(
+      images = "t10k-images-idx3-ubyte.gz",
+      labels = "t10k-labels-idx1-ubyte.gz",
+      size)
 
-  def loadTestSet(sc: SparkContext, size: Int): RDD[Array[Float]] =
-    loadDataSetFrom(sc, images = "t10k-images-idx3-ubyte.gz", labels = "t10k-labels-idx1-ubyte.gz", size)
-
-  def loadDataSetFrom(sc: SparkContext, images: String, labels: String, size: Int): RDD[Array[Float]] = {
+  def loadDataSetFrom(
+      images: String,
+      labels: String,
+      size: Int)(implicit spark: SparkSession): Dataset[Record[Float]] = {
+    import spark.implicits._
     def read(path: String, via: DataInputStream => Seq[(Int, Array[Float])]) = {
-      sc.binaryFiles(downloadOrCached(path).toAbsolutePath.toString, 1)
+      spark.sparkContext.binaryFiles(downloadOrCached(path).toAbsolutePath.toString, 1)
         .flatMap {
           case (_, portableStream) =>
             Using.resource(new DataInputStream(new GZIPInputStream(portableStream.open())))(via(_))
@@ -37,9 +45,12 @@ object MNIST {
     }
     val imagesRdd = read(images, readImages(_, size))
     val labelsRdd = read(labels, readLabels(_, size))
-    imagesRdd.join(labelsRdd).map {
-      case (_, (images, labels)) => images ++ labels
-    }
+    imagesRdd.join(labelsRdd)
+      .map {
+        case (_, (images, labels)) => Record(images, labels)
+      }
+      .toDS()
+      .withShapes(Shape(28, 28, 1), Shape(10))
   }
 
   def readImages(stream: DataInputStream, size: Int): Seq[(Int, Array[Float])] = {
@@ -74,7 +85,8 @@ object MNIST {
     Files.createDirectories(dir)
     val file = dir.resolve(name)
     if (!Files.exists(file)) {
-      val resource = Channels.newChannel(new URL(s"https://ossci-datasets.s3.amazonaws.com/mnist/$name").openStream())
+      val resource = Channels.newChannel(
+        new URL(s"https://ossci-datasets.s3.amazonaws.com/mnist/$name").openStream())
       Files.createFile(file)
       FileChannel.open(file, WRITE).transferFrom(resource, 0, Long.MaxValue)
       file
@@ -82,5 +94,4 @@ object MNIST {
       file
     }
   }
-
 }

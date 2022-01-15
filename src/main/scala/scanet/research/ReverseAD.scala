@@ -109,6 +109,9 @@ object ReverseAD {
   }
 
   def sample4(): Unit = {
+    // x (4)--[16]-*-(16)-[4]-*-(64)-[1]
+    // x (4)--[16]---/       /
+    // x (4)--[16]----------/
     // f(x) = x * x * x -> df/dx = 3x^2 | x = 4
     val x = Const(4)
     val f = Multiply(Multiply(x, x), x)

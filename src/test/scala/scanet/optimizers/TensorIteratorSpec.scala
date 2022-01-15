@@ -1,14 +1,20 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
+import scanet.core.{Shape, Tensor}
 import scanet.math.syntax._
 import scanet.test.CustomMatchers
 
-class Tensor2IteratorSpec extends AnyFlatSpec with CustomMatchers {
+class TensorIteratorSpec extends AnyFlatSpec with CustomMatchers {
 
-  "tensor2 iterator" should "consume entire dataset if batch is bigger than dataset" in {
-    val it = Tensor2Iterator(Iterator(Array(1, 2, 3), Array(4, 5, 6)), 2)
+  "tensor iterator" should "consume entire dataset if batch is bigger than dataset" in {
+    val it =
+      TensorIterator(
+        rows = Iterator(
+          Record(Array(1, 2), Array(3)),
+          Record(Array(4, 5), Array(6))),
+        shapes = (Shape(2), Shape(1)),
+        batch = 2)
     it.hasNext should be(true)
     val x = Tensor.matrix(Array(1, 2), Array(4, 5))
     val y = Tensor.matrix(Array(3), Array(6))
@@ -17,9 +23,14 @@ class Tensor2IteratorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "make multiple fetches if batch smaller than dataset" in {
-    val it = Tensor2Iterator(
-      Iterator(Array(1, 2, 3), Array(4, 5, 6), Array(7, 8, 9), Array(10, 11, 12)),
-      2)
+    val it = TensorIterator(
+      rows = Iterator(
+        Record(Array(1, 2), Array(3)),
+        Record(Array(4, 5), Array(6)),
+        Record(Array(7, 8), Array(9)),
+        Record(Array(10, 11), Array(12))),
+      shapes = (Shape(2), Shape(1)),
+      batch = 2)
     it.hasNext should be(true)
     val x1 = Tensor.matrix(Array(1, 2), Array(4, 5))
     val y1 = Tensor.matrix(Array(3), Array(6))
@@ -32,7 +43,12 @@ class Tensor2IteratorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "pad the batch with zeros if batch is not full and padding is enabled" in {
-    val it = Tensor2Iterator(Iterator(Array(1, 2, 3), Array(4, 5, 6)), 3)
+    val it = TensorIterator(
+      rows = Iterator(
+        Record(Array(1, 2), Array(3)),
+        Record(Array(4, 5), Array(6))),
+      shapes = (Shape(2), Shape(1)),
+      batch = 3)
     it.hasNext should be(true)
     val x = Tensor.matrix(Array(1, 2), Array(4, 5), Array(0, 0))
     val y = Tensor.matrix(Array(3), Array(6), Array(0))
@@ -41,7 +57,13 @@ class Tensor2IteratorSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "trim batch if batch is not full and padding is disabled" in {
-    val it = Tensor2Iterator(Iterator(Array(1, 2, 3), Array(4, 5, 6)), 3, withPadding = false)
+    val it = TensorIterator(
+      rows = Iterator(
+        Record(Array(1, 2), Array(3)),
+        Record(Array(4, 5), Array(6))),
+      shapes = (Shape(2), Shape(1)),
+      batch = 3,
+      withPadding = false)
     it.hasNext should be(true)
     val x = Tensor.matrix(Array(1, 2), Array(4, 5))
     val y = Tensor.matrix(Array(3), Array(6))

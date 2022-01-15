@@ -142,7 +142,6 @@ trait TF3[P1, P1M, P2, P2M, P3, P3M, R] {
       (p1, p2, p3, p1Other, p2Other, via(out, outOther))
     }
   }
-
   def display(s1: Seq[Shape], s2: Seq[Shape], s3: Seq[Shape], label: String = "", dir: String = "")(implicit res: CanEval[R]): Unit = {
     val (_, _, _, r) = build(s1, s2, s3)
     val outs = res.unwrap(r)
