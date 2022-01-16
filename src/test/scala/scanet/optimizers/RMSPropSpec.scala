@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
 import scanet.math.syntax._
 import scanet.models.LinearRegression
 import scanet.models.Loss._

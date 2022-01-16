@@ -1,7 +1,7 @@
 package scanet.models
 
 import scanet.models.Activation.Identity
-import scanet.models.Initializer.{GlorotUniform, Zeros}
+import scanet.models.Initializer.Zeros
 import scanet.models.Regularization.Zero
 import scanet.models.layer.Dense
 
