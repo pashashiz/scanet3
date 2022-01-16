@@ -32,6 +32,7 @@ abstract class Model extends Serializable {
   }
 
   def weightsShapes(input: Shape): Seq[Shape]
+  def initWeights[E: Floating](input: Shape): OutputSeq[E]
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 

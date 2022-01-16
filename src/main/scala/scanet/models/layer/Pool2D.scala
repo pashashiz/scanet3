@@ -31,7 +31,7 @@ case class Pool2D(
     padding: Padding = Valid,
     format: ConvFormat = NHWC,
     reduce: Reduce = Reduce.Max)
-    extends Layer {
+    extends StatelessLayer {
 
   override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
     require(weights.isEmpty, "Pool2D layer does not require weights")
@@ -42,12 +42,6 @@ case class Pool2D(
       padding = padding,
       format = format)
   }
-
-  override def penalty[E: Floating](weights: OutputSeq[E]): Expr[E] = zeros[E](Shape())
-
-  override def weightsCount: Int = 0
-
-  override def weightsShapes(input: Shape): Seq[Shape] = Seq.empty
 
   override def outputShape(input: Shape): Shape = {
     require(

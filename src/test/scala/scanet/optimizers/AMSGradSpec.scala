@@ -1,7 +1,6 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
 import scanet.math.syntax._
 import scanet.models.LinearRegression
 import scanet.models.Loss._
@@ -17,7 +16,6 @@ class AMSGradSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
       .train(LinearRegression())
       .loss(MeanSquaredError)
       .using(AMSGrad(rate = 0.1f))
-      .initWith(Tensor.zeros(_))
       .batch(97)
       .each(1.epochs, RecordLoss())
       .stopAfter(100.epochs)

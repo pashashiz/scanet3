@@ -29,7 +29,7 @@ class BiasLayerSpec extends AnyWordSpec with CustomMatchers {
     }
 
     "have string repr" in {
-      Bias(3).toString shouldBe "Bias(3,Zero)"
+      Bias(3).toString shouldBe "Bias(3,Zero,Zeros)"
     }
   }
 }

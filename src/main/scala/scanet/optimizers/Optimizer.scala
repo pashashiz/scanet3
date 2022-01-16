@@ -3,7 +3,6 @@ package scanet.optimizers
 import org.apache.spark.sql.Dataset
 import scanet.core.{Tensor, _}
 import scanet.math.syntax._
-import scanet.math.Dist
 import scanet.models.{Loss, LossModel, Model, TrainedModel}
 import scanet.optimizers.syntax._
 import scanet.optimizers.Condition.always
@@ -38,7 +37,7 @@ case class Optimizer[A: Floating](
     alg: Algorithm,
     model: Model,
     loss: Loss,
-    initArgs: Shape => Tensor[A],
+    initWeights: () => Option[Seq[Tensor[A]]],
     dataset: Dataset[Record[A]],
     batchSize: Int,
     minimizing: Boolean,
@@ -91,9 +90,10 @@ case class Optimizer[A: Floating](
       val batches = TensorIterator(it, shapes, batchSize)
       val (weightsInitialized, metaInitialized) =
         if (globalIter == 0) {
-          // todo: run tests
+          val weights = initWeights().getOrElse(model.initWeights[A](shapes._1).eval)
           val weightShapes = model.weightsShapes(shapes._1)
-          (weightShapes.map(initArgs(_)).toList, weightShapes.map(alg.initMeta[A](_)).toList)
+          val meta = weightShapes.map(alg.initMeta[A](_))
+          (weights, meta)
         } else {
           (weights, meta)
         }
@@ -194,8 +194,8 @@ object Optimizer {
     def using(alg: Algorithm): Builder[A, State with WithAlg] =
       copy(optimizer = optimizer.copy(alg = alg))
 
-    def initWith(args: Shape => Tensor[A]): Builder[A, State] =
-      copy(optimizer = optimizer.copy(initArgs = args))
+    def initWeights(args: => Seq[Tensor[A]]): Builder[A, State] =
+      copy(optimizer = optimizer.copy(initWeights = () => Some(args)))
 
     def on(dataset: Dataset[Record[A]]): Builder[A, State with WithDataset] =
       copy(optimizer = optimizer.copy(dataset = dataset))
@@ -227,28 +227,28 @@ object Optimizer {
     def run()(implicit ev: State =:= Complete): TrainedModel[A] = build.run()
   }
 
-  def minimize[R: Floating: Dist](model: Model)(
+  def minimize[R: Floating](model: Model)(
       implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
     Builder(
       Optimizer(
         alg = null,
         model = model,
         loss = null,
-        initArgs = s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))),
+        initWeights = () => None,
         dataset = null,
         batchSize = 10000,
         minimizing = true,
         stop = always,
         doOnEach = Seq()))
 
-  def maximize[R: Floating: Dist](model: Model)(
+  def maximize[R: Floating](model: Model)(
       implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
     Builder(
       Optimizer(
         alg = null,
         model = model,
         loss = null,
-        initArgs = s => Tensor.rand(s, range = Some((Numeric[R].one.negate, Numeric[R].one))),
+        initWeights = () => None,
         dataset = null,
         batchSize = 10000,
         minimizing = false,

@@ -5,8 +5,10 @@ import scanet.math.nn.ConvFormat._
 import scanet.math.nn.Padding._
 import scanet.math.nn.{ConvFormat, Padding}
 import scanet.math.syntax.zeros
-import scanet.models.Activation
+import scanet.models.{Activation, Initializer, Regularization}
 import scanet.models.Activation.Identity
+import scanet.models.Initializer.{GlorotUniform, Zeros}
+import scanet.models.Regularization.Zero
 import scanet.syntax._
 
 import scala.collection.immutable.Seq
@@ -44,6 +46,8 @@ object Conv2D {
     * @param format Specifies whether the channel dimension of the input and output is the last dimension, see [[NHWC]] and [[NCHW]]
     * @param activation Activation function to use
     * @param bias Whether to add bias vector
+    * @param kernelInitializer kernel initializer
+    * @param biasInitializer bias initializer
     */
   def apply(
       filters: Int,
@@ -52,9 +56,12 @@ object Conv2D {
       padding: Padding = Valid,
       format: ConvFormat = NHWC,
       activation: Activation = Identity,
-      bias: Boolean = false): Layer = {
-    val conv = new Conv2D(filters, kernel, strides, padding, format)
-    conv ?>> (bias, Bias(filters)) ?>> (activation.ni, activation.layer)
+      bias: Boolean = false,
+      kernelInitializer: Initializer = GlorotUniform(),
+      biasInitializer: Initializer = Zeros,
+      biasReg: Regularization = Zero): Layer = {
+    val conv = new Conv2D(filters, kernel, strides, padding, format, kernelInitializer)
+    conv ?>> (bias, Bias(filters, biasReg, biasInitializer)) ?>> (activation.ni, activation.layer)
   }
 }
 
@@ -64,7 +71,8 @@ case class Conv2D private (
     kernel: (Int, Int),
     strides: (Int, Int),
     padding: Padding,
-    format: ConvFormat)
+    format: ConvFormat,
+    initializer: Initializer)
     extends Layer {
 
   def filterHeight: Int = kernel._1
@@ -92,6 +100,9 @@ case class Conv2D private (
       s"Conv2D features should have a shape (in_height, in_width, in_channels) but was $input")
     Seq(Shape(filterHeight, filterWidth, input(format.cAxis - 1), filters))
   }
+
+  override def initWeights[E: Floating](input: Shape): OutputSeq[E] =
+    Seq(initializer.build[E](weightsShapes(input).head))
 
   override def outputShape(input: Shape): Shape = {
     require(

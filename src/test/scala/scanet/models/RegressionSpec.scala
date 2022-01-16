@@ -48,7 +48,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "produce unique toString to be used as a cache key" in {
-    LinearRegression().toString should be("Dense(1,Zero) >> Bias(1,Zero)")
+    LinearRegression().toString should be("Dense(1,Zero,Zeros) >> Bias(1,Zero,Zeros)")
   }
 
   "logistic regression" should "calculate loss" in {
@@ -81,6 +81,6 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "produce unique toString to be used as a cache key" in {
-    LogisticRegression().toString should be("Dense(1,Zero) >> Bias(1,Zero) >> Sigmoid")
+    LogisticRegression().toString should be("Dense(1,Zero,Zeros) >> Bias(1,Zero,Zeros) >> Sigmoid")
   }
 }

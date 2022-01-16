@@ -24,8 +24,7 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       val trained = ds
         .train(model)
         .loss(BinaryCrossentropy)
-        .using(Adam(0.1f))
-        .initWith(s => Tensor.zeros(s))
+        .using(Adam(0.2f))
         .batch(100)
         .each(1.epochs, RecordLoss())
         .stopAfter(50.epochs)
