@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import scanet.core.Tensor
 import scanet.estimators.accuracy
 import scanet.math.syntax._
+import scanet.models.Initializer.Zeros
 import scanet.models.Loss._
 import scanet.models.layer.Dense
 import scanet.models.{Activation, LinearRegression, LogisticRegression}
@@ -25,13 +26,13 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .run()
     val loss = trained.loss.compile()
     val TRecord(x, y) = ds.firstTensor(97)
-    loss(x, y).toScalar should be <= 10f
+    loss(x, y).toScalar should be <= 12f
   }
 
   it should "minimize one dense layer" in {
     val ds = linearFunction
     val trained = ds
-      .train(Dense(1, Activation.Identity))
+      .train(Dense(1, Activation.Identity, biasInitializer = Zeros, kernelInitializer = Zeros))
       .loss(MeanSquaredError)
       .using(Adam(rate = 0.1f))
       .batch(97)
@@ -40,7 +41,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .run()
     val loss = trained.loss.compile()
     val TRecord(x, y) = ds.firstTensor(97)
-    loss(x, y).toScalar should be <= 10f
+    loss(x, y).toScalar should be <= 12f
   }
 
   it should "minimize logistic regression" in {
