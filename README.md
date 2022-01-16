@@ -21,7 +21,7 @@ The chosen algorithm - `Data parallelism with synchronous model averaging`. The 
 the workers and each epoch is run independently on each data split, at the end of each epoch
 parameters are averaged and broadcasted back to each worker.
 
-The input data is expected to be `RDD[Array[TensorType]`. 
+The input data is expected to be `Dataset[Array[TensorType]` and it contains a shape of the tensors in metadata.
 Usually, `TensorType` is choosen to be `Float` since it performs best on GPU, also `Double` can be used.
 
 ## Examples
@@ -70,11 +70,6 @@ val trained = trainingDs
   .run()
 accuracy(trained, testDs) should be >= 0.98f
 ```
-
-## What we are doing right now
-
-Finally, we added a fully connected neural network which we can benchmark on MNIST dataset.
-On such a simple network we can get > 95% accuracy. The next step is CNN.
  
 ## Road Map
 
@@ -116,8 +111,8 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [x] ANN (Multilayer Perceptron NN)
 - [x] kernel regularization
 - [ ] Layers Dropout, Batch Normalization
-- [ ] Convolutional NN
-- [ ] Recurent NN
+- [x] Convolutional NN
+- [ ] Recurrent NN
 - [ ] others
 
 ### Activation functions
@@ -139,7 +134,6 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 - [x] MNIST
 
 ### Preprocessing
-- [ ] Auto-converting into `RDD[Array[TensorType]]`
 - [ ] Feature scalers
 - [ ] Feature embedding
 - [ ] Hashed features
@@ -161,7 +155,7 @@ On such a simple network we can get > 95% accuracy. The next step is CNN.
 ### Other useful things
 - [ ] While training analyze the weights histograms to make sure the deep NN do not saturate
 - [ ] Grid/Random hyper parameters search
-- [ ] Different weight initializers (Xavier)
+- [x] Different weight initializers (Xavier)
 - [ ] Decay learning rate over time (step, exponential, 1/t decay)
 - [ ] Try using in interactive notebook
 - [ ] Add graph library so we could plot some charts and publish them in `tensorboard` or `notebook` (maybe fork and upgrade `vegas` to scala `2.12` ot try `evil-plot`)

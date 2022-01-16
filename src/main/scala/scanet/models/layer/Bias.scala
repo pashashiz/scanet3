@@ -16,6 +16,7 @@ import scala.collection.immutable.Seq
   *
   * @param features the number of features
   * @param reg regularization
+  * @param initializer kernel initializer
   */
 case class Bias(features: Int, reg: Regularization = Zero, initializer: Initializer = Zeros)
     extends Layer {

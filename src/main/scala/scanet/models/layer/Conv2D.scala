@@ -46,6 +46,8 @@ object Conv2D {
     * @param format Specifies whether the channel dimension of the input and output is the last dimension, see [[NHWC]] and [[NCHW]]
     * @param activation Activation function to use
     * @param bias Whether to add bias vector
+    * @param kernelInitializer kernel initializer
+    * @param biasInitializer bias initializer
     */
   def apply(
       filters: Int,

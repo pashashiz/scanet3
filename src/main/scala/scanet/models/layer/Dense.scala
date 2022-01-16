@@ -24,6 +24,8 @@ object Dense {
     * @param activation function to apply to each output (neuron)
     * @param reg regularization
     * @param bias whether to add bias
+    * @param kernelInitializer kernel initializer
+    * @param biasInitializer bias initializer
     */
   def apply(
       outputs: Int,
