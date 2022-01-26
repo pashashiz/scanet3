@@ -49,6 +49,7 @@ case class Optimizer[A: Floating](
   def run(): TrainedModel[A] = {
     val ds: Dataset[Record[A]] = dataset.cache()
     val sc = ds.sparkSession.sparkContext
+    println(s"Training model:\n${model.describe[A](ds.shapes._1)}")
 
     @tailrec
     def optimize(
