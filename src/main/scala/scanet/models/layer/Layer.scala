@@ -22,10 +22,4 @@ trait Layer extends Model {
 
   def ?>>(cond: Boolean, right: => Layer): Layer =
     if (cond) this >> right else this
-
-  def ?(cond: Boolean): CondLayer = new CondLayer(this, cond)
-}
-
-class CondLayer(left: Layer, condition: Boolean) {
-  def >>(right: Layer): Layer = if (condition) left >> right else left
 }

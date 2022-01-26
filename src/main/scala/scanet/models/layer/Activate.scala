@@ -11,6 +11,8 @@ import scanet.models.Activation
   */
 case class Activate(activation: Activation) extends StatelessLayer {
 
+  override def name: String = activation.toString
+
   override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
     require(weights.isEmpty, "Activate layer does not require weights")
     activation.build(x)
