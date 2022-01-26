@@ -29,7 +29,8 @@ case class StepResult[A: Numeric](
 case class StepContext[A: Numeric](
     step: Step[A],
     result: StepResult[A],
-    lossModel: LossModel)
+    lossModel: LossModel,
+    time: Long)
 
 // E - type of input dataset to train on, could have any numeric values
 // R - type to use on a model, could be only Float or Double
@@ -42,13 +43,15 @@ case class Optimizer[A: Floating](
     batchSize: Int,
     minimizing: Boolean,
     stop: Condition[StepContext[A]],
-    @transient doOnEach: Seq[Effect[StepContext[A]]])(implicit c: Convertible[Int, A]) {
+    boardDir: String = "board",
+    @transient doOnEach: Seq[Effect[A]])(implicit c: Convertible[Int, A]) {
 
   private val lossModel = model.withLoss(loss)
 
   def run(): TrainedModel[A] = {
     val ds: Dataset[Record[A]] = dataset.cache()
     val sc = ds.sparkSession.sparkContext
+    val board = TensorBoard(boardDir)
     println(s"Training model:\n${model.describe[A](ds.shapes._1)}")
 
     @tailrec
@@ -59,6 +62,7 @@ case class Optimizer[A: Floating](
       val weightsBr = sc.broadcast(weights)
       val metaBr = sc.broadcast(meta)
       val shapes = ds.shapes
+      val start = System.currentTimeMillis()
       val result = ds.rdd
         .mapPartitions(it =>
           Iterator(optimizeOnPartition(
@@ -68,9 +72,14 @@ case class Optimizer[A: Floating](
             weightsBr.value,
             metaBr.value)))
         .treeReduce(averageMetaAndWeights)
+      val finish = System.currentTimeMillis()
       val step: Step[A] = prevStep.nextEpoch.incIter(result.iterations)
-      val stepCtx = StepContext(step, result, lossModel)
-      doOnEach.foreach(effect => effect(stepCtx))
+      val stepCtx = StepContext(step, result, lossModel, finish - start)
+
+      doOnEach
+        .foldLeft(Effect.State(Effect.Console(), board))((ctx, effect) => effect(ctx, stepCtx))
+        .run()
+
       if (stop(stepCtx)) {
         result.weights
       } else {
@@ -216,10 +225,13 @@ object Optimizer {
     def batch(size: Int): Builder[A, State] =
       copy(optimizer = optimizer.copy(batchSize = size))
 
-    def eachIter(effect: Effect[StepContext[A]]): Builder[A, State] =
+    def board(dir: String): Builder[A, State] =
+      copy(optimizer = optimizer.copy(boardDir = dir))
+
+    def eachIter(effect: Effect[A]): Builder[A, State] =
       each(always, effect)
 
-    def each(when: Condition[StepContext[A]], effect: Effect[StepContext[A]]): Builder[A, State] = {
+    def each(when: Condition[StepContext[A]], effect: Effect[A]): Builder[A, State] = {
       copy(optimizer = optimizer.copy(doOnEach = optimizer.doOnEach :+ effect.conditional(when)))
     }
 
@@ -240,7 +252,7 @@ object Optimizer {
         batchSize = 10000,
         minimizing = true,
         stop = always,
-        doOnEach = Seq()))
+        doOnEach = Seq(Effect.RecordIteration())))
 
   def maximize[R: Floating](model: Model)(
       implicit c: Convertible[Int, R]): Builder[R, WithFunc] =
@@ -254,5 +266,5 @@ object Optimizer {
         batchSize = 10000,
         minimizing = false,
         stop = always,
-        doOnEach = Seq()))
+        doOnEach = Seq(Effect.RecordIteration())))
 }
