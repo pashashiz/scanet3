@@ -2,8 +2,10 @@ package scanet.models.layer
 
 import scanet.core.{Expr, Floating, OutputSeq, Shape}
 import scanet.math.syntax._
+import scanet.models.LayerInfo
 
 import scala.collection.immutable
+import scala.collection.immutable.Seq
 
 /** Layer which composes 2 other layers
   *
@@ -41,6 +43,11 @@ case class Composed(left: Layer, right: Layer) extends Layer {
 
   private def split[E: Floating](weights: OutputSeq[E]) =
     weights.splitAt(left.weightsCount)
+
+  override def info(input: Shape): Seq[LayerInfo] = {
+    val rightInput = left.outputShape(input)
+    left.info(input) ++ right.info(rightInput)
+  }
 
   override def toString: String = s"$left >> $right"
 }

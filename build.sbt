@@ -16,6 +16,8 @@ libraryDependencies ++= Seq(
   "com.google.guava" % "guava" % "29.0-jre", // NOTE: needed for crc32c only, need to reimplement and remove the dependency
   "org.apache.spark" %% "spark-core" % "3.1.2",
   "org.apache.spark" %% "spark-sql" % "3.1.2",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
+  "ch.qos.logback" % "logback-classic" % "1.2.10",
   "org.scalacheck" %% "scalacheck" % "1.15.4" % "test",
   "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 )

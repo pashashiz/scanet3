@@ -2,10 +2,13 @@ package scanet.models
 
 import scanet.core._
 import scanet.math.syntax._
+import scanet.utils.{Bytes, Tabulator}
 
 import scala.collection.immutable.Seq
 
 abstract class Model extends Serializable {
+
+  def name: String = getClass.getSimpleName.replace("$", "")
 
   /** Build a model
     *
@@ -43,6 +46,27 @@ abstract class Model extends Serializable {
       weightsShapes(input),
       label = "result",
       dir = dir)
+  }
+
+  def info(input: Shape): Seq[LayerInfo] =
+    Seq(LayerInfo(name, weightsShapes(input).headOption, outputShape(input)))
+
+  def describe[E: Floating](input: Shape): String = {
+    val layersInfo = info(input)
+    val layers = (LayerInfo("Input", None, input) +: layersInfo).map(_.toRow)
+    val table = Tabulator.format(Seq("name", "weights", "params", "output") +: layers)
+    val total = layersInfo.map(info => info.weights.map(_.power).getOrElse(0)).sum
+    val size = Bytes.formatSize(TensorType[E].codec.sizeOf(total))
+    s"$table\nTotal params: $total ($size)"
+  }
+}
+
+case class LayerInfo(name: String, weights: Option[Shape], output: Shape) {
+  def toRow: Seq[String] = {
+    val weightsStr = weights.map(_.toString).getOrElse("")
+    val params = weights.map(_.power.toString).getOrElse("")
+    val outputStr = ("_" +: output.dims.map(_.toString)).mkString("(", ",", ")")
+    Seq(name, weightsStr, params, outputStr)
   }
 }
 
