@@ -51,7 +51,6 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
         .stopAfter(25.epochs)
         .run()
       accuracy(trained, testDs) should be >= 0.95f
-
 //      import scanet.images.Grayscale
 //      TensorBoard("board")
 //        .addImage("1#Dense", trained.weights(0).reshape(50, 784, 1), Grayscale())
