@@ -96,7 +96,7 @@ case class Optimizer[A: Floating](
       globalIter: Int,
       weights: Seq[Tensor[A]],
       meta: Seq[Tensor[A]]): StepResult[A] = {
-    val result = sessionsPool.withing(session => {
+    val result = sessionsPool.within(session => {
       val batches = TensorIterator(it, shapes, batchSize)
       val (weightsInitialized, metaInitialized) =
         if (globalIter == 0) {
@@ -130,43 +130,46 @@ case class Optimizer[A: Floating](
   private def compileLoss(session: Session) = {
     tfCache.getOrCompute(
       s"$lossModel:loss[${TensorType[A].classTag}]",
-      lossModel.loss[A]) compile session
+      lossModel.loss[A].tf) compileWith session
   }
 
   private def compileCalc(session: Session) = {
-    def newOutputSeq: OutputSeq[A] = Seq[Expr[A]]()
+    def newOutputSeq = Seq[Expr[A]]()
     tfCache.getOrCompute(
-      s"$lossModel:$alg:calc[${TensorType[A].classTag}]]",
-      lossModel.weightsAndGrad[A].combine(TF2.identity[OutputSeq, A, Expr, Int]) {
-        case ((ws, gs), (metas, iter)) =>
-          (ws, gs, metas).zipped.foldLeft((newOutputSeq, newOutputSeq))((acc, next) => {
-            val (gAcc, metaAcc) = acc
-            val (w, g, meta) = next
-            val Delta(del, metaNext) = alg.delta[A](g, meta, iter)
-            val d = del.cast[A]
-            val gNext = if (minimizing) w - d else w + d
-            (gAcc :+ gNext, metaAcc :+ metaNext)
-          })
-      }) compile session
+      s"$lossModel:$alg:calc[${TensorType[A].classTag}]]", {
+        val func =
+          (x: Expr[A], y: Expr[A], ws: Seq[Expr[A]], metas: Seq[Expr[A]], iter: Expr[Int]) => {
+            val gs = lossModel.grad[A].apply(x, y, ws)
+            (ws, gs, metas).zipped.foldLeft((newOutputSeq, newOutputSeq))((acc, next) => {
+              val (gAcc, metaAcc) = acc
+              val (w, g, meta) = next
+              val Delta(del, metaNext) = alg.delta[A](g, meta, iter)
+              val d = del.cast[A]
+              val gNext = if (minimizing) w - d else w + d
+              (gAcc :+ gNext, metaAcc :+ metaNext)
+            })
+          }
+        func.tf
+      }) compileWith session
   }
 
   private def averageMetaAndWeights(left: StepResult[A], right: StepResult[A]): StepResult[A] = {
-    sessionsPool.withing(session => {
-      val weightsAvg = tfCache.getOrCompute("weightsAvg", avg[A]) compile session
-      val metaAvg = tfCache.getOrCompute("metaAvg", avg[A]) compile session
+    sessionsPool.within { session =>
+      val weightsAvg = tfCache.getOrCompute("weightsAvg", avg[A].tf) compileWith session
+      val metaAvg = tfCache.getOrCompute("metaAvg", avg[A].tf) compileWith session
       val lossAvg = (left.loss plus right.loss) / c.convert(2)
       StepResult(
         left.iterations + right.iterations,
         weightsAvg(left.weights, right.weights),
         metaAvg(left.meta, right.meta),
         lossAvg)
-    })
+    }
   }
 
-  private def avg[X: Numeric]: TF2[X, Seq[Tensor[X]], X, Seq[Tensor[X]], OutputSeq[X]] =
-    TF2[OutputSeq, X, OutputSeq, X, OutputSeq[X]]((arg1, arg2) => {
+  private def avg[X: Numeric] =
+    (arg1: Seq[Expr[X]], arg2: Seq[Expr[X]]) => {
       (arg1 zip arg2).map { case (l, r) => (l + r) / 2.0f.const.cast[X] }
-    })
+    }
 }
 
 object Optimizer {

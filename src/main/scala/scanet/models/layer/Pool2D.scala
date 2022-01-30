@@ -1,6 +1,6 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, OutputSeq, Shape}
+import scanet.core.{Expr, Floating, Shape}
 import scanet.math.nn.ConvFormat._
 import scanet.math.nn.Padding._
 import scanet.math.nn.{ConvFormat, Padding, Reduce}
@@ -33,7 +33,7 @@ case class Pool2D(
     reduce: Reduce = Reduce.Max)
     extends StatelessLayer {
 
-  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
+  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.isEmpty, "Pool2D layer does not require weights")
     pool2D[E](
       input = x,

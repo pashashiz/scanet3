@@ -10,7 +10,7 @@ import scala.collection.immutable.Seq
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
 
   "linear regression" should "calculate loss with Float precision" in {
-    val loss = LinearRegression().withLoss(MeanSquaredError).loss[Float].compile()
+    val loss = LinearRegression().withLoss(MeanSquaredError).loss[Float].compile
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.matrix(Array(2.0f, 3.0f))
@@ -19,7 +19,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate loss with Double precision" in {
-    val loss = LinearRegression().withLoss(MeanSquaredError).loss[Double].compile()
+    val loss = LinearRegression().withLoss(MeanSquaredError).loss[Double].compile
     val x = Tensor.matrix(Array(1.0, 2.0), Array(2.0, 4.0))
     val y = Tensor.matrix(Array(6.0), Array(12.0))
     val weights = Tensor.matrix(Array(2.0, 3.0))
@@ -28,7 +28,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate result" in {
-    val result = LinearRegression().result[Float].compile()
+    val result = LinearRegression().result[Float].compile
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(9.0f), Array(17.0f))
     val weights = Tensor.matrix(Array(2.0f, 3.0f))
@@ -37,7 +37,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate gradient" in {
-    val grad = LinearRegression().withLoss(MeanSquaredError).grad[Float].compile()
+    val grad = LinearRegression().withLoss(MeanSquaredError).grad[Float].compile
     val x = Tensor.matrix(Array(1.0f, 2.0f), Array(2.0f, 4.0f))
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.matrix(Array(0.0f, 0.0f))
@@ -52,7 +52,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   "logistic regression" should "calculate loss" in {
-    val regression = LogisticRegression().withLoss(BinaryCrossentropy).loss[Float].compile()
+    val regression = LogisticRegression().withLoss(BinaryCrossentropy).loss[Float].compile
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.matrix(Array(0.2f, 0.3f))
@@ -61,7 +61,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate result" in {
-    val result = LogisticRegression().result[Float].compile()
+    val result = LogisticRegression().result[Float].compile
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.59916806f), Array(0.6172755f))
     val weights = Tensor.matrix(Array(0.2f, 0.3f))
@@ -70,7 +70,7 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "calculate gradient " in {
-    val grad = LogisticRegression().withLoss(BinaryCrossentropy).grad[Float].compile()
+    val grad = LogisticRegression().withLoss(BinaryCrossentropy).grad[Float].compile
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.matrix(Array(0.2f, 0.3f))

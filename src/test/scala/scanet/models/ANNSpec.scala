@@ -30,10 +30,10 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
         .stopAfter(55.epochs)
         .run()
       val TRecord(x, y) = ds.firstTensor(100)
-      val loss = trained.loss.compile()
+      val loss = trained.loss.compile
       loss(x, y).toScalar should be <= 0.5f
       accuracy(trained, ds) should be >= 0.89f
-      val predictor = trained.result.compile()
+      val predictor = trained.result.compile
       val input = Tensor.matrix(Array(0.3462f, 0.7802f), Array(0.6018f, 0.8630f))
       predictor(input).const.round.eval should be(Tensor.matrix(Array(0f), Array(1f)))
     }

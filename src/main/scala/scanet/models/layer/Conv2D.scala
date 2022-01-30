@@ -1,6 +1,6 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, OutputSeq, Shape}
+import scanet.core.{Expr, Floating, Shape}
 import scanet.math.nn.ConvFormat._
 import scanet.math.nn.Padding._
 import scanet.math.nn.{ConvFormat, Padding}
@@ -78,7 +78,7 @@ case class Conv2D private (
   def filterHeight: Int = kernel._1
   def filterWidth: Int = kernel._2
 
-  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
+  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.size == 1, "Conv2D layer can have only one set of weights")
     // Conv2D example:
     // input   = (batch_shape, in_height, in_width, in_channels)          = (1, 5, 5, 1)
@@ -92,7 +92,7 @@ case class Conv2D private (
       format = format)
   }
 
-  override def penalty[E: Floating](weights: OutputSeq[E]): Expr[E] = zeros[E](Shape())
+  override def penalty[E: Floating](weights: Seq[Expr[E]]): Expr[E] = zeros[E](Shape())
 
   override def weightsShapes(input: Shape): Seq[Shape] = {
     require(
@@ -101,7 +101,7 @@ case class Conv2D private (
     Seq(Shape(filterHeight, filterWidth, input(format.cAxis - 1), filters))
   }
 
-  override def initWeights[E: Floating](input: Shape): OutputSeq[E] =
+  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
     Seq(initializer.build[E](weightsShapes(input).head))
 
   override def outputShape(input: Shape): Shape = {

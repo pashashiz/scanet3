@@ -29,7 +29,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers  with SharedSpar
       val w2 = Tensor.matrix(
         Array(0.1f, 0.5f, 1f, 0f))
       val b2 = Tensor.vector(0f)
-      val result = model.result[Float].compile()
+      val result = model.result[Float].compile
       val expected = Tensor.matrix(
         Array(0.7053571f),
         Array(0.7701361f),
@@ -67,7 +67,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers  with SharedSpar
     val w2 = Tensor.matrix(
       Array(0.1f, 0.5f, 1f))
     val b2 = Tensor.vector(0f)
-    val loss = model.withLoss(MeanSquaredError).loss[Float].compile()
+    val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     loss(x, y, Seq(w1, b1, w2, b2)) should be(Tensor.scalar(0.33996207f))
   }
 
@@ -85,7 +85,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers  with SharedSpar
     val w2 = Tensor.matrix(
       Array(0.1f, 0.5f, 1f))
     val b2 = Tensor.vector(0f)
-    val loss = model.withLoss(MeanSquaredError).loss[Float].compile()
+    val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     loss(x, y, Seq(w1, b1, w2, b2)) should be(Tensor.scalar(3.6199622f))
   }
 }

@@ -4,7 +4,8 @@ trait CoreSyntax
     extends TensorType.AllSyntax
     with Convertible.AllSyntax
     with Slice.AllSyntax
-    with Session.AllSyntax
+    with Mat.AllSyntax
+    with TF.AllSyntax
     with Eval.AllSyntax
     with Const.AllSyntax
     with Require.AllSyntax

@@ -1,7 +1,8 @@
 package scanet.models.layer
 
 import scanet.core.syntax._
-import scanet.core.{Expr, Floating, OutputSeq, Shape}
+import scanet.core.{Expr, Floating, Shape}
+import scala.collection.immutable.Seq
 
 /** A layer which flattens the input tensor of any shape to 2 dims matrix.
   *
@@ -9,7 +10,7 @@ import scanet.core.{Expr, Floating, OutputSeq, Shape}
   */
 case object Flatten extends StatelessLayer {
 
-  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
+  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.isEmpty, "Flatten layer does not require weights")
     val shape = x.shape
     require(shape.rank >= 2, s"rank should be >= 2, but was ${shape.rank}")
