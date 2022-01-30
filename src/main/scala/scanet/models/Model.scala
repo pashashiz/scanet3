@@ -40,13 +40,12 @@ abstract class Model extends Serializable {
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
   def displayResult[E: Floating](input: Shape, dir: String = ""): Unit = {
-//    val inputWithBatch = input >>> 1
-//    result[E].display(
-//      Seq(inputWithBatch),
-//      weightsShapes(input),
-//      label = "result",
-//      dir = dir)
-    ???
+    val inputWithBatch = input >>> 1
+    build(
+      placeholder[E](inputWithBatch),
+      weightsShapes(input).map(s => placeholder[E](s)))
+      .as("result")
+      .display(dir)
   }
 
   def info(input: Shape): Seq[LayerInfo] =
@@ -85,25 +84,26 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
   def trained[E: Floating](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
 
   def displayLoss[E: Floating](input: Shape, dir: String = ""): Unit = {
-//    val inputWithBatch = input >>> 1
-//    loss[E].display(
-//      Seq(inputWithBatch),
-//      Seq(model.outputShapeBatched(inputWithBatch)),
-//      model.weightsShapes(input),
-//      label = "loss",
-//      dir = dir)
-    ???
+    val inputWithBatch = input >>> 1
+    build(
+      placeholder[E](inputWithBatch),
+      placeholder[E](model.outputShapeBatched(inputWithBatch)),
+      model.weightsShapes(input).map(s => placeholder[E](s)))
+      .as("loss")
+      .display(dir)
   }
 
   def displayGrad[E: Floating](input: Shape, dir: String = ""): Unit = {
-//    val inputWithBatch = input >>> 1
-//    grad[E].display(
-//      Seq(inputWithBatch),
-//      Seq(model.outputShapeBatched(inputWithBatch)),
-//      model.weightsShapes(input),
-//      label = "loss_grad",
-//      dir = dir)
-    ???
+    val inputWithBatch = input >>> 1
+    grad[E].apply(
+      placeholder[E](inputWithBatch),
+      placeholder[E](model.outputShapeBatched(inputWithBatch)),
+      model.weightsShapes(input).map(s => placeholder[E](s)))
+      .zipWithIndex
+      .map {
+        case (w, i) => w.as(s"loss_grad_${i}_layer")
+      }
+      .display(dir)
   }
 
   override def toString: String = s"$lossF($model)"
