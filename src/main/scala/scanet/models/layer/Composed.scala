@@ -1,6 +1,6 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, OutputSeq, Shape}
+import scanet.core.{Expr, Floating, Shape}
 import scanet.math.syntax._
 import scanet.models.LayerInfo
 
@@ -14,13 +14,13 @@ import scala.collection.immutable.Seq
   */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
-  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]) = {
+  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]) = {
     val (leftWeights, rightWeights) = split(weights)
     val leftOutput = left.build(x, leftWeights)
     right.build(leftOutput, rightWeights)
   }
 
-  override def penalty[E: Floating](weights: OutputSeq[E]) = {
+  override def penalty[E: Floating](weights: Seq[Expr[E]]) = {
     val (leftWeights, rightWeights) = split(weights)
     left.penalty(leftWeights) plus right.penalty(rightWeights)
   }
@@ -35,13 +35,13 @@ case class Composed(left: Layer, right: Layer) extends Layer {
     leftShapes ++ rightShapes
   }
 
-  override def initWeights[E: Floating](input: Shape): OutputSeq[E] = {
+  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] = {
     val leftShapes = left.initWeights[E](input)
     val rightShapes = right.initWeights[E](left.outputShape(input))
     leftShapes ++ rightShapes
   }
 
-  private def split[E: Floating](weights: OutputSeq[E]) =
+  private def split[E: Floating](weights: Seq[Expr[E]]) =
     weights.splitAt(left.weightsCount)
 
   override def info(input: Shape): Seq[LayerInfo] = {

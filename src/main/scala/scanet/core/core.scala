@@ -1,11 +1,8 @@
 package scanet
 
 import scala.collection.mutable
-import scala.collection.immutable.Seq
 
 package object core {
-
-  type OutputSeq[λ] = Seq[Expr[λ]]
 
   object syntax extends CoreSyntax
 

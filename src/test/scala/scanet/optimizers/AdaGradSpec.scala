@@ -18,7 +18,7 @@ class AdaGradSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with 
       .batch(97)
       .stopAfter(100.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     loss(x, y).toScalar should be <= 9f
   }

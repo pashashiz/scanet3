@@ -1,6 +1,6 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, OutputSeq, Shape}
+import scanet.core.{Expr, Floating, Shape}
 import scanet.models.Initializer.{GlorotUniform, Zeros}
 import scanet.models.Regularization.Zero
 import scanet.models.{Activation, Initializer, Regularization}
@@ -42,7 +42,7 @@ object Dense {
 case class Dense private (outputs: Int, reg: Regularization, initializer: Initializer)
     extends Layer {
 
-  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]) = {
+  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]) = {
     require(weights.size == 1, "Dense layer can have only one set of weights")
     // x:(samples, features)
     // w:(outputs, features)
@@ -50,7 +50,7 @@ case class Dense private (outputs: Int, reg: Regularization, initializer: Initia
     x matmul weights.head.transpose
   }
 
-  override def penalty[E: Floating](weights: OutputSeq[E]) =
+  override def penalty[E: Floating](weights: Seq[Expr[E]]) =
     reg.build(weights.head)
 
   override def weightsShapes(input: Shape): Seq[Shape] = {
@@ -58,7 +58,7 @@ case class Dense private (outputs: Int, reg: Regularization, initializer: Initia
     Seq(Shape(outputs, input(0)))
   }
 
-  override def initWeights[E: Floating](input: Shape): OutputSeq[E] =
+  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
     Seq(initializer.build[E](weightsShapes(input).head))
 
   override def outputShape(input: Shape): Shape = Shape(outputs)

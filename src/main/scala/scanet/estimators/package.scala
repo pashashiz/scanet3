@@ -2,7 +2,7 @@ package scanet
 
 import org.apache.spark.sql.Dataset
 import scanet.core.Session.withing
-import scanet.core.{Expr, Numeric, TF2}
+import scanet.core.{Expr, Numeric}
 import scanet.math.syntax._
 import scanet.models.TrainedModel
 import scanet.optimizers.syntax._
@@ -10,6 +10,7 @@ import scanet.optimizers.{Record, TensorIterator}
 
 import scala.collection.immutable.Seq
 
+// todo: caching
 package object estimators {
 
   def accuracy[A: Numeric](
@@ -26,19 +27,20 @@ package object estimators {
           shapes = shapes,
           batch = batchSize,
           withPadding = false)
-        withing(session => {
-          val positive = TF2[Expr, A, Expr, A, Expr[Int]]((x, y) => {
+        withing { session =>
+          val func = (x: Expr[A], y: Expr[A]) => {
             val yPredicted = model.buildResult(x).round
             val matchedOutputs = (y.cast[A] :== yPredicted).cast[Int].sum(Seq(1))
             (matchedOutputs :== model.outputShape(x.shape << 1).last.const).cast[Int].sum
-          }).compile(session)
+          }
+          val positive = func.compileWith(session)
           val result = batches.foldLeft((0, 0))((acc, next) => {
             val (x, y) = next
             val (positiveAcc, totalAcc) = acc
             (positiveAcc + positive(x, y).toScalar, totalAcc + x.shape.head)
           })
           Iterator(result)
-        })
+        }
       })
       .reduce((left, right) => {
         val (leftPositives, leftSize) = left

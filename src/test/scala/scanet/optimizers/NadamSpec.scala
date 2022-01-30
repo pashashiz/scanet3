@@ -20,7 +20,7 @@ class NadamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Da
       .each(1.epochs, RecordLoss())
       .stopAfter(50.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     loss(x, y).toScalar should be <= 9f
   }

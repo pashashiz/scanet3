@@ -24,7 +24,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .each(1.epochs, RecordLoss())
       .stopAfter(100.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     loss(x, y).toScalar should be <= 12f
   }
@@ -39,7 +39,7 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .each(1.epochs, RecordLoss())
       .stopAfter(100.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     loss(x, y).toScalar should be <= 12f
   }
@@ -55,10 +55,10 @@ class AdamSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Dat
       .stopAfter(100.epochs)
       .run()
     val TRecord(x, y) = ds.firstTensor(100)
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     loss(x, y).toScalar should be <= 0.4f
     accuracy(trained, ds) should be >= 0.9f
-    val predictor = trained.result.compile()
+    val predictor = trained.result.compile
     val input = Tensor.matrix(Array(0.3462f, 0.7802f), Array(0.6018f, 0.8630f))
     predictor(input).const.round.eval should be(Tensor.matrix(Array(0f), Array(1f)))
   }

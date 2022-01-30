@@ -9,6 +9,9 @@ import org.tensorflow.types.family.TType
 import scala.collection.immutable.Seq
 import org.tensorflow.{Operation, OperationBuilder}
 
+trait RootExpr[A]
+
+
 trait Expr[A] {
   def name: String
   def label: String = name

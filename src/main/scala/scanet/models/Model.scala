@@ -16,17 +16,17 @@ abstract class Model extends Serializable {
     * @param weights model weights
     * @return model
     */
-  def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E]
+  def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E]
 
   /** Additional model penalty to be added to the loss
     *
     * @param weights model weights
     * @return penalty
     */
-  def penalty[E: Floating](weights: OutputSeq[E]): Expr[E]
+  def penalty[E: Floating](weights: Seq[Expr[E]]): Expr[E]
 
-  def result[E: Floating]: TF2[E, Tensor[E], E, Seq[Tensor[E]], Expr[E]] =
-    TF2[Expr, E, OutputSeq, E, Expr[E]](build[E])
+  def result[E: Floating]: (Expr[E], Seq[Expr[E]]) => Expr[E] =
+    (x, w) => build(x, w)
 
   def outputShape(input: Shape): Shape
   def outputShapeBatched(inputBatched: Shape): Shape = {
@@ -35,17 +35,18 @@ abstract class Model extends Serializable {
   }
 
   def weightsShapes(input: Shape): Seq[Shape]
-  def initWeights[E: Floating](input: Shape): OutputSeq[E]
+  def initWeights[E: Floating](input: Shape): Seq[Expr[E]]
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
   def displayResult[E: Floating](input: Shape, dir: String = ""): Unit = {
-    val inputWithBatch = input >>> 1
-    result[E].display(
-      Seq(inputWithBatch),
-      weightsShapes(input),
-      label = "result",
-      dir = dir)
+//    val inputWithBatch = input >>> 1
+//    result[E].display(
+//      Seq(inputWithBatch),
+//      weightsShapes(input),
+//      label = "result",
+//      dir = dir)
+    ???
   }
 
   def info(input: Shape): Seq[LayerInfo] =
@@ -72,41 +73,37 @@ case class LayerInfo(name: String, weights: Option[Shape], output: Shape) {
 
 case class LossModel(model: Model, lossF: Loss) extends Serializable {
 
-  def build[E: Floating](x: Expr[E], y: Expr[E], weights: OutputSeq[E]): Expr[E] =
+  def build[E: Floating](x: Expr[E], y: Expr[E], weights: Seq[Expr[E]]): Expr[E] =
     lossF.build(model.build(x, weights), y) plus model.penalty(weights)
 
-  def loss[E: Floating]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], Expr[E]] =
-    TF3[Expr, E, Expr, E, OutputSeq, E, Expr[E]](build[E])
+  def loss[E: Floating]: (Expr[E], Expr[E], Seq[Expr[E]]) => Expr[E] =
+    (x, y, w) => build(x, y, w)
 
-  def weightsAndGrad[E: Floating]
-      : TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], (OutputSeq[E], OutputSeq[E])] =
-    TF3[Expr, E, Expr, E, OutputSeq, E, (OutputSeq[E], OutputSeq[E])]((x, y, w) =>
-      (w, build(x, y, w).grad(w).returns[E]))
-
-  def grad[E: Floating]: TF3[E, Tensor[E], E, Tensor[E], E, Seq[Tensor[E]], OutputSeq[E]] =
-    TF3[Expr, E, Expr, E, OutputSeq, E, OutputSeq[E]]((x, y, w) =>
-      build(x, y, w).grad(w).returns[E])
+  def grad[E: Floating]: (Expr[E], Expr[E], Seq[Expr[E]]) => Seq[Expr[E]] =
+    (x, y, w) => build(x, y, w).grad(w).returns[E]
 
   def trained[E: Floating](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
 
   def displayLoss[E: Floating](input: Shape, dir: String = ""): Unit = {
-    val inputWithBatch = input >>> 1
-    loss[E].display(
-      Seq(inputWithBatch),
-      Seq(model.outputShapeBatched(inputWithBatch)),
-      model.weightsShapes(input),
-      label = "loss",
-      dir = dir)
+//    val inputWithBatch = input >>> 1
+//    loss[E].display(
+//      Seq(inputWithBatch),
+//      Seq(model.outputShapeBatched(inputWithBatch)),
+//      model.weightsShapes(input),
+//      label = "loss",
+//      dir = dir)
+    ???
   }
 
   def displayGrad[E: Floating](input: Shape, dir: String = ""): Unit = {
-    val inputWithBatch = input >>> 1
-    grad[E].display(
-      Seq(inputWithBatch),
-      Seq(model.outputShapeBatched(inputWithBatch)),
-      model.weightsShapes(input),
-      label = "loss_grad",
-      dir = dir)
+//    val inputWithBatch = input >>> 1
+//    grad[E].display(
+//      Seq(inputWithBatch),
+//      Seq(model.outputShapeBatched(inputWithBatch)),
+//      model.weightsShapes(input),
+//      label = "loss_grad",
+//      dir = dir)
+    ???
   }
 
   override def toString: String = s"$lossF($model)"
@@ -116,12 +113,11 @@ class TrainedModel[E: Floating](val lossModel: LossModel, val weights: Seq[Tenso
 
   def buildResult(x: Expr[E]): Expr[E] = lossModel.model.build(x, weights.map(_.const))
 
-  def result: TF1[E, Tensor[E], Expr[E]] = TF1(buildResult)
+  def result: Expr[E] => Expr[E] = (x: Expr[E]) => buildResult(x)
 
   def buildLoss(x: Expr[E], y: Expr[E]): Expr[E] = lossModel.build(x, y, weights.map(_.const))
 
-  def loss: TF2[E, Tensor[E], E, Tensor[E], Expr[E]] =
-    TF2[Expr, E, Expr, E, Expr[E]]((x, y) => buildLoss(x, y))
+  def loss: (Expr[E], Expr[E]) => Expr[E] = (x, y) => buildLoss(x, y)
 
   def outputShape(input: Shape): Shape = lossModel.model.outputShape(input)
 }

@@ -276,6 +276,7 @@ trait AllKernels {
 
   def placeholder[A: TensorType](shape: Int*): Expr[A] = placeholder(Shape(shape: _*))
   def placeholder[A: TensorType](shape: Shape): Expr[A] = Placeholder[A](shape)
+  def placeholderRaw(tpe: TensorType[_], shape: Shape): Expr[_] = Placeholder(shape)(tpe)
 
   def fill[A: TensorType](shape: Int*)(value: A): Expr[A] =
     fillOutput(Shape(shape: _*))(value.const)

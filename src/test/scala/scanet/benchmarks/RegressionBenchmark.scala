@@ -26,7 +26,7 @@ trait RegressionBehaviours {
         .each(1.epochs, RecordLoss(tensorboard = true, dir = s"board/$alg"))
         .stopAfter(10.epochs)
         .run()
-      val loss = trained.loss.compile()
+      val loss = trained.loss.compile
       val (x, y) = TensorIterator(ds.collect.iterator, (Shape(53), Shape(1)), 1000).next()
       loss(x, y).toScalar should be <= 1f
     }

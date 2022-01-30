@@ -1,6 +1,6 @@
 package scanet.research
 
-import scanet.core.{OutputSeq, Shape, Tensor}
+import scanet.core.{Shape, Tensor}
 import scanet.models.Activation.Identity
 import scanet.models.Loss.MeanSquaredError
 import scanet.models.layer.Dense
@@ -24,15 +24,15 @@ object Neuron {
     // (1, 3) -> 3 = 2 + 1 -> 1 is bias
     val w = Tensor.matrix(Array(0.6f, 0.35f, 0.9f))
     // to make a prediction we need to run a forward pass
-    val result = neuron.result[Float].compile()
+    val result = neuron.result[Float].compile
     // (0.7 * 50 + 0.5 * 25 + 1 * 1)
     println(result(x, Seq(w)))
     // let's calculate prediction error (loss)
-    val ws: OutputSeq[Float] = Seq(w.const)
+    val ws = Seq(w.const)
     val loss = MeanSquaredError.build(neuron.build(x.const, ws), y.const)
     println(loss.eval)
     // let's calculate a gradient
-    val grads: OutputSeq[Float] = loss.grad(ws).returns[Float]
+    val grads = loss.grad(ws).returns[Float]
     println(grads.eval)
     // now we can subtract a fraction of a gradient from weights
     // and next time loss should b smaller which means more accurate prediction

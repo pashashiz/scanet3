@@ -23,7 +23,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .on(zero)
       .stopAfter(100.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     // x = weights
     val y = loss(Tensor.scalar(0.0f), Tensor.scalar(0.0f))
     y.toScalar should be <= 0.1f
@@ -39,7 +39,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .batch(97)
       .stopAfter(100.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f
@@ -54,7 +54,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .batch(97)
       .stopAfter(100.epochs)
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f
@@ -70,7 +70,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .stopAfter(100.epochs)
       .each(1.epochs, RecordLoss())
       .run()
-    val loss = trained.loss.compile()
+    val loss = trained.loss.compile
     val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f

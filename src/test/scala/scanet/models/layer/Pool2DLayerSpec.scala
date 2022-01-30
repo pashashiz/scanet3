@@ -27,7 +27,7 @@ class Pool2DLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(2.0, 3.0, 3.0, 3.0),
         Array(2.0, 3.0, 3.0, 2.0))
         .reshape(1, 4, 4, 1)
-      val result = model.result[Double].compile()
+      val result = model.result[Double].compile
       result(input, Seq.empty).const.roundAt(2).eval shouldBe output
     }
 

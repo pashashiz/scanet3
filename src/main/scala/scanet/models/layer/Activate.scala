@@ -1,7 +1,8 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, OutputSeq, Shape}
+import scanet.core.{Expr, Floating, Shape}
 import scanet.models.Activation
+import scala.collection.immutable.Seq
 
 /** A layer which applies activation function to the input.
   *
@@ -13,7 +14,7 @@ case class Activate(activation: Activation) extends StatelessLayer {
 
   override def name: String = activation.toString
 
-  override def build[E: Floating](x: Expr[E], weights: OutputSeq[E]): Expr[E] = {
+  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.isEmpty, "Activate layer does not require weights")
     activation.build(x)
   }
