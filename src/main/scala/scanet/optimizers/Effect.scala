@@ -39,8 +39,7 @@ object Effect {
 
   case class RecordLoss[E: Numeric](
       console: Boolean = true,
-      tensorboard: Boolean = false,
-      dir: String = "board")(implicit c: Convertible[E, Float])
+      tensorboard: Boolean = false)(implicit c: Convertible[E, Float])
       extends Effect[E] {
     override def apply(state: State, next: StepContext[E]): State = {
       val loss = next.result.loss
@@ -53,8 +52,7 @@ object Effect {
   case class RecordAccuracy[E: Floating](
       ds: Dataset[Record[E]],
       console: Boolean = true,
-      tensorboard: Boolean = false,
-      dir: String = "board")
+      tensorboard: Boolean = false)
       extends Effect[E] {
     override def apply(state: State, next: StepContext[E]): State = {
       val trained = next.lossModel.trained(next.result.weights)

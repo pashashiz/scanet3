@@ -6,7 +6,7 @@ import scanet.math.syntax._
 /** Function to compute regularization for a given weight tensor.
   * Regularization value should be a scalar.
   *
-  * Regularization allow you to apply penalties on layer parameters.
+  * Regularization allows you to apply penalties on layer parameters.
   * These penalties are summed into the loss function that the network optimizes.
   */
 trait Regularization extends Serializable {

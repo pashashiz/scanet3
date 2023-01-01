@@ -25,9 +25,10 @@ trait ANN_MNISTBehaviours {
         .loss(CategoricalCrossentropy)
         .using(alg)
         .batch(1000)
-        .each(1.epochs, RecordLoss(tensorboard = true, dir = s"board/$alg"))
-        .each(5.epochs, RecordAccuracy(testDs, tensorboard = true, dir = s"board/$alg"))
+        .each(1.epochs, RecordLoss(tensorboard = true))
+        .each(5.epochs, RecordAccuracy(testDs, tensorboard = true))
         .stopAfter(50.epochs)
+        .board(s"board/$alg")
         .run()
       accuracy(trained, testDs) should be >= 0.9f
     }

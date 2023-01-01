@@ -30,15 +30,15 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
   }
 
   it should "return seq of outputs" in {
-    val double = (arg: Expr[Int]) => Seq(arg + 0.const, arg + 0.const)
+    val double = (arg: Expr[Int]) => Seq(arg + 0.const, arg + 1.const)
     val func = double.compile
-    func(scalar(5)) should be(Seq(scalar(5), scalar(5)))
+    func(scalar(5)) should be(Seq(scalar(5), scalar(6)))
   }
 
   it should "return complex tuple" in {
-    val complex = (arg: Expr[Int]) => (arg + 0.const, Seq(arg + 0.const, arg + 0.const))
+    val complex = (arg: Expr[Int]) => (arg + 0.const, Seq(arg + 1.const, arg + 2.const))
     val func = complex.compile
-    func(scalar(5)) should be((scalar(5), Seq(scalar(5), scalar(5))))
+    func(scalar(5)) should be((scalar(5), Seq(scalar(6), scalar(7))))
   }
 
   "tensor function of 2 args" should "work" in {

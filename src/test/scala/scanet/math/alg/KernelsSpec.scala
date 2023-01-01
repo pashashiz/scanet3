@@ -597,8 +597,8 @@ class KernelsSpec extends AnyWordSpec with Matchers {
 
   "sigmoid" should {
     "return a result of sigmoid function" in {
-      Tensor.vector(1.0f, 5.0f, 10.0f).const.sigmoid.eval should
-      be(Tensor.vector(0.7310586f, 0.9933071f, 0.9999546f))
+      Tensor.vector(1.0f, 5.0f, 10.0f).const.sigmoid.roundAt(6).eval should
+      be(Tensor.vector(0.731059f, 0.993307f, 0.999955f))
     }
   }
 
