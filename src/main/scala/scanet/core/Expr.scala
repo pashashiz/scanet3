@@ -11,7 +11,6 @@ import org.tensorflow.{Operation, OperationBuilder}
 
 trait RootExpr[A]
 
-
 trait Expr[A] {
   def name: String
   def label: String = name

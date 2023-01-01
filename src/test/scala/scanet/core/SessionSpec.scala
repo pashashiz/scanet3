@@ -8,7 +8,7 @@ import scanet.syntax.placeholder
 import scanet.test.CustomMatchers
 
 import scala.collection.immutable.Seq
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class SessionSpec extends AnyFlatSpec with CustomMatchers {
 

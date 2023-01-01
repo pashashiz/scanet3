@@ -5,9 +5,10 @@ import org.tensorflow.types._
 import org.tensorflow.types.family.TType
 import simulacrum.{op, typeclass}
 
+import scala.annotation.nowarn
 import scala.reflect.ClassTag
 
-@typeclass trait TensorType[A] {
+@nowarn @typeclass trait TensorType[A] {
   def tag: DataType
   def jtag: Class[_ <: TType]
   def code: Int = tag.getNumber
@@ -16,14 +17,14 @@ import scala.reflect.ClassTag
   def codec: TensorCodec[A]
 }
 
-@typeclass trait Eq[A] extends TensorType[A] {
+@nowarn @typeclass trait Eq[A] extends TensorType[A] {
   @op("===", alias = true)
   def eqv(x: A, y: A): Boolean
   @op("=!=", alias = true)
   def neqv(x: A, y: A): Boolean = !eqv(x, y)
 }
 
-@typeclass trait Order[A] extends Eq[A] {
+@nowarn @typeclass trait Order[A] extends Eq[A] {
   def compare(x: A, y: A): Int
   @op(">", alias = true)
   def gt(x: A, y: A): Boolean = compare(x, y) > 0
@@ -36,7 +37,7 @@ import scala.reflect.ClassTag
   override def eqv(x: A, y: A): Boolean = compare(x, y) == 0
 }
 
-@typeclass trait Semigroup[A] extends TensorType[A] {
+@nowarn @typeclass trait Semigroup[A] extends TensorType[A] {
 
   /** Add two elements.
     *
@@ -71,11 +72,11 @@ import scala.reflect.ClassTag
   def plus[B](left: A, right: B)(implicit c: Convertible[B, A]): A
 }
 
-@typeclass trait Monoid[A] extends Semigroup[A] {
+@nowarn @typeclass trait Monoid[A] extends Semigroup[A] {
   def zero: A
 }
 
-@typeclass trait Semiring[A] extends Monoid[A] {
+@nowarn @typeclass trait Semiring[A] extends Monoid[A] {
 
   /** Multiply 2 elements.
     *
@@ -129,7 +130,7 @@ import scala.reflect.ClassTag
   def multiply[B](left: A, right: B)(implicit c: Convertible[B, A]): A
 }
 
-@typeclass trait Rng[A] extends Semiring[A] {
+@nowarn @typeclass trait Rng[A] extends Semiring[A] {
   @op("-", alias = true)
   def minus[B](left: A, right: B)(implicit c: Convertible[B, A]): A
   // todo: figure out why unary_- operator is not resolved
@@ -137,22 +138,22 @@ import scala.reflect.ClassTag
   def negate(a: A): A
 }
 
-@typeclass trait Rig[A] extends Semiring[A] {
+@nowarn @typeclass trait Rig[A] extends Semiring[A] {
   def one: A
 }
 
-@typeclass trait Ring[A] extends Rng[A] with Rig[A] {}
+@nowarn @typeclass trait Ring[A] extends Rng[A] with Rig[A] {}
 
-@typeclass trait Field[A] extends Ring[A] {
+@nowarn @typeclass trait Field[A] extends Ring[A] {
   @op("/", alias = true)
   def div[B](left: A, right: B)(implicit c: Convertible[B, A]): A
 }
 
-@typeclass trait Numeric[A] extends Field[A] with Order[A] {}
+@nowarn @typeclass trait Numeric[A] extends Field[A] with Order[A] {}
 
-@typeclass trait Floating[A] extends Numeric[A]
+@nowarn @typeclass trait Floating[A] extends Numeric[A]
 
-@typeclass trait Logical[A] extends Monoid[A] with Order[A] {
+@nowarn @typeclass trait Logical[A] extends Monoid[A] with Order[A] {
   @op("&&", alias = true)
   def and(x: A, y: A): Boolean
   @op("||", alias = true)
@@ -163,7 +164,7 @@ import scala.reflect.ClassTag
   def not(x: A): Boolean
 }
 
-@typeclass trait Textual[S] extends Monoid[S] with Order[S]
+@nowarn @typeclass trait Textual[S] extends Monoid[S] with Order[S]
 
 case object TensorTypeFloat extends Floating[Float] {
   override def tag: DataType = TensorType.FloatTag

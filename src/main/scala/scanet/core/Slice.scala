@@ -2,6 +2,8 @@ package scanet.core
 
 import simulacrum.typeclass
 
+import scala.annotation.nowarn
+
 case class Slice(from: Int = 0, until: Int = -1, isRange: Boolean) {
   require(from < until || until == -1, s"from $from should be less than until: $until")
   def isOpenedBoth: Boolean = isOpenedLeft && isOpenedRight
@@ -37,7 +39,7 @@ case class Slice(from: Int = 0, until: Int = -1, isRange: Boolean) {
   }
 }
 
-@typeclass trait CanBuildSliceFrom[A] {
+@nowarn @typeclass trait CanBuildSliceFrom[A] {
   def build(a: A): Slice
 }
 

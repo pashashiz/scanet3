@@ -1,11 +1,11 @@
 package scanet.io
 
 import java.nio.{ByteBuffer, DoubleBuffer, FloatBuffer, IntBuffer, LongBuffer, Buffer => JavaBuffer}
-
 import scanet.core.TensorType._
 import scanet.core.TensorType.syntax._
-import scanet.core.{error, TensorType}
+import scanet.core.{TensorType, error}
 
+import scala.collection.compat.immutable.LazyList
 import scala.{specialized => sp}
 
 class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buffer[A]] {
@@ -157,22 +157,13 @@ class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buf
     array
   }
 
-  def toStream: Stream[A] = {
-    def next(index: Int): Stream[A] = {
-      if (limit == index) Stream.empty
+  def toStream: LazyList[A] = {
+    def next(index: Int): LazyList[A] = {
+      if (limit == index) LazyList.empty
       else get(index) #:: next(index + 1)
     }
     next(position)
   }
-
-// NOTE: use with scala 2.13
-//  def toStream: LazyList[A] = {
-//    def next(index: Int): LazyList[A] = {
-//      if (limit == index) LazyList.empty
-//      else get(index) #:: next(index + 1)
-//    }
-//    next(position)
-//  }
 
   def arrayOffset: Int = original.arrayOffset()
 
@@ -189,7 +180,7 @@ class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buf
   override def hashCode: Int = original.hashCode()
 
   override def equals(other: Any): Boolean = other match {
-    case other: Buffer[A] => original == other.original
+    case other: Buffer[_] => original == other.original
     case _                => false
   }
 

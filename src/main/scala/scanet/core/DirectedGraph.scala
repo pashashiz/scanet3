@@ -15,7 +15,8 @@ case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
     this
   }
 
-  def link(from: String, to: String): DirectedGraph[A] = {
+  def link(between: (String, String)): DirectedGraph[A] = {
+    val (from, to) = between
     val fromNode = nodes(from)
     val toNode = nodes(to)
     val edge = Edge(toNode.inputs.size, fromNode, toNode)
@@ -25,7 +26,7 @@ case class DirectedGraph[A](nodes: mutable.Map[String, Node[A]]) {
   }
 
   def linkAll(edges: Seq[(String, String)]): DirectedGraph[A] = {
-    edges.foreach { case (from, to) => link(from, to) }
+    edges.foreach { case (from, to) => link((from, to)) }
     this
   }
 

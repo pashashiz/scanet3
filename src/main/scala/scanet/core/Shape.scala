@@ -3,6 +3,8 @@ package scanet.core
 import scanet.core.syntax.intTfTypeInst
 import scanet.core.syntax.longTfTypeInst
 
+import scala.annotation.nowarn
+
 case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   require(dims.forall(_ > 0), "dimension size cannot be 0")
@@ -82,9 +84,9 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     }
   }
 
-  def >>>(size: Int, using: Int): Shape = alignLeft(rank + size, using)
+  @nowarn def >>>(size: Int, using: Int): Shape = alignLeft(rank + size, using)
   def >>>(size: Int): Shape = >>>(size, 1)
-  def <<<(size: Int, using: Int): Shape = alignRight(rank + size, using)
+  @nowarn def <<<(size: Int, using: Int): Shape = alignRight(rank + size, using)
   def <<<(size: Int): Shape = <<<(size, 1)
 
   def >>(size: Int): Shape = {

@@ -31,7 +31,7 @@ case class TensorBoard(dir: String = "") {
     val event = Event
       .newBuilder()
       .setSummary(summary)
-      .setWallTime(currentTimeMillis() / 1000)
+      .setWallTime(currentTimeMillis().toDouble / 1000)
       .setStep(step)
       .build()
     writeEvents(Seq(event), path)

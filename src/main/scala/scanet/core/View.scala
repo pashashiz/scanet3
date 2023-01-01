@@ -65,17 +65,17 @@ case class View(src: IndexesSource, originalShape: Shape, projection: Projection
   }
 }
 
-trait IndexesSource {
+sealed trait IndexesSource {
   def indexes: Int => Int
   def isIdentity: Boolean
 }
 
-sealed case class ViewSource(view: View) extends IndexesSource {
+case class ViewSource(view: View) extends IndexesSource {
   override def indexes: Int => Int = view.positions
   override def isIdentity: Boolean = view.isIdentity
 }
 
-sealed case class IdentitySource() extends IndexesSource {
+case class IdentitySource() extends IndexesSource {
   override def indexes: Int => Int = Predef.identity[Int]
   override def isIdentity: Boolean = true
 }

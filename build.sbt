@@ -1,48 +1,62 @@
 name := "scanet3"
-version := "0.1"
-scalaVersion := "2.12.14"
+version := "0.1.0-SNAPSHOT"
+
+scalaVersion := "2.13.10"
+crossScalaVersions := Seq("2.12.17", "2.13.10")
 
 resolvers ++= Seq("sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
 
 addCommandAlias("testFast", "testOnly -- -l org.scalatest.tags.Slow")
 
-addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
-// scalacOptions += "-Ymacro-annotations" // NOTE: uncomment with scala 2.13 again
-
 libraryDependencies ++= Seq(
-  "org.scala-lang" % "scala-reflect" % "2.12.14", // NOTE: remove with scala 2.13
-  "org.typelevel" %% "simulacrum" % "1.0.0",
+  "org.typelevel" %% "simulacrum" % "1.0.1",
   "org.tensorflow" % "tensorflow-core-platform" % "0.5.0-SNAPSHOT",
-  "com.google.guava" % "guava" % "29.0-jre", // NOTE: needed for crc32c only, need to reimplement and remove the dependency
-  "org.apache.spark" %% "spark-core" % "3.1.2",
-  "org.apache.spark" %% "spark-sql" % "3.1.2",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-  "ch.qos.logback" % "logback-classic" % "1.2.10",
-  "org.scalacheck" %% "scalacheck" % "1.15.4" % "test",
-  "org.scalatest" %% "scalatest" % "3.2.9" % "test"
-)
+  // NOTE: needed for crc32c only, need to reimplement and remove the dependency
+  "com.google.guava" % "guava" % "29.0-jre",
+  "org.apache.spark" %% "spark-sql" % "3.3.1",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+  "ch.qos.logback" % "logback-classic" % "1.4.5",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
+  "org.scalacheck" %% "scalacheck" % "1.17.0" % Test,
+  "org.scalatest" %% "scalatest" % "3.2.14" % Test)
+
+libraryDependencies ++= {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, n)) if n >= 13 =>
+      Nil
+    case _ =>
+      Seq(
+        "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
+        compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
+  }
+}
 
 // temp workaround built locally for macosx-arm64, until the official one is published
 Compile / unmanagedJars += file("tensorflow-core-api-0.5.0-SNAPSHOT-macosx-arm64.jar")
 
 updateOptions := updateOptions.value.withLatestSnapshots(false)
 
-scalacOptions ++= Seq(
+Compile / scalacOptions ++= Seq(
   "-Xlint",
   "-deprecation",
-  "-Ypartial-unification",
-  "-Ywarn-unused:params,-implicits",
+  "-Ywarn-unused:explicits",
+  "-Wconf:cat=unused-nowarn:s",
   "-feature",
   "-language:implicitConversions",
   "-language:higherKinds",
-  "-language:existentials"
-)
+  "-language:existentials")
+
+Compile / scalacOptions ++= {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, n)) if n >= 13 => Seq("-Ymacro-annotations")
+    case _                       => Seq("-Ypartial-unification")
+  }
+}
 
 Test / parallelExecution := false
 Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
-  Tests.Argument(TestFrameworks.ScalaTest, "-oF")
-)
+  Tests.Argument(TestFrameworks.ScalaTest, "-oF"))
 
 Test / fork := true
 javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")

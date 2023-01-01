@@ -21,4 +21,4 @@ jobs:
         distribution: 'temurin'
         cache: 'sbt'
     - name: Run tests
-      run: sbt -v "testFast"
+      run: sbt -v "+ testOnly -- -l org.scalatest.tags.Slow"

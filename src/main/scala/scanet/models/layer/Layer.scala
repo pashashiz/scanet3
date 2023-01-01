@@ -2,6 +2,8 @@ package scanet.models.layer
 
 import scanet.models.Model
 
+import scala.annotation.nowarn
+
 trait Layer extends Model {
 
   def weightsCount: Int = 1
@@ -20,6 +22,6 @@ trait Layer extends Model {
 
   def andThen(right: Layer): Composed = Composed(this, right)
 
-  def ?>>(cond: Boolean, right: => Layer): Layer =
+  @nowarn def ?>>(cond: Boolean, right: => Layer): Layer =
     if (cond) this >> right else this
 }

@@ -3,6 +3,8 @@ package scanet.optimizers
 import scanet.core.Numeric
 import simulacrum.typeclass
 
+import scala.annotation.nowarn
+
 case class Condition[A](f: A => Boolean) extends (A => Boolean) {
   override def apply(value: A): Boolean = f(value)
 }
@@ -40,7 +42,7 @@ object Condition {
   object syntax extends AllSyntax
 }
 
-@typeclass trait CanBuildConditionFrom[A] {
+@nowarn @typeclass trait CanBuildConditionFrom[A] {
   def iterations[R: Numeric](a: A): Condition[StepContext[R]]
   def epochs[R: Numeric](a: A): Condition[StepContext[R]]
 }
