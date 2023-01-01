@@ -1,7 +1,7 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.{Expr, Tensor}
+import scanet.core.Tensor
 import scanet.models.Activation._
 import scanet.models.Loss.MeanSquaredError
 import scanet.models.Regularization.L2
