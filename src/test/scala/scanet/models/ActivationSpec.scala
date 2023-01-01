@@ -23,10 +23,10 @@ class ActivationSpec extends AnyWordSpec with CustomMatchers {
         Array(2.1f, 2.2f, 0.1f, 3.2f, 1.1f)
       )
       val expected = Tensor.matrix(
-        Array(0.020190466f, 0.9025377f, 0.049660537f, 0.011080763f, 0.016530557f),
-        Array(0.17817205f, 0.19691059f, 0.024112968f, 0.53525853f, 0.06554584f)
+        Array(0.02019f, 0.90254f, 0.04966f, 0.01108f, 0.01653f),
+        Array(0.17817f, 0.19691f, 0.02411f, 0.53526f, 0.06555f)
       )
-      Softmax.build(inputs.const).eval should be(expected)
+      Softmax.build(inputs.const).roundAt(5).eval should be(expected)
     }
   }
 

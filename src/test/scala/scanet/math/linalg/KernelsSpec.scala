@@ -48,23 +48,23 @@ class KernelsSpec extends AnyWordSpec with Matchers {
     val matrix = Tensor.matrix(Array(3f, 0f), Array(1f, 2f)).const
 
     "compute eigen values" in {
-      matrix.round.eigenValues.roundAt(2).eval shouldBe Tensor.vector(2f, 3f)
+      matrix.round.eigenValues.roundAt(2).eval shouldBe Tensor.vector(3f, 2f)
     }
 
     "compute eigen vectors" in {
       matrix.eigenVectors.roundAt(2).eval shouldBe
       Tensor.matrix(
-        Array(-0.0f, 0.71f),
-        Array(1.0f, 0.71f))
+        Array(0.71f, 0.0f),
+        Array(0.71f, 1.0f))
     }
 
     "compute both eigen values and vectors" in {
       val (values, vectors) = matrix.round.eigen
-      values.roundAt(2).eval shouldBe Tensor.vector(2f, 3f)
+      values.roundAt(2).eval shouldBe Tensor.vector(3f, 2f)
       vectors.roundAt(2).eval shouldBe
       Tensor.matrix(
-        Array(-0.0f, 0.71f),
-        Array(1.0f, 0.71f))
+        Array(0.71f, 0.0f),
+        Array(0.71f, 1.0f))
     }
   }
 }

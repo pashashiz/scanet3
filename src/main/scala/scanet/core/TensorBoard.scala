@@ -20,10 +20,10 @@ case class TensorBoard(dir: String = "") {
     val graph = Session.withing(_.toGraph(ops.toList))
     val event =
       Event.newBuilder().setGraphDef(ByteString.copyFrom(graph.toGraphDef.toByteArray)).build()
-    writeEvents(event)
+    writeEvents(Seq(event))
   }
 
-  def addScalar[A](tag: String, value: A, step: Int)(
+  def addScalar[A](tag: String, value: A, step: Int, path: Option[String] = None)(
       implicit c: Convertible[A, Float]): TensorBoard = {
     val summary = Summary
       .newBuilder()
@@ -34,10 +34,10 @@ case class TensorBoard(dir: String = "") {
       .setWallTime(currentTimeMillis() / 1000)
       .setStep(step)
       .build()
-    writeEvents(event)
+    writeEvents(Seq(event), path)
   }
 
-  def addImage(tag: String, value: Tensor[Float], channel: Channel): TensorBoard = {
+  def addImage(tag: String, value: Tensor[Float], channel: Channel, path: Option[String] = None): TensorBoard = {
     val dims = value.shape.dims
     val image = Summary.Image
       .newBuilder()
@@ -51,16 +51,18 @@ case class TensorBoard(dir: String = "") {
       .addValue(Summary.Value.newBuilder().setTag(tag).setImage(image).build())
       .build()
     val event = Event.newBuilder().setSummary(summary).build()
-    writeEvents(event)
+    writeEvents(Seq(event), path)
   }
 
-  def writeEvents(events: Event*): TensorBoard = {
+  def writeEvents(events: Iterable[Event], subpath: Option[String] = None): TensorBoard = {
     val version = Event.newBuilder().setFileVersion("brain.Event:2").build()
     val computerName = InetAddress.getLocalHost.getHostName
     val file = s"events.out.tfevents.${Instant.now().toEpochMilli}.$computerName"
+    val root = Paths.get(dir)
+    val path = subpath.map(sb => root.resolve(sb)).getOrElse(root)
     TfRecords
       .of(List(version) ++ events)
-      .writeTo(Files.newOutputStream(Paths.get(dir).resolve(file)))
+      .writeTo(Files.newOutputStream(path.resolve(file)))
     this
   }
 }

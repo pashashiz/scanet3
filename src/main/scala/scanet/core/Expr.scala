@@ -85,7 +85,7 @@ case class DefaultCompiler[A](index: Option[Int], stages: Seq[Stage]) extends Co
     // operations in native graph have to have unique names,
     // so we just add an incremental index if there are any duplicates
     val uniqueLabel = Label(expr.label, sessionAfterControls.maxLabelIndex(expr.label) + 1)
-    val builder = sessionAfterControls.scope.env.opBuilder(expr.name, uniqueLabel.toString)
+    val builder = sessionAfterControls.scope.env.opBuilder(expr.name, uniqueLabel.toString, sessionAfterControls.scope)
     val ctx = Ctx(inputs, controls)
     val transformed =
       stages.foldLeft(builder)((builder, stage) => stage(ctx, builder))

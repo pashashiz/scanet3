@@ -2,7 +2,7 @@ package scanet.core
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
-import org.tensorflow.op.{Scope => NativeScope}
+import org.tensorflow.op.{OpScope, Scope => NativeScope}
 import org.tensorflow.{Graph, RawTensor, Output => NativeOutput, Session => NativeSession}
 
 import scala.language.existentials
@@ -53,7 +53,7 @@ class Session extends AutoCloseable {
 
   val nGraph = new Graph()
   val nSession = new NativeSession(nGraph)
-  var state = SessionState(new NativeScope(nGraph), Map.empty)
+  var state = SessionState(new OpScope(nGraph), Map.empty)
 
   def runner: Runner = Runner(this)
 
@@ -82,7 +82,7 @@ class Session extends AutoCloseable {
       }
     })
     val fetched = nativeOutputs.foldLeft(fed)((runner, output) => runner.fetch(output))
-    fetched.run().asScala.map(_.asRawTensor()).toList
+    fetched.run().asScala.map(_.getValue.asRawTensor()).toList
   }
 
   override def close(): Unit = nSession.close()

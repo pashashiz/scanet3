@@ -46,6 +46,7 @@ accuracy(trained, testDs) should be >= 0.95f
 
 Here, `loss` and `accuracy` will be logged and added to `TensorBoard` as live trends. To run tensorboard execute:
 ```sh
+pip install tensorboard
 tensorboard --logdir board
 ```
 
@@ -63,9 +64,8 @@ val trained = trainingDs
   .loss(CategoricalCrossentropy)
   .using(Adam(0.001f))
   .batch(100)
-  .initWith(shape => Tensor.rand(shape, range = Some(-0.1f, 0.1f)))
-  .each(1.epochs, RecordLoss())
-  .each(1.epochs, RecordAccuracy(testDs))
+  .each(1.epochs, RecordLoss(tensorboard = true))
+  .each(1.epochs, RecordAccuracy(testDs, tensorboard = true))
   .stopAfter(3.epochs)
   .run()
 accuracy(trained, testDs) should be >= 0.98f
@@ -161,10 +161,7 @@ accuracy(trained, testDs) should be >= 0.98f
 - [ ] Add graph library so we could plot some charts and publish them in `tensorboard` or `notebook` (maybe fork and upgrade `vegas` to scala `2.12` ot try `evil-plot`)
 
 ### Refactoring
-- [x] Refactor type class hierarchy so `TensorType` was on top and `Numeric` and the rest would extend it.
-- [ ] Refactor tensor functions so the materialized type of args was only infered during compilation
-      Also we would need to try simplifying tensor functions and add methods so we could compose functions (`compose`, `endThen`, etc)
-- [ ] Add DSL to build tensor requirements like `tensor require rank(4)`, `tensor require shape squratedMatrix`
+- Add DSL to build tensor requirements like `tensor require rank(4)`, `tensor require shape squratedMatrix`
 
 If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 
  

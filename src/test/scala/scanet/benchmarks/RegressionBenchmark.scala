@@ -23,8 +23,9 @@ trait RegressionBehaviours {
         .loss(MeanSquaredError)
         .using(SGD())
         .batch(1000)
-        .each(1.epochs, RecordLoss(tensorboard = true, dir = s"board/$alg"))
+        .each(1.epochs, RecordLoss(tensorboard = true))
         .stopAfter(10.epochs)
+        .board(s"board/$alg")
         .run()
       val loss = trained.loss.compile
       val (x, y) = TensorIterator(ds.collect.iterator, (Shape(53), Shape(1)), 1000).next()

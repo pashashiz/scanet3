@@ -63,10 +63,11 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
   it should "calculate result" in {
     val result = LogisticRegression().result[Float].compile
     val x = Tensor.matrix(Array(0.34f, 0.78f), Array(0.6f, 0.86f))
-    val y = Tensor.matrix(Array(0.59916806f), Array(0.6172755f))
+    val y = Tensor.matrix(Array(0.599168f), Array(0.617276f))
     val weights = Tensor.matrix(Array(0.2f, 0.3f))
     val bias = Tensor.vector(0.1f)
-    result(x, Seq(weights, bias)) should be(y)
+    val predicted = result(x, Seq(weights, bias))
+    predicted.const.roundAt(6).eval should be(y)
   }
 
   it should "calculate gradient " in {
@@ -75,9 +76,11 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.matrix(Array(0.2f, 0.3f))
     val bias = Tensor.vector(0.1f)
-    grad(x, y, Seq(weights, bias)) should be(Seq(
-      Tensor.matrix(Array(0.0753012f, 0.13678399f)),
-      Tensor.vector(0.16822174f)))
+    val result = grad(x, y, Seq(weights, bias))
+      .map(_.const.roundAt(6).eval)
+    result should be(Seq(
+      Tensor.matrix(Array(0.075301f, 0.136784f)),
+      Tensor.vector(0.168222f)))
   }
 
   it should "produce unique toString to be used as a cache key" in {

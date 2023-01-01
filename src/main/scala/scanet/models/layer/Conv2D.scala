@@ -65,7 +65,7 @@ object Conv2D {
   }
 }
 
-// todo: initializers, regularizers, constraints, dilation_rate
+// todo: regularizers, dilation_rate, constraints
 case class Conv2D private (
     filters: Int,
     kernel: (Int, Int),
