@@ -2,7 +2,7 @@ package scanet.math
 
 import simulacrum.typeclass
 
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 import scala.reflect.ClassTag
 
 class Random[A: Dist](val gen: Generator, range: Option[(A, A)]) {
@@ -62,7 +62,7 @@ object Generator {
   }
 }
 
-@typeclass trait Dist[A] {
+@nowarn @typeclass trait Dist[A] {
   def generate(from: Generator, range: Option[(A, A)]): (Generator, A)
 }
 

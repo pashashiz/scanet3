@@ -18,7 +18,7 @@ trait Initializer {
       case Nil              => (1, 1)
       case out :: Nil       => (out, out)
       case in :: out :: Nil => (in, out)
-      case receptive :+ in :+ out =>
+      case out :: in :: receptive =>
         val size = receptive.product
         (size * in, size * out)
     }

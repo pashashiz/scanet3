@@ -28,7 +28,7 @@ trait RegressionBehaviours {
         .board(s"board/$alg")
         .run()
       val loss = trained.loss.compile
-      val (x, y) = TensorIterator(ds.collect.iterator, (Shape(53), Shape(1)), 1000).next()
+      val (x, y) = TensorIterator(ds.collect().iterator, (Shape(53), Shape(1)), 1000).next()
       loss(x, y).toScalar should be <= 1f
     }
   }

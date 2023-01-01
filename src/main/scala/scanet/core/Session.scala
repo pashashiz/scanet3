@@ -5,9 +5,8 @@ import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
 import org.tensorflow.op.{OpScope, Scope => NativeScope}
 import org.tensorflow.{Graph, RawTensor, Output => NativeOutput, Session => NativeSession}
 
-import scala.language.existentials
 import scala.util.Try
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable.Seq
 
 case class Runner(session: Session, feed: Map[Expr[_], Tensor[_]] = Map()) {

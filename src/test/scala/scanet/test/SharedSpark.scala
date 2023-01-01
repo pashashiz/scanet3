@@ -17,9 +17,9 @@ trait SharedSpark extends BeforeAndAfterAll {
   implicit protected def reuseContextIfPossible: Boolean = false
 
   def appID: String = (this.getClass.getName
-    + math.floor(math.random * 10e4).toLong.toString)
+    + math.floor(math.random() * 10e4).toLong.toString)
 
-  def conf = {
+  def conf: SparkConf = {
     new SparkConf()
       .setMaster("local[*]")
       .setAppName("test")
@@ -32,12 +32,12 @@ trait SharedSpark extends BeforeAndAfterAll {
       .set("spark.kryo.registrator", "scanet.optimizers.KryoSerializers")
   }
 
-  override def beforeAll() {
+  override def beforeAll(): Unit = {
     _spark = SparkSession.builder().config(conf).getOrCreate()
     super.beforeAll()
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     try {
       if (!reuseContextIfPossible) {
         stop(_spark)
@@ -48,7 +48,7 @@ trait SharedSpark extends BeforeAndAfterAll {
     }
   }
 
-  def stop(sc: SparkSession) {
+  def stop(sc: SparkSession): Unit = {
     Option(sc).foreach { ctx => ctx.stop() }
     System.clearProperty("spark.driver.port")
   }

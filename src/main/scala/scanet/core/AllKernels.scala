@@ -395,7 +395,8 @@ object kernels extends AllKernels {
     def reshape(dim1: Int): Expr[A] = reshape(Shape(dim1))
     def reshape(dim1: Int, dim2: Int): Expr[A] = reshape(Shape(dim1, dim2))
     def reshape(dim1: Int, dim2: Int, dim3: Int): Expr[A] = reshape(Shape(dim1, dim2, dim3))
-    def reshape(dim1: Int, dim2: Int, dim3: Int, dim4: Int): Expr[A] = reshape(Shape(dim1, dim2, dim3, dim4))
+    def reshape(dim1: Int, dim2: Int, dim3: Int, dim4: Int): Expr[A] =
+      reshape(Shape(dim1, dim2, dim3, dim4))
 
     /** Removes dimensions of size 1 from the shape of a tensor.
       *
@@ -410,24 +411,16 @@ object kernels extends AllKernels {
 
     def zip(second: Expr[A]): Expr[A] = f.zip(expr, second)
 
-    def unzip: (Expr[A], Expr[A]) = {
-      require(expr.shape.rank > 0, "cannot unzip a scalar")
-      require(
-        expr.shape.head == 2,
-        s"first dimension should be equal to 2 but was ${expr.shape.head}")
-      unzipN match {
-        case Seq(first, second) => (first, second)
-      }
+    def unzip: (Expr[A], Expr[A]) = unzipN match {
+      case Seq(first, second) => (first, second)
+      case other => throw new IllegalArgumentException(
+          s"first dimension should be equal to 2 but was ${other.size}")
     }
 
-    def unzip3: (Expr[A], Expr[A], Expr[A]) = {
-      require(expr.shape.rank > 0, "cannot unzip a scalar")
-      require(
-        expr.shape.head == 3,
-        s"first dimension should be equal to 3 but was ${expr.shape.head}")
-      unzipN match {
-        case Seq(first, second, third) => (first, second, third)
-      }
+    def unzip3: (Expr[A], Expr[A], Expr[A]) = unzipN match {
+      case Seq(first, second, third) => (first, second, third)
+      case other => throw new IllegalArgumentException(
+          s"first dimension should be equal to 3 but was ${other.size}")
     }
 
     def unzipN: Seq[Expr[A]] = {

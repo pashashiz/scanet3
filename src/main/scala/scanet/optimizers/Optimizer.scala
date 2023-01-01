@@ -9,7 +9,7 @@ import scanet.optimizers.Condition.always
 import scanet.optimizers.Optimizer.BuilderState._
 import scanet.optimizers.Optimizer.{sessionsPool, tfCache}
 
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 import scala.collection._
 import scala.collection.immutable.Seq
 
@@ -140,9 +140,9 @@ case class Optimizer[A: Floating](
         val func =
           (x: Expr[A], y: Expr[A], ws: Seq[Expr[A]], metas: Seq[Expr[A]], iter: Expr[Int]) => {
             val gs = lossModel.grad[A].apply(x, y, ws)
-            (ws, gs, metas).zipped.foldLeft((newOutputSeq, newOutputSeq))((acc, next) => {
+            ws.zip(gs).zip(metas).foldLeft((newOutputSeq, newOutputSeq))((acc, next) => {
               val (gAcc, metaAcc) = acc
-              val (w, g, meta) = next
+              val ((w, g), meta) = next
               val Delta(del, metaNext) = alg.delta[A](g, meta, iter)
               val d = del.cast[A]
               val gNext = if (minimizing) w - d else w + d
@@ -238,7 +238,7 @@ object Optimizer {
       copy(optimizer = optimizer.copy(doOnEach = optimizer.doOnEach :+ effect.conditional(when)))
     }
 
-    def build(implicit ev: State =:= Complete): Optimizer[A] = optimizer
+    @nowarn def build(implicit ev: State =:= Complete): Optimizer[A] = optimizer
 
     def run()(implicit ev: State =:= Complete): TrainedModel[A] = build.run()
   }

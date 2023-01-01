@@ -1,6 +1,7 @@
 package scanet.optimizers
 
 import scanet.core.{Monoid, Shape, Tensor, TensorType}
+import scala.collection.BufferedIterator
 
 // low-level mutable implementation
 // NOTE: maybe rewrite to have generic N slices...
