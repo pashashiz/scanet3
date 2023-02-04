@@ -9,13 +9,10 @@ import org.tensorflow.types.family.TType
 import scala.collection.immutable.Seq
 import org.tensorflow.{Operation, OperationBuilder}
 
-trait RootExpr[A]
-
 trait Expr[A] {
   def name: String
   def label: String = name
   def as(label: String): Expr[A] = Labeled(this, label)
-  // todo: generate a unique identifier of a tensor, use it in cache
   def id: Option[String] = None
   def tpe: Option[TensorType[A]]
   def shape: Shape
@@ -55,7 +52,10 @@ trait Expr[A] {
     case Some(value) => s"($value)"
     case None        => if (inputs.nonEmpty) inputs.mkString("(", ", ", ")") else ""
   }
-  final override def toString: String = {
+  // revisit: that is important to cache the string, cause that is used as a key
+  // as a tmp workaround lazy val is used, cause toString might refer to
+  // not yet initialized variables
+  final override lazy val toString: String = {
     val fullName = if (label == name) s"$name" else s"$label:$name"
     val deps = if (controls.nonEmpty) s".depends(${controls.mkString(", ")})" else ""
     val tpeOrEmpty = tpe.map(t => s"[${t.show}]").getOrElse("")
@@ -226,7 +226,7 @@ case class Labeled[A](expr: Expr[A], override val label: String) extends Expr[A]
 }
 
 case class Const[A: TensorType](tensor: Tensor[A]) extends Expr[A] {
-  override val tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def name: String = "Const"
   override def shape: Shape = tensor.shape
   override def id: Option[String] = {

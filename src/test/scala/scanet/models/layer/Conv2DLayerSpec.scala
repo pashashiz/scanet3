@@ -38,7 +38,7 @@ class Conv2DLayerSpec extends AnyWordSpec with CustomMatchers {
 
     "have string repr" in {
       val model = Conv2D(filters = 1, kernel = (2, 2)).toString
-      model shouldBe "Conv2D(1,(2,2),(1,1),Valid,NHWC,GlorotUniform(None))"
+      model shouldBe "Conv2D(1,(2,2),(1,1),Valid,NHWC,GlorotUniform)"
     }
   }
 }

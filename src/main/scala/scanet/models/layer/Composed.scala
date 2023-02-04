@@ -4,7 +4,6 @@ import scanet.core.{Expr, Floating, Shape}
 import scanet.math.syntax._
 import scanet.models.LayerInfo
 
-import scala.collection.immutable
 import scala.collection.immutable.Seq
 
 /** Layer which composes 2 other layers
@@ -14,22 +13,25 @@ import scala.collection.immutable.Seq
   */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
-  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]) = {
-    val (leftWeights, rightWeights) = split(weights)
-    val leftOutput = left.build(x, leftWeights)
-    right.build(leftOutput, rightWeights)
+  override def buildStateful[E: Floating](
+      input: Expr[E],
+      weights: Seq[Expr[E]],
+      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
+    val (leftWeights, rightWeights) = weights.splitAt(left.weightsShapes(input.shape).size)
+    val (leftState, rightState) = state.splitAt(left.stateShapes(input.shape).size)
+    val (leftOutput, leftNewState) = left.buildStateful(input, leftWeights, leftState)
+    val (rightOutput, rightNewState) = right.buildStateful(leftOutput, rightWeights, rightState)
+    (rightOutput, leftNewState ++ rightNewState)
   }
 
-  override def penalty[E: Floating](weights: Seq[Expr[E]]) = {
-    val (leftWeights, rightWeights) = split(weights)
-    left.penalty(leftWeights) plus right.penalty(rightWeights)
+  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]) = {
+    val (leftWeights, rightWeights) = weights.splitAt(left.weightsShapes(input).size)
+    left.penalty(input, leftWeights) plus right.penalty(left.outputShape(input), rightWeights)
   }
 
   override def outputShape(input: Shape): Shape = right.outputShape(left.outputShape(input))
 
-  override def weightsCount: Int = left.weightsCount + right.weightsCount
-
-  override def weightsShapes(input: Shape): immutable.Seq[Shape] = {
+  override def weightsShapes(input: Shape): Seq[Shape] = {
     val leftShapes = left.weightsShapes(input)
     val rightShapes = right.weightsShapes(left.outputShape(input))
     leftShapes ++ rightShapes
@@ -41,8 +43,11 @@ case class Composed(left: Layer, right: Layer) extends Layer {
     leftShapes ++ rightShapes
   }
 
-  private def split[E: Floating](weights: Seq[Expr[E]]) =
-    weights.splitAt(left.weightsCount)
+  override def stateShapes(input: Shape): Seq[Shape] = {
+    val leftShapes = left.stateShapes(input)
+    val rightShapes = right.stateShapes(left.outputShape(input))
+    leftShapes ++ rightShapes
+  }
 
   override def info(input: Shape): Seq[LayerInfo] = {
     val rightInput = left.outputShape(input)
@@ -50,4 +55,5 @@ case class Composed(left: Layer, right: Layer) extends Layer {
   }
 
   override def toString: String = s"$left >> $right"
+
 }

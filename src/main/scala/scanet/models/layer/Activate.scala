@@ -10,13 +10,13 @@ import scala.collection.immutable.Seq
   *
   * @param activation activation function
   */
-case class Activate(activation: Activation) extends StatelessLayer {
+case class Activate(activation: Activation) extends WeightlessLayer {
 
   override def name: String = activation.toString
 
-  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
+  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.isEmpty, "Activate layer does not require weights")
-    activation.build(x)
+    activation.build(input)
   }
 
   override def outputShape(input: Shape): Shape = input

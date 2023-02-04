@@ -43,12 +43,14 @@ object Initializer {
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =
       rand[E](shape, Dist.Uniform, seed, scale = Some(max - min), shift = Some(min))
+    override def toString: String = s"RandomUniform(min=$min,max=$max)"
   }
 
   case class RandomNormal(mean: Float = 0.0f, std: Float = 0.05f, seed: Option[Long] = None)
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =
       rand[E](shape, Dist.Normal, seed, scale = Some(std), shift = Some(mean))
+    override def toString: String = s"RandomNormal(mean=$mean,std=$std)"
   }
 
   case class RandomNormalTruncated(
@@ -58,6 +60,7 @@ object Initializer {
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =
       rand[E](shape, Dist.NormalTruncated, seed, scale = Some(std), shift = Some(mean))
+    override def toString: String = s"RandomNormalTruncated(mean=$mean,std=$std)"
   }
 
   /** The Glorot uniform initializer, also called Xavier uniform initializer.
@@ -77,6 +80,7 @@ object Initializer {
       val limit = math.sqrt(6f / (fanIn + fanOut)).toFloat
       rand[E](shape, Dist.Uniform, seed, scale = Some(2 * limit), shift = Some(-limit))
     }
+    override def toString: String = "GlorotUniform"
   }
 
   /** The Glorot normal initializer, also called Xavier normal initializer.
@@ -96,6 +100,7 @@ object Initializer {
       val std = math.sqrt(2f / (fanIn + fanOut)).toFloat / TruncCoef
       rand[E](shape, Dist.NormalTruncated, seed, scale = Some(std))
     }
+    override def toString: String = "GlorotNormal"
   }
 
   /** He uniform variance scaling initializer.
@@ -114,6 +119,7 @@ object Initializer {
       val limit = math.sqrt(6f / fanIn).toFloat
       rand[E](shape, Dist.Uniform, seed, scale = Some(2 * limit), shift = Some(-limit))
     }
+    override def toString: String = "HeUniform"
   }
 
   /** He normal initializer.
@@ -132,6 +138,7 @@ object Initializer {
       val std = math.sqrt(2f / fanIn).toFloat / TruncCoef
       rand[E](shape, Dist.NormalTruncated, seed, scale = Some(std))
     }
+    override def toString: String = "HeNormal"
   }
 
   /** Lecun uniform initializer.
@@ -150,6 +157,7 @@ object Initializer {
       val limit = math.sqrt(3f / fanIn).toFloat
       rand[E](shape, Dist.Uniform, seed, scale = Some(2 * limit), shift = Some(-limit))
     }
+    override def toString: String = "LecunUniform"
   }
 
   /** Lecun normal initializer.
@@ -168,5 +176,6 @@ object Initializer {
       val std = math.sqrt(1f / fanIn).toFloat / TruncCoef
       rand[E](shape, Dist.NormalTruncated, seed, scale = Some(std))
     }
+    override def toString: String = "LecunNormal"
   }
 }

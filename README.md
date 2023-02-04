@@ -71,6 +71,24 @@ val trained = trainingDs
 accuracy(trained, testDs) should be >= 0.98f
 ```
  
+### RNN
+
+Simple RNN (Recurrent Neural Network) to forecast sunspots 
+```scala
+val Array(train, test) = monthlySunspots(12).randomSplit(Array(0.8, 0.2), 1)
+val model = RNN(SimpleRNNCell(units = 3)) >> Dense(1, Tanh)
+val trained = train
+  .train(model)
+  .loss(MeanSquaredError)
+  .using(Adam())
+  .batch(10)~~~~
+  .each(1.epochs, RecordLoss(tensorboard = true))
+  .stopAfter(100.epochs)
+  .run()
+RMSE(trained, test) should be < 0.1f
+R2Score(trained, test) should be > 0.8f
+```
+
 ## Road Map
 
 ### Tensor Flow Low Level API
@@ -102,7 +120,7 @@ accuracy(trained, testDs) should be >= 0.98f
 ### Statistics
 - [x] Variance/STD
 - [ ] Covariance/Correlation Matrix
-- [ ] Lots of other useful algs to analize the data set
+- [ ] Lots of other useful algs to analyze the data set
 
 ### Models
 - [x] Linear Regression
@@ -110,10 +128,18 @@ accuracy(trained, testDs) should be >= 0.98f
 - [x] Binary Logistic Regression
 - [x] ANN (Multilayer Perceptron NN)
 - [x] kernel regularization
-- [ ] Layers Dropout, Batch Normalization
+- [ ] Layers Dropout (provide random generator to layers)
+- [ ] Batch Normalization
 - [x] Convolutional NN
 - [ ] Recurrent NN
 - [ ] others
+
+# Localization & Object Detection & Instance Segmentation
+- [ ] CNN with Localization
+- [ ] Region Proposals (Selective Search, EdgeBoxes, etc..)
+- [ ] R-CNN
+- [ ] Fast R-CNN
+- [ ] Faster R-CNN
 
 ### Activation functions
 - [x] Sigmoid
@@ -131,9 +157,15 @@ accuracy(trained, testDs) should be >= 0.98f
 - [x] Categorical Crossentropy
 
 ### Benchmark Datasets
+- [ ] Boston Housing price regression dataset
 - [x] MNIST
+- [ ] Fashion MNIST 
+- [ ] CIFAR-10
+- [ ] CIFAR-100
+- [ ] ILSVRC (ImageNet-1000)
 
 ### Preprocessing
+- [ ] SVD/PCA/Whitening
 - [ ] Feature scalers
 - [ ] Feature embedding
 - [ ] Hashed features
@@ -145,7 +177,17 @@ accuracy(trained, testDs) should be >= 0.98f
 - [ ] confusion matrix, precision, recall, f1 score
 - [ ] runtime estimating and new stop condition based on that
 
-### CPU & GPU & TPU banchmarks
+### Benchmarks
+- [ ] LeNet 
+- [ ] AlexNet
+- [ ] ZF Net
+- [ ] ZF Net
+- [ ] VGGNet
+- [ ] GoogLeNet
+- [ ] ResNet
+- [ ] ...
+
+### CPU vs GPU vs TPU 
 - [ ] Create computation intensive operation, like `matmul` multiple times large tensors
       and compare with Scala `breeze`, python `tensorflow`, python `numpy`
 - [ ] Compare with existing implementations using local CPU
@@ -161,6 +203,16 @@ accuracy(trained, testDs) should be >= 0.98f
 - [ ] Add graph library so we could plot some charts and publish them in `tensorboard` or `notebook` (maybe fork and upgrade `vegas` to scala `2.12` ot try `evil-plot`)
 
 ### Refactoring
+- Redefine the way we train model on a dataset and make a prediction. 
+  We should cover 2 cases: BigData with `spark` which can train and predict on large datasets and single (batch) prediction without `spark` dependency (to be able to expose model via API or use in realtime).
+  For that we need to:
+  + separate project into `core` + `spark` modules.
+  + implement model weights export/import
+  + implement feature preprocessing, for training use case try using `MLib`, 
+    yet we need to figure out how to transform features via regular function without `spark` involved
+  + integrating with `MLib` might require redefining the `Dataset[Record[A]]` we have right now
+    probably better to use any abstract dataset which contains 2 required columns `features` + `labels`
+    for training and `features` for prediction.
 - Add DSL to build tensor requirements like `tensor require rank(4)`, `tensor require shape squratedMatrix`
 
 If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 

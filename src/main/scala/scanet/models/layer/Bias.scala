@@ -19,14 +19,14 @@ import scala.collection.immutable.Seq
   * @param initializer kernel initializer
   */
 case class Bias(features: Int, reg: Regularization = Zero, initializer: Initializer = Zeros)
-    extends Layer {
+    extends StatelessLayer {
 
-  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
+  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.size == 1, "Bias layer can have only one set of weights")
-    x + weights.head
+    input + weights.head
   }
 
-  override def penalty[E: Floating](weights: Seq[Expr[E]]): Expr[E] = reg.build(weights.head)
+  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] = reg.build(weights.head)
 
   override def weightsShapes(input: Shape): Seq[Shape] = Seq(Shape(features))
 

@@ -31,12 +31,12 @@ case class Pool2D(
     padding: Padding = Valid,
     format: ConvFormat = NHWC,
     reduce: Reduce = Reduce.Max)
-    extends StatelessLayer {
+    extends WeightlessLayer {
 
-  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
+  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.isEmpty, "Pool2D layer does not require weights")
     pool2D[E](
-      input = x,
+      input = input,
       window = Seq(window._1, window._2),
       strides = Seq(strides._1, strides._2),
       padding = padding,
@@ -45,18 +45,15 @@ case class Pool2D(
 
   override def outputShape(input: Shape): Shape = {
     require(
-      input.rank == 3,
-      s"Pool2D input should have a shape (in_height, in_width, in_channels) but was $input")
+      input.rank == 4,
+      s"Pool2D input should have a shape (NHWC) or (NCHW) but was $input")
     val expr = pool2D[Float](
-      // we add batch dimension to a head
-      // (in_height, in_width, in_channels) >>> 1 -> (1, in_height, in_width, in_channels)
-      input = zeros[Float](input >>> 1),
-      // since there is no batch in input we << 1
+      input = zeros[Float](input),
       window = Seq(window._1, window._2),
       strides = Seq(strides._1, strides._2),
       padding = padding,
       format = format,
       reduce = reduce)
-    expr.shape << 1
+    expr.shape
   }
 }

@@ -13,7 +13,7 @@ import scala.annotation.{nowarn, tailrec}
 import scala.collection._
 import scala.collection.immutable.Seq
 
-case class Step[A: Numeric](epoch: Int = 0, iter: Int = 0) {
+case class Step[A: Numeric](batch: Int, epoch: Int = 0, iter: Int = 0) {
   def nextIter: Step[A] = incIter(1)
   def incIter(number: Int): Step[A] = copy(iter = iter + number)
   def nextEpoch: Step[A] = copy(epoch = epoch + 1)
@@ -52,7 +52,8 @@ case class Optimizer[A: Floating](
     val ds: Dataset[Record[A]] = dataset.cache()
     val sc = ds.sparkSession.sparkContext
     val board = TensorBoard(boardDir)
-    println(s"Training model:\n${model.describe[A](ds.shapes._1)}")
+    val shapes = ds.shapes
+    println(s"Training model:\n${model.describe[A](batchSize +: shapes._1)}")
 
     @tailrec
     def optimize(
@@ -61,16 +62,16 @@ case class Optimizer[A: Floating](
         meta: Seq[Tensor[A]]): Seq[Tensor[A]] = {
       val weightsBr = sc.broadcast(weights)
       val metaBr = sc.broadcast(meta)
-      val shapes = ds.shapes
       val start = System.currentTimeMillis()
       val result = ds.rdd
-        .mapPartitions(it =>
+        .mapPartitions { it =>
           Iterator(optimizeOnPartition(
             it,
             shapes,
             prevStep.iter,
             weightsBr.value,
-            metaBr.value)))
+            metaBr.value))
+        }
         .treeReduce(averageMetaAndWeights)
       val finish = System.currentTimeMillis()
       val step: Step[A] = prevStep.nextEpoch.incIter(result.iterations)
@@ -86,7 +87,7 @@ case class Optimizer[A: Floating](
         optimize(step, result.weights, result.meta)
       }
     }
-    val weights = optimize(Step(), Seq(), Seq())
+    val weights = optimize(Step(batchSize), Seq(), Seq())
     lossModel.trained(weights)
   }
 
@@ -98,10 +99,11 @@ case class Optimizer[A: Floating](
       meta: Seq[Tensor[A]]): StepResult[A] = {
     val result = sessionsPool.within(session => {
       val batches = TensorIterator(it, shapes, batchSize)
+      val batchedShapes = (batchSize +: shapes._1, batchSize +: shapes._2)
       val (weightsInitialized, metaInitialized) =
         if (globalIter == 0) {
-          val weights = initWeights().getOrElse(model.initWeights[A](shapes._1).eval)
-          val weightShapes = model.weightsShapes(shapes._1)
+          val weights = initWeights().getOrElse(model.initWeights[A](batchedShapes._1).eval)
+          val weightShapes = model.weightsShapes(batchedShapes._1)
           val meta = weightShapes.map(alg.initMeta[A](_))
           (weights, meta)
         } else {

@@ -40,27 +40,27 @@ object Dense {
 }
 
 case class Dense private (outputs: Int, reg: Regularization, initializer: Initializer)
-    extends Layer {
+    extends StatelessLayer {
 
-  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]) = {
+  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]) = {
     require(weights.size == 1, "Dense layer can have only one set of weights")
     // x:(samples, features)
-    // w:(outputs, features)
-    // x * w.t -> (samples, features) * (features, outputs) -> (samples, outputs)
-    x matmul weights.head.transpose
+    // w:(features, outputs)
+    // x * w -> (samples, features) * (features, outputs) -> (samples, outputs)
+    input matmul weights.head
   }
 
-  override def penalty[E: Floating](weights: Seq[Expr[E]]) =
+  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]) =
     reg.build(weights.head)
 
   override def weightsShapes(input: Shape): Seq[Shape] = {
-    require(input.rank == 1, "features should have a shape (features)")
-    Seq(Shape(outputs, input(0)))
+    require(input.rank == 2, "features should have a shape (batch, features)")
+    Seq(Shape(input(1), outputs))
   }
 
   override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
     Seq(initializer.build[E](weightsShapes(input).head))
 
-  override def outputShape(input: Shape): Shape = Shape(outputs)
+  override def outputShape(input: Shape): Shape = Shape(input.head, outputs)
 
 }

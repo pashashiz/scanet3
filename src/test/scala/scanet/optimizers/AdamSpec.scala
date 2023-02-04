@@ -1,7 +1,7 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
+import scanet.core.{Shape, Tensor}
 import scanet.estimators.accuracy
 import scanet.math.syntax._
 import scanet.models.Initializer.Zeros
