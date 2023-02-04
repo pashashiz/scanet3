@@ -6,6 +6,8 @@ import scanet.models.Activation.Identity
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
+import scala.collection.immutable.Seq
+
 class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
 
   "simple RNN cell" should {

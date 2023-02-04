@@ -1,7 +1,5 @@
 package scanet.core
 
-import scanet.core.TensorType._
-
 trait Convertible[A, B] extends Serializable {
   def convert(a: A): B
 }

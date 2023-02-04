@@ -3,7 +3,7 @@ package scanet
 import org.apache.spark.sql.Dataset
 import scanet.core.{Expr, Numeric, Session, Shape}
 
-import scala.math
+import scala.{math => m}
 import scanet.math.syntax._
 import scanet.models.TrainedModel
 import scanet.optimizers.Iterators.Partial
@@ -50,7 +50,7 @@ package object estimators {
       model: TrainedModel[A],
       ds: Dataset[Record[A]],
       batch: Int = 1000): Float =
-    math.sqrt(MSE(model, ds, batch)).toFloat
+    m.sqrt(MSE(model, ds, batch)).toFloat
 
   def MSE[A: Numeric](
       model: TrainedModel[A],
@@ -91,11 +91,11 @@ package object estimators {
         }
         Iterator(result)
       }
-      .reduce((left, right) => {
+      .reduce { (left, right) =>
         val (leftSum, leftSize) = left
         val (rightSUm, rightSize) = right
         (leftSum + rightSUm, leftSize + rightSize)
-      })
+      }
     sum / total
   }
 
@@ -126,10 +126,12 @@ package object estimators {
     val (ssr, sst) = expectedVsPredicted
       .map {
         case (expected, predicted) =>
-          (math.pow(predicted - expected, 2), math.pow(predicted - mean, 2))
+          (m.pow(predicted - expected, 2), m.pow(predicted - mean, 2))
       }
-      .reduce {
-        case ((ssr1, sst1), (ssr2, sst2)) => (ssr1 + ssr2, sst1 + sst2)
+      .reduce { (left, right) =>
+        val (ssr1, sst1) = left
+        val (ssr2, sst2) = right
+        (ssr1 + ssr2, sst1 + sst2)
       }
     (1 - (ssr / sst)).toFloat
   }
