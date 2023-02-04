@@ -81,7 +81,7 @@ val trained = train
   .train(model)
   .loss(MeanSquaredError)
   .using(Adam())
-  .batch(10)~~~~
+  .batch(10)
   .each(1.epochs, RecordLoss(tensorboard = true))
   .stopAfter(100.epochs)
   .run()
