@@ -1,13 +1,15 @@
 package scanet.test
 
 import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{FloatType, StructField, StructType}
 import scanet.core.Shape
+import scanet.core.syntax._
 import scanet.optimizers.Record
 import scanet.optimizers.syntax._
-import scanet.core.syntax._
-
 import scanet.{core, datasets}
+
+case class MinMax(min: Float, max: Float)
 
 trait Datasets {
 
@@ -64,6 +66,33 @@ trait Datasets {
       }
       .withShapes(Shape(53), Shape(1))
       .coalesce(1)
+      .cache()
+  }
+
+  def monthlySunspots(timeSteps: Int): Dataset[Record[Float]] = {
+    import implicits._
+    val ds = spark.read
+      .option("header", "true")
+      .csv(resource("monthly-sunspots.csv"))
+      .select(to_date($"Month").as("date"), $"Sunspots".cast(FloatType).as("sunspots"))
+      .select((year($"date") * lit(12) + month($"date")).as("month"), $"sunspots")
+      .cache()
+    val manMax = ds.select(min($"sunspots").as("min"), max($"sunspots").as("max")).first()
+    val (lowest, highest) = (manMax.getFloat(0), manMax.getFloat(1))
+    val grouped = ds
+      .groupBy(floor($"month" / timeSteps).as("step"))
+      .agg(collect_list((($"sunspots" - lowest) / (highest - lowest)).cast(FloatType))
+        .as("sunspots"))
+    grouped.as("input").join(grouped.as("output"), $"input.step" === $"output.step" - 1)
+      .select(
+        $"input.step".as("step"),
+        $"input.sunspots".as("sunspots"),
+        element_at($"output.sunspots", 1).as("next"))
+      .where(size($"sunspots") === timeSteps)
+      .coalesce(1)
+      .orderBy($"step")
+      .map { row => Record(row.getSeq[Float](1).toArray, Array(row.getFloat(2))) }
+      .withShapes(Shape(timeSteps, 1), Shape(1))
       .cache()
   }
 

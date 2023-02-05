@@ -11,6 +11,7 @@ object Convertible {
   implicit def identityConvertible[A]: Convertible[A, A] = new IdentityConvertible[A] {}
 
   trait Instances {
+
     implicit val fromFloatToFloat: Convertible[Float, Float] = new FromFloatToFloat {}
     implicit val fromFloatToDouble: Convertible[Float, Double] = new FromFloatToDouble {}
     implicit val fromFloatToLong: Convertible[Float, Long] = new FromFloatToLong {}
@@ -40,6 +41,16 @@ object Convertible {
     implicit val fromByteToLong: Convertible[Byte, Long] = new FromByteToLong {}
     implicit val fromByteToInt: Convertible[Byte, Int] = new FromByteToInt {}
     implicit val fromByteToByte: Convertible[Byte, Byte] = new FromByteToByte {}
+
+    // todo: rewrite all
+    implicit def fromNumericToFloat[A: Numeric]: Convertible[A, Float] = {
+      case v: Float  => v
+      case v: Double => v.toFloat
+      case v: Long   => v.toFloat
+      case v: Int    => v.toFloat
+      case v: Byte   => v.toFloat
+      case other     => error(s"Value $other cannot be converted to Float")
+    }
   }
 
   trait AllSyntax extends Instances

@@ -5,6 +5,7 @@ import org.apache.spark.sql.{ColumnName, Dataset, Encoder}
 import scanet.core.{Convertible, Floating, Monoid, Shape, Tensor, TensorType}
 import scanet.math.Dist
 import scanet.models.Model
+import scanet.optimizers.Iterators.{Remaining, Skip}
 import scanet.optimizers.Optimizer.BuilderState
 
 case class Record[A](features: Array[A], labels: Array[A])
@@ -31,19 +32,30 @@ class DatasetMonoidOps[A: Monoid](val ds: Dataset[Record[A]]) {
   def labelsShape: Shape = shapeOf("labels")
   def shapes: (Shape, Shape) = (featuresShape, labelsShape)
 
-  private def asTRecord[B: TensorType](records: Iterator[(Tensor[B], Tensor[B])]): Array[TRecord[B]] =
+  private def asTRecord[B: TensorType](records: Iterator[(Tensor[B], Tensor[B])])
+      : Array[TRecord[B]] =
     records
       .map((TRecord.apply[B] _).tupled)
       .toArray
 
-  def collectTensors(batch: Int = 1, withPadding: Boolean = false): Array[TRecord[A]] =
-    asTRecord(TensorIterator(ds.collect().iterator, shapes, batch, withPadding = withPadding))
+  def mapPartitionsTensors[R: Encoder](
+      batch: Int = 1,
+      remaining: Remaining = Skip)(f: TensorIterator[A] => Iterator[R]): Dataset[R] = {
+    val shapesCaptured = shapes
+    val monoidCaptured = implicitly[Monoid[A]]
+    ds.mapPartitions { it =>
+      f(TensorIterator(it, shapesCaptured, batch, remaining)(monoidCaptured))
+    }
+  }
 
-  def takeTensors(batch: Int = 1, limit: Int, withPadding: Boolean = false): Array[TRecord[A]] =
-    asTRecord(TensorIterator(ds.take(batch * limit).iterator, shapes, batch, withPadding = withPadding))
+  def collectTensors(batch: Int = 1, remaining: Remaining = Skip): Array[TRecord[A]] =
+    asTRecord(TensorIterator(ds.collect().iterator, shapes, batch, remaining = remaining))
 
-  def firstTensor(batch: Int = 1, withPadding: Boolean = false): TRecord[A] =
-    asTRecord(TensorIterator(ds.take(batch).iterator, shapes, batch, withPadding = withPadding)).head
+  def takeTensors(batch: Int = 1, limit: Int, remaining: Remaining = Skip): Array[TRecord[A]] =
+    asTRecord(TensorIterator(ds.take(batch * limit).iterator, shapes, batch, remaining))
+
+  def firstTensor(batch: Int = 1, remaining: Remaining = Skip): TRecord[A] =
+    asTRecord(TensorIterator(ds.take(batch).iterator, shapes, batch, remaining)).head
 }
 
 class DatasetFloatingOps[A: Floating: Dist](val ds: Dataset[Record[A]])(

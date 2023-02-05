@@ -8,16 +8,16 @@ import scala.collection.immutable.Seq
   *
   * Given an input tensor `Shape(N, H, W, C)`, after flattening we will get `Shape(N, H*W*C)`
   */
-case object Flatten extends StatelessLayer {
+case object Flatten extends WeightlessLayer {
 
-  override def build[E: Floating](x: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
+  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
     require(weights.isEmpty, "Flatten layer does not require weights")
-    val shape = x.shape
+    val shape = input.shape
     require(shape.rank >= 2, s"rank should be >= 2, but was ${shape.rank}")
     val batch = shape(0)
     val features = (shape << 1).power
-    x.reshape(batch, features)
+    input.reshape(batch, features)
   }
 
-  override def outputShape(input: Shape): Shape = Shape(input.power)
+  override def outputShape(input: Shape): Shape = Shape(input.head, input.tail.power)
 }

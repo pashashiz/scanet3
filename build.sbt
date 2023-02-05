@@ -59,4 +59,14 @@ Test / testOptions ++= Seq(
   Tests.Argument(TestFrameworks.ScalaTest, "-oF"))
 
 Test / fork := true
-javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:+CMSClassUnloadingEnabled")
+Test / javaOptions ++= Seq(
+  "-Xms512M",
+  "-Xmx2048M",
+  "-XX:+CMSClassUnloadingEnabled",
+  "-Dcom.sun.management.jmxremote",
+  "-Dcom.sun.management.jmxremote.port=9010",
+  "-Dcom.sun.management.jmxremote.host=localhost",
+  "-Djava.rmi.server.hostname=localhost",
+  "-Dcom.sun.management.jmxremote.rmi.port=9010",
+  "-Dcom.sun.management.jmxremote.authenticate=false",
+  "-Dcom.sun.management.jmxremote.ssl=false")

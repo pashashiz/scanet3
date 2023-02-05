@@ -15,6 +15,7 @@ import scala.reflect.ClassTag
   def classTag: ClassTag[A]
   def show: String = classTag.toString()
   def codec: TensorCodec[A]
+  def cast[B](a: A)(implicit c: Convertible[A, B]): B = c.convert(a)
 }
 
 @nowarn @typeclass trait Eq[A] extends TensorType[A] {

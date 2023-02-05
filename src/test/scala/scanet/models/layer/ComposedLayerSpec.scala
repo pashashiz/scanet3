@@ -1,7 +1,7 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Tensor
+import scanet.core.{Shape, Tensor}
 import scanet.models.Activation._
 import scanet.models.Loss.MeanSquaredError
 import scanet.models.Regularization.L2
@@ -22,13 +22,15 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
         Array(1f, 0f, 1f),
         Array(1f, 1f, 1f))
       val w1 = Tensor.matrix(
-        Array(1f, 0.1f, 1f),
-        Array(0.5f, 1f, 0f),
-        Array(1f, 1f, 0.2f),
-        Array(0.1f, 1f, 0.3f))
+        Array(1f, 0.5f, 1f, 0.1f),
+        Array(0.1f, 1f, 1f, 1f),
+        Array(1f, 0f, 0.2f, 0.3f))
       val b1 = Tensor.vector(0f, 0f, 0f, 0f)
       val w2 = Tensor.matrix(
-        Array(0.1f, 0.5f, 1f, 0f))
+        Array(0.1f),
+        Array(0.5f),
+        Array(1f),
+        Array(0f))
       val b2 = Tensor.vector(0f)
       val forward = model.result[Float].compile
       val expected = Tensor.matrix(
@@ -52,7 +54,8 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
     val w2 = Tensor.matrix(
       Array(0.1f, 0.5f, 1f, 0f))
     val b2 = Tensor.vector(0f)
-    model.penalty(Seq(w1.const, b1.const, w2.const, b2.const)).eval should be(Tensor.scalar(3.83f))
+    model.penalty(Shape(1, 4), Seq(w1.const, b1.const, w2.const, b2.const)).eval should be(
+      Tensor.scalar(3.83f))
   }
 
   "calculate right loss" in {
@@ -62,12 +65,14 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       Array(0f, 1f, 1f))
     val y = Tensor.matrix(Array(1f), Array(0f))
     val w1 = Tensor.matrix(
-      Array(1f, 0.1f, 1f),
-      Array(0.5f, 1f, 0f),
-      Array(1f, 1f, 0.2f))
+      Array(1f, 0.5f, 1f),
+      Array(0.1f, 1f, 1f),
+      Array(1f, 0f, 0.2f))
     val b1 = Tensor.vector(0f, 0f, 0f)
     val w2 = Tensor.matrix(
-      Array(0.1f, 0.5f, 1f))
+      Array(0.1f),
+      Array(0.5f),
+      Array(1f))
     val b2 = Tensor.vector(0f)
     val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     val result = loss(x, y, Seq(w1, b1, w2, b2)).const.roundAt(6).eval
@@ -81,12 +86,14 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       Array(0f, 1f, 1f))
     val y = Tensor.matrix(Array(1f), Array(0f))
     val w1 = Tensor.matrix(
-      Array(1f, 0.1f, 1f),
-      Array(0.5f, 1f, 0f),
-      Array(1f, 1f, 0.2f))
+      Array(1f, 0.5f, 1f),
+      Array(0.1f, 1f, 1f),
+      Array(1f, 0f, 0.2f))
     val b1 = Tensor.vector(0f, 0f, 0f)
     val w2 = Tensor.matrix(
-      Array(0.1f, 0.5f, 1f))
+      Array(0.1f),
+      Array(0.5f),
+      Array(1f))
     val b2 = Tensor.vector(0f)
     val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     loss(x, y, Seq(w1, b1, w2, b2)) should be(Tensor.scalar(3.6199622f))

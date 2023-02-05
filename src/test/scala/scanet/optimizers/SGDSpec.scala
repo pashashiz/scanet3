@@ -9,6 +9,7 @@ import scanet.models.Math.`x^2`
 import scanet.optimizers.Effect.RecordLoss
 import scanet.optimizers.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
+
 import scala.collection.immutable.Seq
 
 class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
@@ -21,6 +22,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .initWeights(Seq(Tensor.scalar(5.0f)))
       .each(1.epochs, RecordLoss())
       .on(zero)
+      .batch(1)
       .stopAfter(100.epochs)
       .run()
     val loss = trained.loss.compile
