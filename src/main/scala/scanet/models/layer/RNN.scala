@@ -1,6 +1,6 @@
 package scanet.models.layer
 import scanet.core.{Expr, Floating, Shape}
-import scanet.models.Activation.Tanh
+import scanet.models.Activation.{Sigmoid, Tanh}
 import scanet.models.Initializer.{GlorotUniform, Zeros}
 import scanet.models.Regularization.Zero
 import scanet.models.{Activation, Initializer, Regularization}
@@ -63,7 +63,8 @@ object SimpleRNNCell {
   /** Simple RNN Cell, where the output is to be fed back to input
     *
     * Shapes:
-    *  - input: (batch, features)
+    *  - input x: (batch, features)
+    *  - input h t-1: (batch, units)
     *  - kernel weights: (features, units)
     *  - recurrent weights: (units, units)
     *  - bias weights: (units)
@@ -137,5 +138,94 @@ case class SimpleRNNCell(
     Seq(kernelInitializer.build[E](wx), recurrentInitializer.build[E](wh))
   }
 
-  override def stateShapes(input: Shape): Seq[Shape] = Seq(Shape(input.head, units))
+  override def stateShapes(input: Shape): Seq[Shape] = Seq(outputShape(input))
+}
+
+case class LSTMCell(
+    units: Int,
+    activation: Activation = Tanh,
+    recurrentActivation: Activation = Sigmoid,
+    bias: Boolean = true,
+    kernelInitializer: Initializer = GlorotUniform(),
+    recurrentInitializer: Initializer = GlorotUniform(),
+    biasInitializer: Initializer = Zeros,
+    kernelReg: Regularization = Zero,
+    recurrentReg: Regularization = Zero,
+    biasReg: Regularization = Zero)
+    extends Layer {
+
+  private def cell(activation: Activation) =
+    SimpleRNNCell(
+      units,
+      activation,
+      bias,
+      kernelInitializer,
+      recurrentInitializer,
+      biasInitializer,
+      kernelReg,
+      recurrentReg,
+      biasReg)
+
+  private val fCell = cell(recurrentActivation) // forget
+  private val iCell = cell(recurrentActivation) // input
+  private val gCell = cell(activation) // gate
+  private val oCell = cell(recurrentActivation) // output
+  private val cells = Seq(fCell, iCell, gCell, oCell)
+
+  /** Shapes:
+    *  - input c t-1: (batch, features)
+    *  - input h t-1: (batch, units)
+    *  - input x: (batch, features)
+    *  - for each gate [forget, input, gate, output]
+    *    - kernel weights: (features, units)
+    *    - recurrent weights: (units, units)
+    *    - bias weights: (units)
+    *  - output c: (batch, units)
+    *  - output h: (batch, units)
+    *  - output y: (batch, units)
+    */
+  override def buildStateful[E: Floating](
+      input: Expr[E],
+      weights: Seq[Expr[E]],
+      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
+    require(input.rank >= 2, "LSTMCell requires input Seq(batch, features)")
+    require(
+      weights.size == 8 + (if (bias) 4 else 0),
+      "LSTMCell requires weights (Seq(kernel, recurrent, bias?) * 4")
+    require(state.size == 2, "LSTMCell requires state Seq(c_prev, h_prev)")
+    val Seq(cPrev, hPrev) = state
+    val Seq(f, i, g, o) = cells.zip(unpackWeights(input.shape, weights)).map {
+      case (cell, weights) => cell.buildStateful(input, weights, Seq(hPrev))._1
+    }
+    val c = cPrev * f + i * g
+    val h = o * activation.build(c)
+    (h, Seq(c, h))
+  }
+
+  private def unpackWeights[E](input: Shape, weights: Seq[Expr[E]]): Seq[Seq[Expr[E]]] = {
+    val (_, unpacked) = cells.foldLeft((weights, Seq.empty[Seq[Expr[E]]])) {
+      case ((weights, acc), cell) =>
+        val size = cell.weightsShapes(input).size
+        val (cellWeights, remainWeights) = weights.splitAt(size)
+        (remainWeights, acc :+ cellWeights)
+    }
+    unpacked
+  }
+
+  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
+    cells.zip(unpackWeights(input, weights)).foldLeft(Floating[E].zero.const) {
+      case (sum, (cell, weights)) => sum + cell.penalty(input, weights)
+    }
+
+  override def outputShape(input: Shape): Shape =
+    oCell.outputShape(input)
+
+  override def weightsShapes(input: Shape): Seq[Shape] =
+    cells.flatMap(_.weightsShapes(input))
+
+  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
+    cells.flatMap(_.initWeights[E](input))
+
+  override def stateShapes(input: Shape): Seq[Shape] =
+    Seq.fill(2)(outputShape(input))
 }

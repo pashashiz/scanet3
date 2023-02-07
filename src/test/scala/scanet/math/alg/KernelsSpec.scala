@@ -271,10 +271,19 @@ class KernelsSpec extends AnyWordSpec with Matchers {
       (x div a).sum.grad(a).returns[Float].eval should be(grad)
     }
 
+    "test" in {
+      val a = 1.const
+      val b = 1.const
+      val c = a + a + b
+      println(c.toString)
+    }
+
     "calculate gradient for matrices with broadcasting second matrix has last dimension 1" in {
       val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val x = Tensor.matrix(Array(1), Array(5)).const
-      (a div x).sum.grad(x).returns[Float].eval should be(
+      val y = (a div x).sum.grad(x)
+      println(y.returns[Float])
+      y.returns[Float].eval should be(
         Tensor.matrix(Array(-30.0f), Array(-3.0f)))
     }
   }

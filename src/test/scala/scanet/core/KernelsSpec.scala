@@ -11,31 +11,13 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
     5.0f.const.toString should be("Const(5.0)[Float]:()")
   }
 
-  "it" should "be equal to other scalar const which holds the same value" in {
-    5.0f.const should be(5.0f.const)
-  }
-
   "small vector const" should "have toString which holds all elements" in {
     Tensor.vector(1, 2).const.toString should be("Const(1, 2)[Int]:(2)")
   }
 
-  "it" should "be equal to other small vector const which holds the same value" in {
-    Tensor.vector(1, 2).const should be(Tensor.vector(1, 2).const)
-  }
-
-  "large tensor const" should "have toString which holds an address of a compacted tensor" in {
-    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
-    tensor.const.toString should be(s"Const(#${tensor.address})[Int]:(2, 2)")
-  }
-
-  "it" should "be equal to other small vector const which holds the same tensor reference" in {
-    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
-    tensor.const should be(tensor.const)
-  }
-
   "placeholder" should "have toString which holds an address of output object" in {
     val pl = placeholder[Int]()
-    pl.toString should be(s"Placeholder(#${pl.address})[Int]:()")
+    pl.toString should be(s"Placeholder(#${pl.ref})[Int]:()")
   }
 
   "it" should "not be equal to any other placeholder" in {
@@ -43,8 +25,9 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
   }
 
   "composite output" should "have toString which includes operators chain" in {
+    println(5.0f.const.reshape(1).toString)
     5.0f.const.reshape(1).toString should
-    be("Reshape(Const(5.0)[Float]:(), new_shape:Const(1)[Int]:(1))[Float]:(1)")
+    be("Reshape(Const(5.0)[Float]:(),new_shape:Const(1)[Int]:(1))[Float]:(1)")
   }
 
   "const" should "be evaluated" in {

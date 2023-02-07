@@ -11,7 +11,7 @@ import scala.collection.immutable.Seq
 case class Placeholder[A: TensorType](shape: Shape) extends Expr[A] {
   override def name: String = "Placeholder"
   override val tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override def id: Option[String] = Some(s"#$address")
+  override def value: Option[String] = Some(s"#$ref")
   override def inputs: Seq[Expr[_]] = Seq.empty
   override def compiler: Compiler[A] =
     DefaultCompiler[A]().withAttr("dtype", TensorType[A]).withAttr("shape", shape)
@@ -105,7 +105,6 @@ trait TakeOutExpr[A] extends Expr[A] {
     (ctx: Ctx, builder: OperationBuilder) =>
       builder.addInput(ctx.inputs.head.operation.output(index))
   }
-  override def toStringChild: String = s"($from[$index])"
 }
 
 case class TakeOut[A: TensorType](from: Expr[_], index: Int, shape: Shape) extends TakeOutExpr[A] {

@@ -10,10 +10,12 @@ import scala.collection.immutable.Seq
 import org.tensorflow.{Operation, OperationBuilder}
 
 trait Expr[A] {
+  // we use object memory address to construct a unique reference
+  final def ref: String = super.hashCode().toString
   def name: String
   def label: String = name
   def as(label: String): Expr[A] = Labeled(this, label)
-  def id: Option[String] = None
+  def value: Option[String] = None
   def tpe: Option[TensorType[A]]
   def shape: Shape
   final def rank: Int = shape.rank
@@ -38,33 +40,22 @@ trait Expr[A] {
   }
   final def asGraph: DirectedGraph[Expr[_]] = {
     def fill(graph: DirectedGraph[Expr[_]], current: Expr[_]): DirectedGraph[Expr[_]] = {
-      if (!graph.contains(current.toString)) {
-        val withCurrent = graph :+ Node(current.toString, current)
+      if (!graph.contains(current.ref)) {
+        val withCurrent = graph :+ Node(current.ref, current)
         val withAll = current.inputs.foldLeft(withCurrent)((g, next) => fill(g, next))
-        withAll.linkAll(current.inputs.map(node => (node.toString, current.toString)))
+        withAll.linkAll(current.inputs.map(node => (node.ref, current.ref)))
       } else {
         graph
       }
     }
     fill(DirectedGraph[Expr[_]](), this)
   }
-  protected def toStringChild: String = id match {
-    case Some(value) => s"($value)"
-    case None        => if (inputs.nonEmpty) inputs.mkString("(", ", ", ")") else ""
-  }
-  // revisit: that is important to cache the string, cause that is used as a key
-  // as a tmp workaround lazy val is used, cause toString might refer to
-  // not yet initialized variables
-  final override lazy val toString: String = {
-    val fullName = if (label == name) s"$name" else s"$label:$name"
-    val deps = if (controls.nonEmpty) s".depends(${controls.mkString(", ")})" else ""
-    val tpeOrEmpty = tpe.map(t => s"[${t.show}]").getOrElse("")
-    s"$fullName$toStringChild$deps$tpeOrEmpty:$shape"
-  }
-  final def address: String = super.hashCode().toString
-  final override def hashCode(): Int = toString.hashCode
+
+  override def toString: String = ShowExpr(this).show
+
+  final override def hashCode(): Int = ref.hashCode
   final override def equals(obj: Any): Boolean = obj match {
-    case other: Expr[_] => toString == other.toString
+    case other: Expr[_] => ref == other.ref
     case _              => false
   }
 }
@@ -74,7 +65,7 @@ trait Compiler[A] extends ((SessionState, Expr[A]) => (SessionState, LabeledOper
 case class DefaultCompiler[A](index: Option[Int], stages: Seq[Stage]) extends Compiler[A] {
 
   override def apply(session: SessionState, expr: Expr[A]): (SessionState, LabeledOperationOut) = {
-    val cached = session.cache.get(expr.toString)
+    val cached = session.cache.get(expr.ref)
     cached.map(compiled => (session, compiled)).getOrElse(compile(session, expr))
   }
 
@@ -84,12 +75,15 @@ case class DefaultCompiler[A](index: Option[Int], stages: Seq[Stage]) extends Co
     // operations in native graph have to have unique names,
     // so we just add an incremental index if there are any duplicates
     val uniqueLabel = Label(expr.label, sessionAfterControls.maxLabelIndex(expr.label) + 1)
-    val builder = sessionAfterControls.scope.env.opBuilder(expr.name, uniqueLabel.toString, sessionAfterControls.scope)
+    val builder = sessionAfterControls.scope.env.opBuilder(
+      expr.name,
+      uniqueLabel.toString,
+      sessionAfterControls.scope)
     val ctx = Ctx(inputs, controls)
     val transformed =
       stages.foldLeft(builder)((builder, stage) => stage(ctx, builder))
     val compiled = LabeledOperationOut(OperationOut(transformed.build(), index), uniqueLabel)
-    val newCache = sessionAfterControls.cache + (expr.toString -> compiled)
+    val newCache = sessionAfterControls.cache + (expr.ref -> compiled)
     val sessionAfterOutput = sessionAfterControls.copy(cache = newCache)
     (sessionAfterOutput, compiled)
   }
@@ -201,7 +195,7 @@ trait Grad[A] {
 }
 
 case class Label(name: String, index: Int = 0) {
-  require(name.nonEmpty, "name cannot be empty")
+  require(name.nonEmpty, "repr cannot be empty")
   require(index >= -1, "index should be positive or -1")
   override def toString: String = s"${name}_$index"
 }
@@ -216,7 +210,7 @@ case class LabeledOperationOut(operationOut: OperationOut, label: Label)
 
 case class Labeled[A](expr: Expr[A], override val label: String) extends Expr[A] {
   override def name: String = expr.name
-  override def id: Option[String] = expr.id
+  override def value: Option[String] = expr.value
   override def tpe: Option[TensorType[A]] = expr.tpe
   override def shape: Shape = expr.shape
   override def inputs: Seq[Expr[_]] = expr.inputs
@@ -229,15 +223,15 @@ case class Const[A: TensorType](tensor: Tensor[A]) extends Expr[A] {
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def name: String = "Const"
   override def shape: Shape = tensor.shape
-  override def id: Option[String] = {
-    val value =
+  override val value: Option[String] = {
+    val result =
       if (tensor.isScalar)
         tensor.toScalar.toString
       else if (tensor.rank == 1 && tensor.power <= 10)
         tensor.toArray.mkString(", ")
       else
         s"#${tensor.address}"
-    Some(value)
+    Some(result)
   }
   override def inputs: Seq[Expr[_]] = Seq.empty
   override def localGrad: Grad[A] = new Grad[A] {

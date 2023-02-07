@@ -68,11 +68,13 @@ class Session extends AutoCloseable {
   }
 
   private[core] def eval(outs: Seq[Expr[_]], feed: Map[Expr[_], Tensor[_]]): Seq[RawTensor] = {
+    // we might have multiple duplicated outputs, we would like to eval only unique
+    val outputs = Outputs(outs)
     // with side effect, all compiled options are stored in context cache
-    val nativeOutputs = outs.map(out => compile(out))
+    val nativeOutputs = outputs.compress.map(out => compile(out))
     val fed = feed.foldLeft(nSession.runner)((runner, entry) => {
       val (output, tensor) = entry
-      state.cache.get(output.toString) match {
+      state.cache.get(output.ref) match {
         case Some(LabeledOperationOut(operationOut, _)) =>
           val nativeOutput = operationOut.outputOrFail
           val nativeTensor = tensor.native
@@ -81,10 +83,30 @@ class Session extends AutoCloseable {
       }
     })
     val fetched = nativeOutputs.foldLeft(fed)((runner, output) => runner.fetch(output))
-    fetched.run().asScala.map(_.getValue.asRawTensor()).toList
+    val outTensors = fetched.run().asScala.map(_.getValue.asRawTensor()).toList
+    outputs.uncompress(outTensors)
   }
 
   override def close(): Unit = nSession.close()
+}
+
+case class Outputs(original: Seq[Expr[_]]) {
+  private val uniqueIndex = original.zipWithIndex
+    .groupBy { case (out, _) => out.ref }.toList.map {
+      case (_, all) =>
+        val (out, _) = all.head
+        val indexes = all.map { case (_, originalIndex) => originalIndex }
+        (out, indexes)
+    }
+  private val reverseIndex = uniqueIndex.zipWithIndex
+    .flatMap {
+      case ((_, originalIndexes), uniqueIndex) =>
+        originalIndexes.map(index => (index, uniqueIndex))
+    }
+    .sortBy { case (originalIndex, _) => originalIndex }
+    .map { case (_, uniqueIndex) => uniqueIndex }
+  val compress: Seq[Expr[_]] = uniqueIndex.map(_._1)
+  def uncompress[A](unique: Seq[A]): Seq[A] = reverseIndex.map(unique)
 }
 
 object Session {

@@ -10,7 +10,7 @@ import scala.math.Ordering.Implicits._
 case class All[A: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
   override def name: String = "All"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
-  override def shape: Shape = expr.shape.remove(axis: _*)
+  override val shape: Shape = expr.shape.remove(axis: _*)
   override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const)
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
@@ -18,7 +18,7 @@ case class All[A: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] 
 case class Any[A: Logical](expr: Expr[A], axis: Seq[Int]) extends Expr[Boolean] {
   override def name: String = "Any"
   override def tpe: Option[TensorType[Boolean]] = Some(TensorType[Boolean])
-  override def shape: Shape = expr.shape.remove(axis: _*)
+  override val shape: Shape = expr.shape.remove(axis: _*)
   override val inputs: Seq[Expr[_]] = Seq(expr, Tensor.vector(axis.map(_.toLong): _*).const)
   override def compiler: core.Compiler[Boolean] = DefaultCompiler[Boolean]()
 }
