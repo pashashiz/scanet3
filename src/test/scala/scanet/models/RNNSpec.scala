@@ -25,7 +25,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       val trained = train
         .train(model)
         .loss(MeanSquaredError)
-        .using(Adam())
+        .using(Adam(rate = 0.01f))
         .batch(10)
         .each(1.epochs, RecordLoss(tensorboard = true))
         .stopAfter(100.epochs)
@@ -43,7 +43,6 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       }
       RMSE(trained, test) should be < 0.2f
       R2Score(trained, test) should be > 0.8f
-
       // we might do better abstraction:
       // val predicted = trained.predict(test) - to predict an entire dataset
       // val metrics = trained.metrics(test) - to get access to model metrics
@@ -57,7 +56,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       val trained = train
         .train(model)
         .loss(MeanSquaredError)
-        .using(Adam())
+        .using(Adam(0.01f))
         .batch(10)
         .each(1.epochs, RecordLoss(tensorboard = true))
         .stopAfter(100.epochs)

@@ -1,7 +1,7 @@
 package scanet.models.layer
 import scanet.core.{Expr, Floating, Shape}
 import scanet.models.Activation.{Sigmoid, Tanh}
-import scanet.models.Initializer.{GlorotUniform, Zeros}
+import scanet.models.Initializer.{GlorotUniform, Orthogonal, Zeros}
 import scanet.models.Regularization.Zero
 import scanet.models.{Activation, Initializer, Regularization}
 import scanet.syntax._
@@ -70,9 +70,6 @@ object SimpleRNNCell {
     *  - bias weights: (units)
     *  - output: (batch, units)
     *
-    * todo:
-    *  - use Orthogonal recurrentInitializer by default: https://www.tensorflow.org/api_docs/python/tf/keras/initializers/Orthogonal
-    *
     * @param units Positive integer, dimensionality of the output space.
     * @param activation Activation function to use
     * @param bias Whether to add bias vector
@@ -89,7 +86,7 @@ object SimpleRNNCell {
       activation: Activation = Tanh,
       bias: Boolean = true,
       kernelInitializer: Initializer = GlorotUniform(),
-      recurrentInitializer: Initializer = GlorotUniform(),
+      recurrentInitializer: Initializer = Orthogonal(),
       biasInitializer: Initializer = Zeros,
       kernelReg: Regularization = Zero,
       recurrentReg: Regularization = Zero,
@@ -147,7 +144,7 @@ case class LSTMCell(
     recurrentActivation: Activation = Sigmoid,
     bias: Boolean = true,
     kernelInitializer: Initializer = GlorotUniform(),
-    recurrentInitializer: Initializer = GlorotUniform(),
+    recurrentInitializer: Initializer = Orthogonal(),
     biasInitializer: Initializer = Zeros,
     kernelReg: Regularization = Zero,
     recurrentReg: Regularization = Zero,

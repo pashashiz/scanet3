@@ -54,4 +54,14 @@ class InitializerSpec extends AnyWordSpec with CustomMatchers {
       rn.build[Float](Shape(3)).roundAt(2).eval shouldBe Tensor.vector(-0.25f, -0.31f, -0.34f)
     }
   }
+
+  "Orthogonal initializer" should {
+    "initialize a tensor as orthogonal matrix" in {
+      val rn = Orthogonal(seed = Some(1))
+      val ort = rn.build[Float](Shape(2, 3))
+      ort.roundAt(6).eval shouldBe Tensor.matrix(
+        Array(0.363699f, 0.498735f, -0.786757f),
+        Array(-0.189386f, -0.787368f, -0.586672f))
+    }
+  }
 }

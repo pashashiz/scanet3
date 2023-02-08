@@ -97,8 +97,7 @@ case class Negate[A: Numeric](expr: Expr[A]) extends Expr[A] {
   }
 }
 
-case class Multiply[A: Numeric] private (left: Expr[A], right: Expr[A])
-    extends Expr[A] {
+case class Multiply[A: Numeric] private (left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
     left.broadcastableAny(right),
     s"cannot multiply tensors with shapes ${left.shape} * ${right.shape}")
@@ -309,8 +308,7 @@ case class Round[A: Numeric](expr: Expr[A]) extends Expr[A] {
   override def compiler: Compiler[A] = DefaultCompiler[A]()
 }
 
-case class Transpose[A: Numeric] private (expr: Expr[A], perm: Seq[Int])
-    extends Expr[A] {
+case class Transpose[A: Numeric] private (expr: Expr[A], perm: Seq[Int]) extends Expr[A] {
   override def name: String = "Transpose"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override val shape: Shape = expr.shape.permute(perm: _*)
@@ -400,6 +398,14 @@ case class Log[A: Numeric](expr: Expr[A]) extends Expr[A] {
       List(parentGrad / expr.cast[R])
     }
   }
+}
+
+case class Sign[A: Numeric](expr: Expr[A]) extends Expr[A] {
+  override def name: String = "Sign"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def shape: Shape = expr.shape
+  override def inputs: Seq[Expr[_]] = Seq(expr)
+  override def compiler: Compiler[A] = DefaultCompiler[A]()
 }
 
 trait AllKernels {
@@ -495,6 +501,8 @@ trait AllKernels {
   def tanh[A: Floating](expr: Expr[A]): Expr[A] = Tanh(expr)
 
   def log[A: Numeric](expr: Expr[A]): Expr[A] = Log(expr)
+
+  def sign[A: Numeric](expr: Expr[A]): Expr[A] = Sign(expr)
 }
 
 object kernels extends AllKernels {
@@ -775,6 +783,11 @@ object kernels extends AllKernels {
       * @return tanh
       */
     def tanh: Expr[A] = f.tanh(expr)
+
+    /** Returns an element-wise indication of the sign of a number.
+      * @return `y = sign(x) = -1 if x < 0; 0 if x == 0; 1 if x > 0`
+      */
+    def sign: Expr[A] = f.sign(expr)
   }
 
   trait AllSyntax extends AllKernels {

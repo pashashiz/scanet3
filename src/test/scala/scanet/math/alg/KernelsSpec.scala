@@ -615,4 +615,11 @@ class KernelsSpec extends AnyWordSpec with Matchers {
       be(Tensor.vector(0.7864477f, 1.0f, 0.7864477f))
     }
   }
+
+  "sign" should {
+    "return an element-wise indication of the sign of a number" in {
+      val x = Tensor.vector(-0.5f, 0f, 0.5f).const
+      x.sign.eval shouldBe Tensor.vector(-1f, 0f, 1f)
+    }
+  }
 }

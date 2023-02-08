@@ -214,6 +214,8 @@ R2Score(trained, test) should be > 0.8f
     probably better to use any abstract dataset which contains 2 required columns `features` + `labels`
     for training and `features` for prediction.
 - Add DSL to build tensor requirements like `tensor require rank(4)`, `tensor require shape squratedMatrix`
+- We might need to define high level untyped trait `Node` which `Expr[A]` trait will extend
+  Such `Node` will have a defined compiler, to make it `Expr` we would need choose an output and assign a type
 
 If you want to become a contributor, you are welcome!!! You can pick anything from a Road Map or propose your idea. 
  

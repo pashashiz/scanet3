@@ -178,4 +178,36 @@ object Initializer {
     }
     override def toString: String = "LecunNormal"
   }
+
+  /** If the shape of the tensor to initialize is two-dimensional,
+    * it is initialized with an orthogonal matrix obtained from the QR decomposition of a matrix
+    * of random numbers drawn from a normal distribution.
+    * If the matrix has fewer rows than columns then the output will have orthogonal rows.
+    * Otherwise, the output will have orthogonal columns.
+    *
+    * If the shape of the tensor to initialize is more than two-dimensional,
+    * a matrix of shape `(shape[0] * ... * shape[n - 2], shape[n - 1])` is initialized,
+    * where `n` is the length of the shape vector.
+    * The matrix is subsequently reshaped to give a tensor of the desired shape.
+    *
+    * @param gain multiplicative factor to apply to the orthogonal matrix
+    * @param seed seed for random generator
+    */
+  case class Orthogonal(gain: Option[Float] = None, seed: Option[Long] = None) extends Initializer {
+    override def build[E: Floating](shape: Shape): Expr[E] = {
+      require(shape.rank >= 2, s"at least rank 2 is required but was ${shape.rank}")
+      val rows = shape.dropRight(1).power
+      val cols = shape.last
+      // we need rows to be always > cols, so we will get square R matrix
+      val flatShape = Shape(math.max(rows, cols), math.min(rows, cols))
+      val init = rand[E](flatShape, Dist.Normal, seed)
+      // compute the QR factorization
+      val (q, r) = init.qr()
+      // make Q uniform
+      val qu = q * r.diagPart.sign
+      val qt = if (rows < cols) qu.transpose else qu
+      val qg = gain.fold(qt)(g => qt * g.const.cast[E])
+      qg.reshape(shape)
+    }
+  }
 }
