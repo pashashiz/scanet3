@@ -2,6 +2,7 @@ package scanet.models
 
 import scanet.core._
 import scanet.math.syntax._
+import scanet.models.layer.LayerInfo
 import scanet.utils.{Bytes, Tabulator}
 
 import scala.collection.immutable.Seq
@@ -49,13 +50,16 @@ abstract class Model extends Serializable {
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
-  def displayResult[E: Floating](input: Shape, dir: String = ""): Unit = {
+  private def makeGraph[E: Floating](input: Shape) =
     build(
       placeholder[E](input),
       weightsShapes(input).map(s => placeholder[E](s)))
-      .as("result")
-      .display(dir)
-  }
+
+  def displayResult[E: Floating](input: Shape, dir: String = ""): Unit =
+    makeGraph[E](input).as("result").display(dir)
+
+  def printResult[E: Floating](input: Shape): Unit =
+    println(makeGraph[E](input).as("result").toString)
 
   def info(input: Shape): Seq[LayerInfo] =
     Seq(LayerInfo(toString, weightsShapes(input), outputShape(input)))
@@ -67,15 +71,6 @@ abstract class Model extends Serializable {
     val total = layersInfo.flatMap(info => info.weights.map(_.power)).sum
     val size = Bytes.formatSize(TensorType[E].codec.sizeOf(total))
     s"$table\nTotal params: $total ($size)"
-  }
-}
-
-case class LayerInfo(name: String, weights: Seq[Shape], output: Shape) {
-  def toRow: Seq[String] = {
-    val weightsStr = weights.map(_.toString).mkString(", ")
-    val params = weights.map(_.power.toString).mkString(", ")
-    val outputStr = ("_" +: output.tail.dims.map(_.toString)).mkString("(", ",", ")")
-    Seq(name, weightsStr, params, outputStr)
   }
 }
 

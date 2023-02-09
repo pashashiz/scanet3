@@ -104,7 +104,7 @@ class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
   def show(): String = {
     val limits = (0 until rank).reverse.map {
       case 0 => 20
-      case 1 => 3
+      case 1 => 4
       case _ => 2
     }
     show(limits: _*)

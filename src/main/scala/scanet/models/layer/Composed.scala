@@ -2,7 +2,6 @@ package scanet.models.layer
 
 import scanet.core.{Expr, Floating, Shape}
 import scanet.math.syntax._
-import scanet.models.LayerInfo
 
 import scala.collection.immutable.Seq
 

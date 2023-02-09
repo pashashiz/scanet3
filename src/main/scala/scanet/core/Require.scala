@@ -16,6 +16,13 @@ object Require {
       expr
     }
 
+    def requireAtLestRank(rank: Int, as: String = ""): Expr[A] = {
+      require(
+        expr.rank >= rank,
+        nonEmptyJoin(as, s"tensor with rank=>$rank is required but was rank=${expr.rank}"))
+      expr
+    }
+
     def requireSquareMatrixTail: Expr[A] = {
       require(
         expr.rank >= 2,

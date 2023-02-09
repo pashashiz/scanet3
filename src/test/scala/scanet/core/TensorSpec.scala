@@ -252,7 +252,8 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
         |[
         |  [1  0  0  0  0],
         |  [0  1  0  0  0],
-        |  [0  0  1  0  0]
+        |  [0  0  1  0  0],
+        |  [0  0  0  1  0]
         |]""".stripMargin)
   }
 

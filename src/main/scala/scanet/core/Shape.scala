@@ -46,7 +46,11 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
 
   def tail: Shape = Shape(dims.tail)
 
+  def take(n: Int): Shape = Shape(dims.take(n))
+  def takeRight(n: Int): Shape = Shape(dims.takeRight(n))
+
   def drop(n: Int): Shape = Shape(dims.drop(n))
+  def dropRight(n: Int): Shape = Shape(dims.dropRight(n))
 
   def last: Int = dims.last
 
@@ -57,6 +61,17 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def :+(dim: Int): Shape = append(dim)
 
   def ++(right: Shape): Shape = Shape(dims ++ right.dims)
+
+  def splitAt(index: Int): (Shape, Shape) = {
+    require(index < rank, s"index should be < $rank")
+    val (left, right) = dims.splitAt(index)
+    (Shape(left), Shape(right))
+  }
+
+  def splitAtHalf: (Shape, Shape) = {
+    require(rank % 2 == 0, s"rank should be even but was $rank")
+    splitAt(rank / 2)
+  }
 
   def insert(dim: Int, size: Int): Shape = {
     require(dim >= 0 && dim <= rank, s"couldn't insert dimension $dim cause rank is $rank")

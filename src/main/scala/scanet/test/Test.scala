@@ -1,5 +1,7 @@
 package scanet.test
 
+import org.tensorflow.internal.c_api.global.tensorflow.{TF_DeviceListCount, TF_DeviceListName, TF_DeviceListType, TF_SessionListDevices}
+import org.tensorflow.internal.c_api.{AbstractTF_Status, TF_Session}
 import org.tensorflow.ndarray.Shape
 import org.tensorflow.ndarray.impl.buffer.nio.NioDataBufferFactory
 import org.tensorflow.op.OpScope
@@ -32,6 +34,28 @@ object Test {
       .build
     graph.opBuilder("Add", "z", scope).addInput(a.output(0)).addInput(b.output(0)).build()
     val s = new Session(graph)
+
+    val nativeHandleField = classOf[Session].getDeclaredField("nativeHandle")
+    nativeHandleField.setAccessible(true)
+    val tfSession = nativeHandleField.get(s).asInstanceOf[TF_Session]
+
+    val s1 = AbstractTF_Status.newStatus()
+    val devices = TF_SessionListDevices(tfSession, s1)
+    s1.throwExceptionIfNotOK()
+
+    println(s"Device count: ${TF_DeviceListCount(devices)}")
+
+    val s2 = AbstractTF_Status.newStatus()
+    val name = TF_DeviceListName(devices, 0, s2)
+    s2.throwExceptionIfNotOK()
+    println(name.getString)
+
+    val s3 = AbstractTF_Status.newStatus()
+    val tpe = TF_DeviceListType(devices, 0, s2)
+    s3.throwExceptionIfNotOK()
+    println(tpe.getString)
+
+
     try {
       val res = s.runner.fetch("z").run.get(0)
       try {

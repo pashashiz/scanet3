@@ -64,7 +64,7 @@ case class Node[A](
   }
 
   override def toString: String =
-    s"Node(id=$id, value=$value, in=${inputs.map(_.from.id)}, out=${outputs.map(_.to.id)})"
+    s"Node(id=$id, in=${inputs.map(_.from.id)}, out=${outputs.map(_.to.id)})"
 }
 
 case class Edge[A](index: Int, from: Node[A], to: Node[A])

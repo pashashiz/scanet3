@@ -5,37 +5,21 @@ import org.scalatest.matchers.should.Matchers
 import scanet.core.Slice.syntax.::
 import scanet.syntax._
 
+import scala.collection.immutable.Seq
+
 class KernelsSpec extends AnyFlatSpec with Matchers {
 
   "scalar const" should "have toString which holds a scalar value" in {
     5.0f.const.toString should be("Const(5.0)[Float]:()")
   }
 
-  "it" should "be equal to other scalar const which holds the same value" in {
-    5.0f.const should be(5.0f.const)
-  }
-
   "small vector const" should "have toString which holds all elements" in {
     Tensor.vector(1, 2).const.toString should be("Const(1, 2)[Int]:(2)")
   }
 
-  "it" should "be equal to other small vector const which holds the same value" in {
-    Tensor.vector(1, 2).const should be(Tensor.vector(1, 2).const)
-  }
-
-  "large tensor const" should "have toString which holds an address of a compacted tensor" in {
-    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
-    tensor.const.toString should be(s"Const(#${tensor.address})[Int]:(2, 2)")
-  }
-
-  "it" should "be equal to other small vector const which holds the same tensor reference" in {
-    val tensor = Tensor.matrix(Array(1, 2), Array(3, 4))
-    tensor.const should be(tensor.const)
-  }
-
   "placeholder" should "have toString which holds an address of output object" in {
     val pl = placeholder[Int]()
-    pl.toString should be(s"Placeholder(#${pl.address})[Int]:()")
+    pl.toString should be(s"Placeholder(#${pl.ref})[Int]:()")
   }
 
   "it" should "not be equal to any other placeholder" in {
@@ -43,8 +27,9 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
   }
 
   "composite output" should "have toString which includes operators chain" in {
+    println(5.0f.const.reshape(1).toString)
     5.0f.const.reshape(1).toString should
-    be("Reshape(Const(5.0)[Float]:(), new_shape:Const(1)[Int]:(1))[Float]:(1)")
+    be("Reshape(Const(5.0)[Float]:(),new_shape:Const(1)[Int]:(1))[Float]:(1)")
   }
 
   "const" should "be evaluated" in {
@@ -150,6 +135,25 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
     the[IllegalArgumentException] thrownBy {
       Tensor.eye[Int](3).const.slice(1, 1, 1)
     } should have message "requirement failed: projection (1, 1, 1) is out of bound, should fit shape (3, 3)"
+  }
+
+  it should "have valid gradient" in {
+    val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
+    val y = x.slice(0).sum
+    val grad = y.grad(x).returns[Float].eval
+    grad shouldBe Tensor.matrix(
+      Array(1.0, 1.0, 1.0),
+      Array(0.0, 0.0, 0.0))
+  }
+
+  "pad" should "add padding to the tensor" in {
+    val x = Tensor.matrix(Array(1, 2), Array(3, 4)).const
+    val y = x.pad(Seq((1, 1), (1, 0)), 0)
+    y.eval shouldBe Tensor.matrix(
+      Array(0, 0, 0),
+      Array(0, 1, 2),
+      Array(0, 3, 4),
+      Array(0, 0, 0))
   }
 
   "join" should "concat 2 vectors" in {

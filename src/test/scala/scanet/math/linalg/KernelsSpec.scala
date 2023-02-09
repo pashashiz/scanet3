@@ -67,4 +67,30 @@ class KernelsSpec extends AnyWordSpec with Matchers {
         Array(0.71f, 1.0f))
     }
   }
+
+  "QR factorization" should {
+    "factor the matrix as Q and R" in {
+      val input = Tensor.matrix(
+        Array(0.1f, 0.0f),
+        Array(0.5f, 1.0f),
+        Array(0.7f, 2.0f))
+      val (q, r) = input.const.qr()
+      q.roundAt(6).eval shouldBe Tensor.matrix(
+        Array(-0.11547f, -0.586353f),
+        Array(-0.57735f, -0.617213f),
+        Array(-0.80829f, 0.524631f))
+      r.roundAt(6).eval shouldBe Tensor.matrix(
+        Array(-0.866025f, -2.193931f),
+        Array(0.0f, 0.432049f))
+    }
+  }
+
+  "diagonal part" should {
+    "extract diagonal tensor" in {
+      val input = Tensor.matrix(
+        Array(0.1f, 0.0f),
+        Array(0.5f, 0.2f))
+      input.const.diagPart.eval shouldBe Tensor.vector(0.1f, 0.2f)
+    }
+  }
 }

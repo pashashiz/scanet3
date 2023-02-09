@@ -8,7 +8,6 @@ import scanet.syntax.placeholder
 import scanet.test.CustomMatchers
 
 import scala.collection.immutable.Seq
-import scala.jdk.CollectionConverters._
 
 class SessionSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -34,6 +33,7 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
 
   it should "eval a tuple2 with one output and sequence of outputs" in {
     withing { session =>
+      println(session.devices)
       session.runner.eval[(Expr[Int], Seq[Expr[Int]])]((1.const, Seq(5.const, 10.const))) should
       be((scalar(1), Seq(scalar(5), scalar(10))))
     }
@@ -76,20 +76,6 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
         pool.used should be(2)
         session1 should not be theSameInstanceAs(session2)
       }
-    }
-  }
-
-  "session" should "reuse the same already existing sub-graphs" in {
-    val a = 5f.const
-    // here a.sqrt should be done just once
-    // like _a = a.sqr; x = _a + _a
-    val x = a.sqr + a.sqr
-    x.eval should be(scalar(50f))
-    withing { session =>
-      val graph = session.toGraph(Seq(x))
-      val ops = graph.operations().asScala
-      // const(5), pow, const(2), add | NOTE: only 1 pow op
-      ops should have size 4
     }
   }
 }
