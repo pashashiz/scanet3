@@ -9,11 +9,6 @@ import scanet.syntax._
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 
-// todo: LSTM: add GPU implementation,
-//  see tensorflow/python/keras/layers/recurrent_v2.py line 1655
-//  tf.config.list_physical_devices('GPU')
-//  https://www.tensorflow.org/guide/gpu
-
 /** RNN Layer
   *
   * Shapes:
@@ -22,10 +17,9 @@ import scala.collection.immutable.Seq
   *  - weights: same as cell
   *  - output: if `returnSequence=true` then (batch, time, units) else (batch, units)
   *
-  *  todo:
-  *   - add unroll option, see https://www.tensorflow.org/api_docs/python/tf/while_loop
-  *   - add state between batches (requires ordering)
   * @param cell A RNN cell instance
+  * @param returnSequence Whether to return the last output in the output sequence, or the full sequence.
+  *                       To stack multiple layers set `returnSequence=true`
   */
 case class RNN(cell: Layer, returnSequence: Boolean = false) extends Layer {
 
@@ -77,17 +71,9 @@ case class RNN(cell: Layer, returnSequence: Boolean = false) extends Layer {
   override def stateShapes(input: Shape): Seq[Shape] = cell.stateShapes(dropTime(input))
 }
 
-object SimpleRNNCell {
+object SimpleRNN {
 
-  /** Simple RNN Cell, where the output is to be fed back to input
-    *
-    * Shapes:
-    *  - input x: (batch, features)
-    *  - input h t-1: (batch, units)
-    *  - kernel weights: (features, units)
-    *  - recurrent weights: (units, units)
-    *  - bias weights: (units)
-    *  - output: (batch, units)
+  /** Simple RNN layer, where the output is to be fed back to input
     *
     * @param units Positive integer, dimensionality of the output space.
     * @param activation Activation function to use
@@ -98,8 +84,36 @@ object SimpleRNNCell {
     * @param kernelReg Regularizer function applied to the kernel weights matrix
     * @param recurrentReg Regularizer function applied to the recurrent kernel weights matrix
     * @param biasReg Regularizer function applied to the bias vector
-    * @return [[SimpleRNNCell]] >> [[Bias]] >> [[Activation]]
+    * @param returnSequence Whether to return the last output in the output sequence, or the full sequence.
+    *                       To stack multiple layers set `returnSequence=true`
+    * @return Simple RNN layer
     */
+  def apply(
+      units: Int,
+      activation: Activation = Tanh,
+      bias: Boolean = true,
+      kernelInitializer: Initializer = GlorotUniform(),
+      recurrentInitializer: Initializer = Orthogonal(),
+      biasInitializer: Initializer = Zeros,
+      kernelReg: Regularization = Zero,
+      recurrentReg: Regularization = Zero,
+      biasReg: Regularization = Zero,
+      returnSequence: Boolean = false): RNN =
+    RNN(
+      SimpleRNNCell(
+        units,
+        activation,
+        bias,
+        kernelInitializer,
+        recurrentInitializer,
+        biasInitializer,
+        kernelReg,
+        recurrentReg,
+        biasReg),
+      returnSequence)
+}
+
+object SimpleRNNCell {
   def apply(
       units: Int,
       activation: Activation = Tanh,
@@ -155,6 +169,51 @@ case class SimpleRNNCell(
   }
 
   override def stateShapes(input: Shape): Seq[Shape] = Seq(outputShape(input))
+}
+
+object LSTM {
+
+  /** Long Short-Term Memory layer - Hochreiter 1997
+    *
+    * @param units                Positive integer, dimensionality of the output space.
+    * @param activation           Activation function to use
+    * @param bias                 Whether to add bias vector
+    * @param kernelInitializer    Initializer for the kernel weights matrix, used for the linear transformation of the inputs
+    * @param recurrentInitializer Initializer for the recurrent_kernel weights matrix, used for the linear transformation of the recurrent state
+    * @param biasInitializer      Initializer for the bias vector
+    * @param kernelReg            Regularizer function applied to the kernel weights matrix
+    * @param recurrentReg         Regularizer function applied to the recurrent kernel weights matrix
+    * @param biasReg              Regularizer function applied to the bias vector
+    * @param returnSequence       Whether to return the last output in the output sequence, or the full sequence.
+    *                             To stack multiple layers set `returnSequence=true`
+    */
+  def apply(
+      units: Int,
+      activation: Activation = Tanh,
+      recurrentActivation: Activation = Sigmoid,
+      bias: Boolean = true,
+      kernelInitializer: Initializer = GlorotUniform(),
+      recurrentInitializer: Initializer = Orthogonal(),
+      biasInitializer: Initializer = Zeros,
+      biasForgetInitializer: Initializer = Ones,
+      kernelReg: Regularization = Zero,
+      recurrentReg: Regularization = Zero,
+      biasReg: Regularization = Zero,
+      returnSequence: Boolean = false): RNN =
+    RNN(
+      LSTMCell(
+        units,
+        activation,
+        recurrentActivation,
+        bias,
+        kernelInitializer,
+        recurrentInitializer,
+        biasInitializer,
+        biasForgetInitializer,
+        kernelReg,
+        recurrentReg,
+        biasReg),
+      returnSequence)
 }
 
 case class LSTMCell(

@@ -1,7 +1,7 @@
 package scanet.test
 
-import org.tensorflow.internal.c_api.{AbstractTF_Status, TF_Session, TF_Status}
-import org.tensorflow.internal.c_api.global.tensorflow.{TF_DeviceListCount, TF_DeviceListIncarnation, TF_DeviceListName, TF_DeviceListType, TF_SessionListDevices}
+import org.tensorflow.internal.c_api.global.tensorflow.{TF_DeviceListCount, TF_DeviceListName, TF_DeviceListType, TF_SessionListDevices}
+import org.tensorflow.internal.c_api.{AbstractTF_Status, TF_Session}
 import org.tensorflow.ndarray.Shape
 import org.tensorflow.ndarray.impl.buffer.nio.NioDataBufferFactory
 import org.tensorflow.op.OpScope

@@ -6,7 +6,7 @@ import scanet.core._
 import scanet.estimators.{R2Score, RMSE}
 import scanet.models.Activation._
 import scanet.models.Loss._
-import scanet.models.layer.{Dense, LSTMCell, RNN, SimpleRNNCell}
+import scanet.models.layer.{Dense, LSTM, SimpleRNN}
 import scanet.optimizers.Adam
 import scanet.optimizers.Effect.RecordLoss
 import scanet.optimizers.syntax._
@@ -21,7 +21,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
     "train as forecast predictor using Simple RNN Cell" in {
       val display = false
       val Array(train, test) = monthlySunspots(12).randomSplit(Array(0.8, 0.2), 1)
-      val model = RNN(SimpleRNNCell(units = 3)) >> Dense(1, Tanh)
+      val model = SimpleRNN(3) >> Dense(1, Tanh)
       val trained = train
         .train(model)
         .loss(MeanSquaredError)
@@ -52,7 +52,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
 
     "train as forecast predictor using LSTM Cell" in {
       val Array(train, test) = monthlySunspots(12).randomSplit(Array(0.8, 0.2), 1)
-      val model = RNN(LSTMCell(units = 6)) >> Dense(1, Tanh)
+      val model = LSTM(2) >> Dense(1, Tanh)
       val trained = train
         .train(model)
         .loss(MeanSquaredError)
