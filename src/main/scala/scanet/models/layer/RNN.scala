@@ -1,7 +1,7 @@
 package scanet.models.layer
 import scanet.core.{Expr, Floating, Shape}
 import scanet.models.Activation.{Sigmoid, Tanh}
-import scanet.models.Initializer.{GlorotUniform, Orthogonal, Zeros}
+import scanet.models.Initializer.{GlorotUniform, Ones, Orthogonal, Zeros}
 import scanet.models.Regularization.Zero
 import scanet.models.{Activation, Initializer, Regularization}
 import scanet.syntax._
@@ -9,22 +9,25 @@ import scanet.syntax._
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 
+// todo: LSTM: add GPU implementation,
+//  see tensorflow/python/keras/layers/recurrent_v2.py line 1655
+//  tf.config.list_physical_devices('GPU')
+//  https://www.tensorflow.org/guide/gpu
+
 /** RNN Layer
   *
   * Shapes:
   *  - input: (batch, time, features)
   *  - cell input: for each time (batch, features)
   *  - weights: same as cell
-  *  - output: same as cell
+  *  - output: if `returnSequence=true` then (batch, time, units) else (batch, units)
   *
   *  todo:
-  *   - unlock output from all cells, not only the last one
-  *   - allow stacking RNN layers
   *   - add unroll option, see https://www.tensorflow.org/api_docs/python/tf/while_loop
   *   - add state between batches (requires ordering)
   * @param cell A RNN cell instance
   */
-case class RNN(cell: Layer) extends Layer {
+case class RNN(cell: Layer, returnSequence: Boolean = false) extends Layer {
 
   override def buildStateful[E: Floating](
       input: Expr[E],
@@ -35,12 +38,22 @@ case class RNN(cell: Layer) extends Layer {
     val stepsInput = input.transpose(Seq(1, 0) ++ (2 until input.rank))
     val timeSteps = stepsInput.shape(0)
     @tailrec
-    def stackCells(step: Int, state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
-      val (output, nextState) = cell.buildStateful(stepsInput.slice(step), weights, state)
-      if (step < timeSteps - 1) stackCells(step + 1, nextState)
-      else (output, nextState)
+    def stackCells(
+        step: Int,
+        outputs: Seq[Expr[E]],
+        state: Seq[Expr[E]]): (Seq[Expr[E]], Seq[Expr[E]]) = {
+      val (output, outputState) = cell.buildStateful(stepsInput.slice(step), weights, state)
+      if (step < timeSteps - 1) {
+        stackCells(step + 1, outputs :+ output, outputState)
+      } else {
+        (outputs :+ output, outputState)
+      }
     }
-    stackCells(0, state)
+    val (outputs, lastOutputState) = stackCells(0, Seq.empty, state)
+    val output =
+      if (returnSequence) joinAlong(outputs, 1).reshape(outputShape(input.shape))
+      else outputs.last
+    (output, lastOutputState)
   }
 
   private def dropTime(input: Shape): Shape = input.remove(1)
@@ -48,7 +61,13 @@ case class RNN(cell: Layer) extends Layer {
   override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
     cell.penalty(dropTime(input), weights)
 
-  override def outputShape(input: Shape): Shape = cell.outputShape(dropTime(input))
+  override def outputShape(input: Shape): Shape = {
+    val cellOutput = cell.outputShape(dropTime(input))
+    if (returnSequence)
+      cellOutput.insert(1, input(1))
+    else
+      cell.outputShape(cellOutput)
+  }
 
   override def weightsShapes(input: Shape): Seq[Shape] = cell.weightsShapes(dropTime(input))
 
@@ -146,27 +165,28 @@ case class LSTMCell(
     kernelInitializer: Initializer = GlorotUniform(),
     recurrentInitializer: Initializer = Orthogonal(),
     biasInitializer: Initializer = Zeros,
+    biasForgetInitializer: Initializer = Ones,
     kernelReg: Regularization = Zero,
     recurrentReg: Regularization = Zero,
     biasReg: Regularization = Zero)
     extends Layer {
 
-  private def cell(activation: Activation) =
+  private def cell(activation: Activation, useBias: Initializer) =
     SimpleRNNCell(
       units,
       activation,
       bias,
       kernelInitializer,
       recurrentInitializer,
-      biasInitializer,
+      useBias,
       kernelReg,
       recurrentReg,
       biasReg)
 
-  private val fCell = cell(recurrentActivation) // forget
-  private val iCell = cell(recurrentActivation) // input
-  private val gCell = cell(activation) // gate
-  private val oCell = cell(recurrentActivation) // output
+  private val fCell = cell(recurrentActivation, useBias = biasForgetInitializer) // forget
+  private val iCell = cell(recurrentActivation, useBias = biasInitializer) // input
+  private val gCell = cell(activation, useBias = biasInitializer) // gate
+  private val oCell = cell(recurrentActivation, useBias = biasInitializer) // output
   private val cells = Seq(fCell, iCell, gCell, oCell)
 
   /** Shapes:

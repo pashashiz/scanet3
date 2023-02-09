@@ -1,8 +1,11 @@
 package scanet.core
 
+import org.tensorflow.internal.c_api.TF_Session
+
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
 import org.tensorflow.op.{OpScope, Scope => NativeScope}
+import org.tensorflow.proto.framework.ConfigProto
 import org.tensorflow.{Graph, RawTensor, Output => NativeOutput, Session => NativeSession}
 
 import scala.util.Try
@@ -48,10 +51,14 @@ case class SessionState(scope: NativeScope, cache: Map[String, LabeledOperationO
   * })
   * }}}
   */
-class Session extends AutoCloseable {
+class Session(verbose: Boolean = false) extends AutoCloseable {
 
   val nGraph = new Graph()
-  val nSession = new NativeSession(nGraph)
+  val config: ConfigProto = ConfigProto
+    .newBuilder(ConfigProto.getDefaultInstance)
+    .setLogDevicePlacement(verbose)
+    .build()
+  val nSession = new NativeSession(nGraph, config)
   var state = SessionState(new OpScope(nGraph), Map.empty)
 
   def runner: Runner = Runner(this)
@@ -86,6 +93,14 @@ class Session extends AutoCloseable {
     val outTensors = fetched.run().asScala.map(_.getValue.asRawTensor()).toList
     outputs.uncompress(outTensors)
   }
+
+  def nativeHandle: TF_Session = {
+    val nativeHandleField = classOf[NativeSession].getDeclaredField("nativeHandle")
+    nativeHandleField.setAccessible(true)
+    nativeHandleField.get(nSession).asInstanceOf[TF_Session]
+  }
+
+  def devices: Seq[Device] = Devices.list(this)
 
   override def close(): Unit = nSession.close()
 }

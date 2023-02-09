@@ -209,5 +209,6 @@ object Initializer {
       val qg = gain.fold(qt)(g => qt * g.const.cast[E])
       qg.reshape(shape)
     }
+    override def toString: String = "Orthogonal" + gain.fold("")(v => s"($v)")
   }
 }

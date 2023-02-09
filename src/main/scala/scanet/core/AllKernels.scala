@@ -168,27 +168,59 @@ object Reshape {
     require(expr.shape.power == shape.power, s"shape ${expr.shape} cannot be reshaped into $shape")
     if (expr.shape != shape) {
       // note: scalar is a special case, reshape does not work with scalars
-      if (shape.isScalar) {
-        Squeeze(expr)
-      } else {
-        new Reshape(expr, shape)
-      }
+      if (shape.isScalar) Squeeze(expr) else new Reshape(expr, shape)
     } else {
       expr
     }
   }
 }
 
-case class SliceOp[A: TensorType] private (expr: Expr[A], projection: Projection) extends Expr[A] {
-  private val (offsetsExpr, lengthsExpr) = {
-    val (offsets, lengths) = projection.asOffsetAndLength
-    (Tensor.vector(offsets).const.as("offsets"), Tensor.vector(lengths).const.as("lengths"))
-  }
-  override def name: String = "Slice"
+case class Pad[A: TensorType](expr: Expr[A], paddings: Seq[(Int, Int)], const: Expr[A])
+    extends Expr[A] {
+  require(
+    expr.rank == paddings.size,
+    s"Padding should be specified for all ${expr.rank} dimensions, " +
+    s"but only ${paddings.size} was passed")
+  require(const.isScalar, s"padding value should be a scalar, but had rank ${const.rank}")
+  override def name: String = "PadV2"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override def shape: Shape = projection.shapeFull
-  override def inputs: Seq[Expr[_]] = Seq(expr, offsetsExpr, lengthsExpr)
+  override val shape: Shape = Shape {
+    expr.shape.dims.zip(paddings).map {
+      case (center, (before, after)) => before + center + after
+    }
+  }
+  override val inputs: Seq[Expr[_]] = {
+    val dimensions = paddings.map { case (before, after) => Array(before, after) }
+    Seq(expr, Tensor.matrix(dimensions: _*).const.as("paddings"), const)
+  }
   override def compiler: Compiler[A] = DefaultCompiler[A]()
+}
+
+case class SliceOp[A: TensorType] private (expr: Expr[A], projection: Projection) extends Expr[A] {
+  override val name: String = "Slice"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override val shape: Shape = projection.shapeFull
+  override val inputs: Seq[Expr[_]] = {
+    val (offsetsExpr, lengthsExpr) = {
+      val (offsets, lengths) = projection.asOffsetAndLength
+      (Tensor.vector(offsets).const.as("offsets"), Tensor.vector(lengths).const.as("lengths"))
+    }
+    Seq(expr, offsetsExpr, lengthsExpr)
+  }
+  override def compiler: Compiler[A] = DefaultCompiler[A]()
+  override def localGrad: Grad[A] = new Grad[A] {
+    override def calc[R: Floating](
+        current: Expr[A],
+        parentGrad: Expr[R]): Seq[Expr[R]] = {
+      val (offsets, lengths) = projection.asOffsetAndLength
+      val padding = expr.shape.dims.zip(offsets.zip(lengths)).map {
+        case (size, (offset, length)) =>
+          (offset, size - (offset + length))
+      }
+      val zero = Floating[R].zero.const.as("const_value")
+      Seq(Pad(parentGrad, padding, zero))
+    }
+  }
 }
 
 object SliceOp {
@@ -342,6 +374,11 @@ trait AllKernels {
   def slice[A: TensorType](expr: Expr[A], projection: Projection): Expr[A] =
     SliceOp(expr, projection)
 
+  def pad[A: TensorType](expr: Expr[A], paddings: Seq[(Int, Int)], value: Expr[A]): Expr[A] =
+    Pad(expr, paddings, value)
+  def pad[A: TensorType](expr: Expr[A], paddings: Seq[(Int, Int)], value: A): Expr[A] =
+    Pad(expr, paddings, value.const)
+
   def joinAlong[A: TensorType](outputs: Seq[Expr[A]], axis: Int): Expr[A] = JoinAlong(outputs, axis)
 
   def zip[A: TensorType](outputs: Expr[A]*): Expr[A] = {
@@ -404,6 +441,21 @@ object kernels extends AllKernels {
       * @return squeezed output
       */
     def squeeze: Expr[A] = f.squeeze(expr)
+
+    /** Pads a tensor. This operation pads a tensor according to the `paddings` and `value` you specify.
+      *
+      * @param paddings a sequence where each element indicates many padding values to add before and after
+      *                 the contents of tensor in that dimension
+      * @param value is a scalar tensor that indicates the value to use for padding
+      * @return padded tensor
+      */
+    def pad(paddings: Seq[(Int, Int)], value: Expr[A]): Expr[A] =
+      f.pad(expr, paddings, value)
+
+    /** @see [[pad(Seq[(Int, Int)], Expr[A])]]
+      */
+    def pad(paddings: Seq[(Int, Int)], value: A): Expr[A] =
+      f.pad(expr, paddings, value.const)
 
     def joinAlong(other: Expr[A], dim: Int): Expr[A] = f.joinAlong(Seq(expr, other), dim)
     def join(other: Expr[A]): Expr[A] = joinAlong(other, 0)

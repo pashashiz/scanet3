@@ -5,6 +5,8 @@ import org.scalatest.matchers.should.Matchers
 import scanet.core.Slice.syntax.::
 import scanet.syntax._
 
+import scala.collection.immutable.Seq
+
 class KernelsSpec extends AnyFlatSpec with Matchers {
 
   "scalar const" should "have toString which holds a scalar value" in {
@@ -133,6 +135,25 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
     the[IllegalArgumentException] thrownBy {
       Tensor.eye[Int](3).const.slice(1, 1, 1)
     } should have message "requirement failed: projection (1, 1, 1) is out of bound, should fit shape (3, 3)"
+  }
+
+  it should "have valid gradient" in {
+    val x = Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)).const
+    val y = x.slice(0).sum
+    val grad = y.grad(x).returns[Float].eval
+    grad shouldBe Tensor.matrix(
+      Array(1.0, 1.0, 1.0),
+      Array(0.0, 0.0, 0.0))
+  }
+
+  "pad" should "add padding to the tensor" in {
+    val x = Tensor.matrix(Array(1, 2), Array(3, 4)).const
+    val y = x.pad(Seq((1, 1), (1, 0)), 0)
+    y.eval shouldBe Tensor.matrix(
+      Array(0, 0, 0),
+      Array(0, 1, 2),
+      Array(0, 3, 4),
+      Array(0, 0, 0))
   }
 
   "join" should "concat 2 vectors" in {

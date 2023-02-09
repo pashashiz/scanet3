@@ -2,11 +2,9 @@ package scanet.math.grad
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Session.withing
 import scanet.core.Tensor.scalar
 import scanet.math.syntax._
 
-import scala.jdk.CollectionConverters._
 import scala.collection.immutable.Seq
 
 class GradSpec extends AnyWordSpec with Matchers {
