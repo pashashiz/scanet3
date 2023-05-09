@@ -131,12 +131,9 @@ R2Score(trained, test) should be > 0.8f
 ### Models
 
 - [x] Linear Regression
-- [ ] Simple math models for benchmarks
 - [x] Binary Logistic Regression
 - [x] ANN (Multilayer Perceptron NN)
-- [x] kernel regularization
-- [ ] Layers Dropout (provide random generator to layers)
-- [ ] Batch Normalization
+- [x] Kernel regularization
 - [x] Convolutional NN
 - [x] Recurrent NN (Simple, LSTM))
 - [x] Recurrent NN Enhancements
@@ -146,15 +143,19 @@ R2Score(trained, test) should be > 0.8f
     - Add RNN unroll option, see [tf.while_loop](https://www.tensorflow.org/api_docs/python/tf/while_loop)
     - Add state between batches
     - Try LSTM weights fusing (x4 less weights)
+- [ ] Layers Dropout (provide random generator to layers)(Wanted!)
+- [ ] Batch Normalization (Wanted!)
 - [ ] others
 
 # Localization & Object Detection & Instance Segmentation
 
-- [ ] CNN with Localization
+- [ ] Object Localization
 - [ ] Region Proposals (Selective Search, EdgeBoxes, etc..)
 - [ ] R-CNN
 - [ ] Fast R-CNN
 - [ ] Faster R-CNN
+- [ ] YOLO (You only look once)
+- [ ] SSD (Single-Shot MultiBox Detector)
 
 ### Activation functions
 
@@ -172,6 +173,7 @@ R2Score(trained, test) should be > 0.8f
 - [x] RMSE (Mean Squared Error)
 - [x] Binary Crossentropy
 - [x] Categorical Crossentropy
+- [ ] Sparse Categorical Crossentropy
 
 ### Benchmark Datasets
 
@@ -181,6 +183,7 @@ R2Score(trained, test) should be > 0.8f
 - [ ] CIFAR-10
 - [ ] CIFAR-100
 - [ ] ILSVRC (ImageNet-1000)
+- [ ] Pascal VOC
 
 ### Preprocessing
 
@@ -192,14 +195,14 @@ R2Score(trained, test) should be > 0.8f
 
 ### Estimators
 
-- [ ] r2 score
+- [x] r2 score
 - [x] accuracy estimator,
 - [ ] confusion matrix, precision, recall, f1 score
 - [ ] runtime estimating and new stop condition based on that
 
 ### Benchmarks
 
-- [ ] LeNet
+- [x] LeNet
 - [ ] AlexNet
 - [ ] ZF Net
 - [ ] ZF Net
