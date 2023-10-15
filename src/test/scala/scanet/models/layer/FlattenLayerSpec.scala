@@ -13,7 +13,7 @@ class FlattenLayerSpec extends AnyWordSpec with CustomMatchers {
     "flatten the output from (batch, features_1, ... features_n) into (batch, features) tensor" in {
       val x = Tensor.ones[Float](10, 5, 5)
       val model = Flatten
-      val result = model.result_[Float].compile
+      val result = model.result[Float].compile
       result(x, Params.empty) shouldBe x.reshape(10, 25)
     }
   }

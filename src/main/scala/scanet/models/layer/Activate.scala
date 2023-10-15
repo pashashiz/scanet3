@@ -13,7 +13,7 @@ case class Activate(activation: Activation) extends NotTrainableLayer {
 
   override def name: String = activation.toString
 
-  override def build_[E: Floating](input: Expr[E]): Expr[E] =
+  override def build[E: Floating](input: Expr[E]): Expr[E] =
     activation.build(input)
 
   override def outputShape(input: Shape): Shape = input

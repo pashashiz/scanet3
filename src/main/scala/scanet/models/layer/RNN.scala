@@ -29,15 +29,15 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
 
   // todo: better params management
 
-  override def params_(input: Shape): Params[ParamDef] = {
+  override def params(input: Shape): Params[ParamDef] = {
     val (weights, state) = paramsPartitioned(input)
     if (stateful) state ++ weights else weights
   }
 
   private def paramsPartitioned(input: Shape): (Params[ParamDef], Params[ParamDef]) =
-    cell.params_(dropTime(input)).partitionValues(_.trainable)
+    cell.params(dropTime(input)).partitionValues(_.trainable)
 
-  override def build_[E: Floating](
+  override def build[E: Floating](
       input: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     require(input.rank == 3, "RNN requires input to have Shape(batch, time, features)")
@@ -54,7 +54,7 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
         step: Int,
         outputs: Seq[Expr[E]],
         state: Params[Expr[E]]): (Seq[Expr[E]], Params[Expr[E]]) = {
-      val (output, outputState) = cell.build_(stepsInput.slice(step), state ++ Params(weightParams))
+      val (output, outputState) = cell.build(stepsInput.slice(step), state ++ Params(weightParams))
       if (step < timeSteps - 1) {
         stackCells(step + 1, outputs :+ output, outputState)
       } else {
@@ -71,8 +71,8 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
     (output, lastOutputState)
   }
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
-    cell.penalty_(dropTime(input), params)
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+    cell.penalty(dropTime(input), params)
 
   private def dropTime(input: Shape): Shape = input.remove(1)
 
@@ -163,7 +163,7 @@ case class SimpleRNNCell(
 
   override def stateful: Boolean = true
 
-  override def params_(input: Shape): Params[ParamDef] = Params(
+  override def params(input: Shape): Params[ParamDef] = Params(
     // (features, units)
     Kernel -> ParamDef(Shape(input(1), units), kernelInitializer, Some(Avg), trainable = true),
     // (units, units)
@@ -171,7 +171,7 @@ case class SimpleRNNCell(
     // state, keeps previous output
     State -> ParamDef(outputShape(input), Initializer.Zeros))
 
-  override def build_[E: Floating](
+  override def build[E: Floating](
       input: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     require(input.rank >= 2, "SimpleRNNCell requires input Seq(batch, features)")
@@ -179,7 +179,7 @@ case class SimpleRNNCell(
     (result, Params(State -> result))
   }
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
     kernelReg.build(params(Kernel)) + recurrentReg.build(params(Recurrent))
 
   override def outputShape(input: Shape): Shape = Shape(input.head, units)
@@ -265,16 +265,15 @@ case class LSTMCell(
   private val iCell = cell("input", recurrentActivation, useBias = biasInitializer)
   private val gCell = cell("gate", activation, useBias = biasInitializer)
   private val oCell = cell("output", recurrentActivation, useBias = biasInitializer)
-  private val cells = Seq(fCell, iCell, gCell, oCell).map(_._2)
-  private val cells_ = Map(fCell, iCell, gCell, oCell)
+  private val cells = Map(fCell, iCell, gCell, oCell)
 
   override def stateful: Boolean = true
 
-  override def params_(input: Shape): Params[ParamDef] = {
-    val weights = cells_
+  override def params(input: Shape): Params[ParamDef] = {
+    val weights = cells
       .map {
         case (name, cell) =>
-          val params = cell.params_(input)
+          val params = cell.params(input)
           val onlyWeights = params.filterPaths(path => !path.endsWith(SimpleRNNCell.State))
           onlyWeights.prependPath(name)
       }
@@ -296,33 +295,33 @@ case class LSTMCell(
     *  - output h: (batch, units)
     *  - output y: (batch, units)
     */
-  override def build_[E: Floating](
+  override def build[E: Floating](
       input: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     require(input.rank >= 2, "LSTMCell requires input Seq(batch, features)")
     val cPrev = params(CellState)
     val hPrev = params(HiddenState)
-    val List(f, i, g, o) = cells_.toList.map {
+    val List(f, i, g, o) = cells.toList.map {
       case (name, cell) =>
-        val cellState = cell.params_(input.shape)
+        val cellState = cell.params(input.shape)
           .filter {
             case (path, param) =>
               path.endsWith(Params.State) && param.nonTrainable && param.shape == hPrev.shape
           }
           .mapValues(_ => hPrev)
         val cellParams = params.children(name) ++ cellState
-        cell.build_(input, cellParams)._1
+        cell.build(input, cellParams)._1
     }
     val c = cPrev * f + i * g
     val h = o * activation.build(c)
     (h, Params(CellState -> c, HiddenState -> h))
   }
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
-    cells_.foldLeft(Floating[E].zero.const) {
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+    cells.foldLeft(Floating[E].zero.const) {
       case (sum, (name, cell)) =>
         val cellParams = params.children(name)
-        sum + cell.penalty_(input, cellParams)
+        sum + cell.penalty(input, cellParams)
     }
 
   override def outputShape(input: Shape): Shape =

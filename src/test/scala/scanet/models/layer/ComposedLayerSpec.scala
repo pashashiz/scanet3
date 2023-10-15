@@ -34,7 +34,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
         Array(1f),
         Array(0f))
       val b2 = Tensor.vector(0f)
-      val forward = model.result_[Float].compile
+      val forward = model.result[Float].compile
       val expected = Tensor.matrix(
         Array(0.705357f),
         Array(0.770136f),
@@ -66,7 +66,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       "l" / "l" / "r" / Weights -> b1,
       "r" / "l" / "l" / Weights -> w2,
       "r" / "l" / "r" / Weights -> b2)
-    model.penalty_(Shape(1, 4), params.mapValues(_.const)).eval should be(
+    model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(
       Tensor.scalar(3.83f))
   }
 
@@ -91,7 +91,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       "l" / "l" / "r" / Weights -> b1,
       "r" / "l" / "l" / Weights -> w2,
       "r" / "l" / "r" / Weights -> b2)
-    val loss = model.withLoss(MeanSquaredError).loss_[Float].compile
+    val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     val result = loss(x, y, params).const.roundAt(6).eval
     result should be(Tensor.scalar(0.339962f))
   }
@@ -117,7 +117,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       "l" / "l" / "r" / Weights -> b1,
       "r" / "l" / "l" / Weights -> w2,
       "r" / "l" / "r" / Weights -> b2)
-    val loss = model.withLoss(MeanSquaredError).loss_[Float].compile
+    val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     loss(x, y, params) should be(Tensor.scalar(3.6199622f))
   }
 }

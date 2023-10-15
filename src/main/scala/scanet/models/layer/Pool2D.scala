@@ -33,7 +33,7 @@ case class Pool2D(
     reduce: Reduce = Reduce.Max)
     extends NotTrainableLayer {
 
-  override def build_[E: Floating](input: Expr[E]): Expr[E] =
+  override def build[E: Floating](input: Expr[E]): Expr[E] =
     pool2D[E](
       input = input,
       window = Seq(window._1, window._2),

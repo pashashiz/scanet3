@@ -36,7 +36,7 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(0.880797f, 0.622459f, 0.768525f, 0.598688f),
         Array(0.890903f, 0.817574f, 0.900250f, 0.802184f))
       val model = Dense(4, Sigmoid)
-      val forward = model.result_[Float].compile
+      val forward = model.result[Float].compile
       val params = Params("l" / "l" / Weights -> w, "l" / "r" / Weights -> b)
       val y = forward(x, params).const.roundAt(6).eval
       y should be(yExpected)
@@ -51,12 +51,12 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
       val b = Tensor.vector(0f, 0f)
       val model = Dense(4, Sigmoid, reg = L2(lambda = 1))
       val params = Params("l" / "l" / Weights -> w, "l" / "r" / Weights -> b)
-      model.penalty_(Shape(1, 4), params.mapValues(_.const)).eval should be(Tensor.scalar(1.63f))
+      model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(Tensor.scalar(1.63f))
     }
 
     "produce gradient when combined with loss function" in {
       val loss = Dense(4, Sigmoid).withLoss(BinaryCrossentropy)
-      val grad = loss.grad_[Float].compile
+      val grad = loss.grad[Float].compile
       val x = Tensor.matrix(
         Array(0f, 0f, 1f),
         Array(0f, 1f, 1f),

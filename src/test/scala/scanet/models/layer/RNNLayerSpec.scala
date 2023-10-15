@@ -24,7 +24,7 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(-0.6313778f, 0.7754754f))
       val b = Tensor.vector(0f, 0f)
       val expected = Tensor.matrix(Array(0.222901f, -6.019066f))
-      val result = layer.result_[Float].compile
+      val result = layer.result[Float].compile
       val params = Params(
         "l" / "kernel_weights" -> wx,
         "l" / "recurrent_weights" -> wh,
@@ -74,7 +74,7 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
         "output" / "l" / "l" / "recurrent_weights" -> wo(1),
         "output" / "l" / "r" / Weights -> wo(2),
        )
-      val result = layer.result_[Float].compile
+      val result = layer.result[Float].compile
       val prediction = result(input, params).const.roundAt(6).eval
       prediction shouldBe Tensor.matrix(Array(0.382158f, 0.029766f))
     }

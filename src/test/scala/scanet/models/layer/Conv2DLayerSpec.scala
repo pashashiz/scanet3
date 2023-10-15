@@ -33,7 +33,7 @@ class Conv2DLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(7.0, 11.0, 16.0, 7.0),
         Array(10.0, 7.0, 4.0, 7.0))
         .reshape(1, 4, 4, 1)
-      val result = model.result_[Double].compile
+      val result = model.result[Double].compile
       result(input, Params(Weights -> filters)).const.roundAt(2).eval shouldBe output
     }
 

@@ -9,7 +9,7 @@ import scanet.core.{Expr, Floating, Shape}
   */
 case object Flatten extends NotTrainableLayer {
 
-  override def build_[E: Floating](input: Expr[E]): Expr[E] = {
+  override def build[E: Floating](input: Expr[E]): Expr[E] = {
     val shape = input.shape
     require(shape.rank >= 2, s"rank should be >= 2, but was ${shape.rank}")
     val batch = shape(0)

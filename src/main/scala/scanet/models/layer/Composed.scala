@@ -13,27 +13,27 @@ import scala.collection.immutable.Seq
   */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
-  override def params_(input: Shape): Params[ParamDef] = {
+  override def params(input: Shape): Params[ParamDef] = {
     // todo: flatten
-    val leftParams = left.params_(input).prependPath("l")
-    val rightParams = right.params_(left.outputShape(input)).prependPath("r")
+    val leftParams = left.params(input).prependPath("l")
+    val rightParams = right.params(left.outputShape(input)).prependPath("r")
     leftParams ++ rightParams
   }
 
-  override def build_[E: Floating](
+  override def build[E: Floating](
       input: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     val leftParams = params.children("l")
     val rightParams = params.children("r")
-    val (leftOutput, leftState) = left.build_(input, leftParams)
-    val (rightOutput, rightState) = right.build_(leftOutput, rightParams)
+    val (leftOutput, leftState) = left.build(input, leftParams)
+    val (rightOutput, rightState) = right.build(leftOutput, rightParams)
     (rightOutput, leftState.prependPath("l") ++ rightState.prependPath("r"))
   }
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] = {
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] = {
     val leftParams = params.children("l")
     val rightParams = params.children("r")
-    left.penalty_(input, leftParams) plus right.penalty_(left.outputShape(input), rightParams)
+    left.penalty(input, leftParams) plus right.penalty(left.outputShape(input), rightParams)
   }
 
   override def outputShape(input: Shape): Shape =

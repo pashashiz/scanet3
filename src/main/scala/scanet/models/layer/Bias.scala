@@ -23,13 +23,13 @@ import scala.collection.immutable.Seq
 case class Bias(features: Int, reg: Regularization = Zero, initializer: Initializer = Zeros)
     extends StatelessLayer {
 
-  override def params_(input: Shape): Params[ParamDef] =
+  override def params(input: Shape): Params[ParamDef] =
     Params(Weights -> ParamDef(Shape(features), initializer, Some(Avg), trainable = true))
 
   override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
     input + params.weights
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
     reg.build(params.weights)
 
   override def outputShape(input: Shape): Shape = input

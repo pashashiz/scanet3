@@ -26,12 +26,12 @@ object Neuron {
     val w = Tensor.matrix(Array(0.6f, 0.35f, 0.9f))
     val params = Params(Weights -> w)
     // to make a prediction we need to run a forward pass
-    val result = neuron.result_[Float].compile
+    val result = neuron.result[Float].compile
     // (0.7 * 50 + 0.5 * 25 + 1 * 1)
     println(result(x, params))
     val paramsExpr = params.mapValues(_.const)
     // let's calculate prediction error (loss)
-    val loss = MeanSquaredError.build(neuron.build_(x.const, paramsExpr)._1, y.const)
+    val loss = MeanSquaredError.build(neuron.build(x.const, paramsExpr)._1, y.const)
     println(loss.eval)
     // let's calculate a gradient
     val grads = loss.grad(paramsExpr).returns[Float]

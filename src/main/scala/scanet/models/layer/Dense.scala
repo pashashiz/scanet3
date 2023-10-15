@@ -44,7 +44,7 @@ object Dense {
 case class Dense private (outputs: Int, reg: Regularization, initializer: Initializer)
     extends StatelessLayer {
 
-  override def params_(input: Shape): Params[ParamDef] =
+  override def params(input: Shape): Params[ParamDef] =
     Params(Weights -> ParamDef(Shape(input(1), outputs), initializer, Some(Avg), trainable = true))
 
   override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
@@ -53,7 +53,7 @@ case class Dense private (outputs: Int, reg: Regularization, initializer: Initia
     // x * w -> (samples, features) * (features, outputs) -> (samples, outputs)
     input matmul params.weights
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
     reg.build(params.weights)
 
   override def outputShape(input: Shape): Shape = Shape(input.head, outputs)

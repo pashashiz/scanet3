@@ -80,7 +80,7 @@ case class Conv2D private (
   def filterHeight: Int = kernel._1
   def filterWidth: Int = kernel._2
 
-  override def params_(input: Shape): Params[ParamDef] = {
+  override def params(input: Shape): Params[ParamDef] = {
     require(
       input.rank == 4,
       s"Conv2D input should have a shape (NHWC) or (NCHW) but was $input")
@@ -101,7 +101,7 @@ case class Conv2D private (
       format = format)
   }
 
-  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
     zeros[E](Shape())
 
   override def outputShape(input: Shape): Shape = {

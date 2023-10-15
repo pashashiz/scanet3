@@ -55,7 +55,7 @@ case class Optimizer[A: Floating](
 
   private val lossModel = model.withLoss(loss)
 
-  def run(): TrainedModel_[A] = {
+  def run(): TrainedModel[A] = {
     val jobId = UUID.randomUUID().toString
     val ds: Dataset[Record[A]] = dataset.cache()
     val sc = ds.sparkSession.sparkContext
@@ -93,7 +93,7 @@ case class Optimizer[A: Floating](
     }
     val params = optimize(Step(batchSize), Params.empty, Params.empty)
 
-    lossModel.trained_(params)
+    lossModel.trained(params)
   }
 
   private def optimizeOnPartition(
@@ -107,7 +107,7 @@ case class Optimizer[A: Floating](
     val result = resource.sessionPool.within(session => {
       val batches = TensorIterator(it, shapes, batchSize)
       val batchedInputShape = batchSize +: shapes._1
-      val paramsDef = model.params_(batchedInputShape)
+      val paramsDef = model.params(batchedInputShape)
       val weightNames = paramsDef.filterValues(_.trainable).paths
       val (paramsInitialized, metaInitialized) =
         if (globalIter == 0) {
@@ -147,7 +147,7 @@ case class Optimizer[A: Floating](
   private def compileLoss(cache: Optimizer.Cache, session: Session) = {
     cache.getOrCompute(
       s"$lossModel:loss[${TensorType[A].classTag}]",
-      lossModel.lossStateful_[A].tf) compileWith session
+      lossModel.lossStateful[A].tf) compileWith session
   }
 
   private def compileBackprop(cache: Optimizer.Cache, session: Session) = {
@@ -161,7 +161,7 @@ case class Optimizer[A: Floating](
             metas: Params[Expr[A]],
             state: Params[Expr[A]],
             iter: Expr[Int]) => {
-          val (grads, nextState) = lossModel.gradStateful_[A].apply(x, y, weights, state)
+          val (grads, nextState) = lossModel.gradStateful[A].apply(x, y, weights, state)
           val (nextAcc, nextMeta) = weights.join(grads).join(metas).params
             .foldLeft((newOutputSeq, newOutputSeq)) { (acc, next) =>
               val (gAcc, metaAcc) = acc
@@ -288,7 +288,7 @@ object Optimizer {
 
     @nowarn def build(implicit ev: State =:= Complete): Optimizer[A] = optimizer
 
-    def run()(implicit ev: State =:= Complete): TrainedModel_[A] = build.run()
+    def run()(implicit ev: State =:= Complete): TrainedModel[A] = build.run()
   }
 
   def minimize[R: Floating](model: Model)(
