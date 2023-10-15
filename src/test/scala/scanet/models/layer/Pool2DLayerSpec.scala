@@ -1,7 +1,7 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Tensor
+import scanet.core.{Params, Tensor}
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
@@ -27,8 +27,8 @@ class Pool2DLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(2.0, 3.0, 3.0, 3.0),
         Array(2.0, 3.0, 3.0, 2.0))
         .reshape(1, 4, 4, 1)
-      val result = model.result[Double].compile
-      result(input, Seq.empty).const.roundAt(2).eval shouldBe output
+      val result = model.result_[Double].compile
+      result(input, Params.empty).const.roundAt(2).eval shouldBe output
     }
 
     "have string repr" in {

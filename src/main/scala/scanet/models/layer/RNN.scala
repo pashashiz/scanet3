@@ -1,9 +1,12 @@
 package scanet.models.layer
-import scanet.core.{Expr, Floating, Shape}
+
+import scanet.core.{Expr, Floating, Params, Path, Shape}
+import scanet.math.syntax.zeros
 import scanet.models.Activation.{Sigmoid, Tanh}
+import scanet.models.Aggregation.Avg
 import scanet.models.Initializer.{GlorotUniform, Ones, Orthogonal, Zeros}
 import scanet.models.Regularization.Zero
-import scanet.models.{Activation, Initializer, Regularization}
+import scanet.models.{Activation, Initializer, ParamDef, Regularization}
 import scanet.syntax._
 
 import scala.annotation.tailrec
@@ -21,39 +24,57 @@ import scala.collection.immutable.Seq
   * @param returnSequence Whether to return the last output in the output sequence, or the full sequence.
   *                       To stack multiple layers set `returnSequence=true`
   */
-case class RNN(cell: Layer, returnSequence: Boolean = false) extends Layer {
+case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean = false)
+    extends Layer {
 
-  override def buildStateful[E: Floating](
+  // todo: better params management
+
+  override def params_(input: Shape): Params[ParamDef] = {
+    val (weights, state) = paramsPartitioned(input)
+    if (stateful) state ++ weights else weights
+  }
+
+  private def paramsPartitioned(input: Shape): (Params[ParamDef], Params[ParamDef]) =
+    cell.params_(dropTime(input)).partitionValues(_.trainable)
+
+  override def build_[E: Floating](
       input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     require(input.rank == 3, "RNN requires input to have Shape(batch, time, features)")
     // input: (batch, time, features) -> stepsInput: (time, batch, features)
     val stepsInput = input.transpose(Seq(1, 0) ++ (2 until input.rank))
     val timeSteps = stepsInput.shape(0)
+    val (weightParamsDef, stateParamsDef) = paramsPartitioned(input.shape)
+    val weightParamsNames = weightParamsDef.params.keySet
+    val (weightParams, stateParams) = params.params
+      .partition { case (path, _) => weightParamsNames(path) }
+
     @tailrec
     def stackCells(
         step: Int,
         outputs: Seq[Expr[E]],
-        state: Seq[Expr[E]]): (Seq[Expr[E]], Seq[Expr[E]]) = {
-      val (output, outputState) = cell.buildStateful(stepsInput.slice(step), weights, state)
+        state: Params[Expr[E]]): (Seq[Expr[E]], Params[Expr[E]]) = {
+      val (output, outputState) = cell.build_(stepsInput.slice(step), state ++ Params(weightParams))
       if (step < timeSteps - 1) {
         stackCells(step + 1, outputs :+ output, outputState)
       } else {
         (outputs :+ output, outputState)
       }
     }
-    val (outputs, lastOutputState) = stackCells(0, Seq.empty, state)
+
+    val inputState =
+      if (stateful) Params(stateParams) else stateParamsDef.mapValues(d => zeros[E](d.shape))
+    val (outputs, lastOutputState) = stackCells(0, Seq.empty, inputState)
     val output =
       if (returnSequence) joinAlong(outputs, 1).reshape(outputShape(input.shape))
       else outputs.last
     (output, lastOutputState)
   }
 
-  private def dropTime(input: Shape): Shape = input.remove(1)
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+    cell.penalty_(dropTime(input), params)
 
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
-    cell.penalty(dropTime(input), weights)
+  private def dropTime(input: Shape): Shape = input.remove(1)
 
   override def outputShape(input: Shape): Shape = {
     val cellOutput = cell.outputShape(dropTime(input))
@@ -62,13 +83,6 @@ case class RNN(cell: Layer, returnSequence: Boolean = false) extends Layer {
     else
       cell.outputShape(cellOutput)
   }
-
-  override def weightsShapes(input: Shape): Seq[Shape] = cell.weightsShapes(dropTime(input))
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
-    cell.initWeights(dropTime(input))
-
-  override def stateShapes(input: Shape): Seq[Shape] = cell.stateShapes(dropTime(input))
 }
 
 object SimpleRNN {
@@ -98,7 +112,8 @@ object SimpleRNN {
       kernelReg: Regularization = Zero,
       recurrentReg: Regularization = Zero,
       biasReg: Regularization = Zero,
-      returnSequence: Boolean = false): RNN =
+      returnSequence: Boolean = false,
+      stateful: Boolean = false): RNN =
     RNN(
       SimpleRNNCell(
         units,
@@ -110,10 +125,12 @@ object SimpleRNN {
         kernelReg,
         recurrentReg,
         biasReg),
-      returnSequence)
+      returnSequence,
+      stateful)
 }
 
 object SimpleRNNCell {
+
   def apply(
       units: Int,
       activation: Activation = Tanh,
@@ -129,6 +146,10 @@ object SimpleRNNCell {
       new SimpleRNNCell(units, kernelInitializer, recurrentInitializer, kernelReg, recurrentReg)
     cell ?>> (bias, Bias(units, biasReg, biasInitializer)) ?>> (activation.ni, activation.layer)
   }
+
+  val Kernel: Path = "kernel_weights"
+  val Recurrent: Path = "recurrent_weights"
+  val State: Path = "state"
 }
 
 case class SimpleRNNCell(
@@ -138,37 +159,30 @@ case class SimpleRNNCell(
     kernelReg: Regularization,
     recurrentReg: Regularization)
     extends Layer {
+  import SimpleRNNCell._
 
-  override def buildStateful[E: Floating](
+  override def stateful: Boolean = true
+
+  override def params_(input: Shape): Params[ParamDef] = Params(
+    // (features, units)
+    Kernel -> ParamDef(Shape(input(1), units), kernelInitializer, Some(Avg), trainable = true),
+    // (units, units)
+    Recurrent -> ParamDef(Shape(units, units), recurrentInitializer, Some(Avg), trainable = true),
+    // state, keeps previous output
+    State -> ParamDef(outputShape(input), Initializer.Zeros))
+
+  override def build_[E: Floating](
       input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     require(input.rank >= 2, "SimpleRNNCell requires input Seq(batch, features)")
-    require(weights.size == 2, "SimpleRNNCell requires weights Seq(kernel, recurrent)")
-    require(state.size == 1, "SimpleRNNCell requires single state")
-    val kernel = weights.head
-    val recurrent = weights(1)
-    val result = (input matmul kernel) + (state.head matmul recurrent)
-    (result, Seq(result))
+    val result = (input matmul params(Kernel)) + (params(State) matmul params(Recurrent))
+    (result, Params(State -> result))
   }
 
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
-    kernelReg.build(weights.head) + recurrentReg.build(weights(1))
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+    kernelReg.build(params(Kernel)) + recurrentReg.build(params(Recurrent))
 
   override def outputShape(input: Shape): Shape = Shape(input.head, units)
-
-  override def weightsShapes(input: Shape): Seq[Shape] = {
-    val wx = Shape(input(1), units) // (features, units)
-    val wh = Shape(units, units) // (units, units)
-    Seq(wx, wh)
-  }
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] = {
-    val Seq(wx, wh) = weightsShapes(input)
-    Seq(kernelInitializer.build[E](wx), recurrentInitializer.build[E](wh))
-  }
-
-  override def stateShapes(input: Shape): Seq[Shape] = Seq(outputShape(input))
 }
 
 object LSTM {
@@ -199,7 +213,8 @@ object LSTM {
       kernelReg: Regularization = Zero,
       recurrentReg: Regularization = Zero,
       biasReg: Regularization = Zero,
-      returnSequence: Boolean = false): RNN =
+      returnSequence: Boolean = false,
+      stateful: Boolean = false): RNN =
     RNN(
       LSTMCell(
         units,
@@ -213,7 +228,10 @@ object LSTM {
         kernelReg,
         recurrentReg,
         biasReg),
-      returnSequence)
+      returnSequence,
+      stateful)
+  val CellState: Path = "cell_state"
+  val HiddenState: Path = "hidden_state"
 }
 
 case class LSTMCell(
@@ -229,9 +247,10 @@ case class LSTMCell(
     recurrentReg: Regularization = Zero,
     biasReg: Regularization = Zero)
     extends Layer {
+  import LSTM._
 
-  private def cell(activation: Activation, useBias: Initializer) =
-    SimpleRNNCell(
+  private def cell(path: Path, activation: Activation, useBias: Initializer) =
+    path -> SimpleRNNCell(
       units,
       activation,
       bias,
@@ -242,11 +261,28 @@ case class LSTMCell(
       recurrentReg,
       biasReg)
 
-  private val fCell = cell(recurrentActivation, useBias = biasForgetInitializer) // forget
-  private val iCell = cell(recurrentActivation, useBias = biasInitializer) // input
-  private val gCell = cell(activation, useBias = biasInitializer) // gate
-  private val oCell = cell(recurrentActivation, useBias = biasInitializer) // output
-  private val cells = Seq(fCell, iCell, gCell, oCell)
+  private val fCell = cell("forget", recurrentActivation, useBias = biasForgetInitializer)
+  private val iCell = cell("input", recurrentActivation, useBias = biasInitializer)
+  private val gCell = cell("gate", activation, useBias = biasInitializer)
+  private val oCell = cell("output", recurrentActivation, useBias = biasInitializer)
+  private val cells = Seq(fCell, iCell, gCell, oCell).map(_._2)
+  private val cells_ = Map(fCell, iCell, gCell, oCell)
+
+  override def stateful: Boolean = true
+
+  override def params_(input: Shape): Params[ParamDef] = {
+    val weights = cells_
+      .map {
+        case (name, cell) =>
+          val params = cell.params_(input)
+          val onlyWeights = params.filterPaths(path => !path.endsWith(SimpleRNNCell.State))
+          onlyWeights.prependPath(name)
+      }
+      .reduce(_ ++ _)
+    val states = Params(Seq(CellState, HiddenState)
+      .map(path => path -> ParamDef(outputShape(input), Zeros)): _*)
+    weights ++ states
+  }
 
   /** Shapes:
     *  - input c t-1: (batch, features)
@@ -260,48 +296,35 @@ case class LSTMCell(
     *  - output h: (batch, units)
     *  - output y: (batch, units)
     */
-  override def buildStateful[E: Floating](
+  override def build_[E: Floating](
       input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     require(input.rank >= 2, "LSTMCell requires input Seq(batch, features)")
-    require(
-      weights.size == 8 + (if (bias) 4 else 0),
-      "LSTMCell requires weights (Seq(kernel, recurrent, bias?) * 4")
-    require(state.size == 2, "LSTMCell requires state Seq(c_prev, h_prev)")
-    val Seq(cPrev, hPrev) = state
-    val Seq(f, i, g, o) = cells.zip(unpackWeights(input.shape, weights)).map {
-      case (cell, weights) => cell.buildStateful(input, weights, Seq(hPrev))._1
+    val cPrev = params(CellState)
+    val hPrev = params(HiddenState)
+    val List(f, i, g, o) = cells_.toList.map {
+      case (name, cell) =>
+        val cellState = cell.params_(input.shape)
+          .filter {
+            case (path, param) =>
+              path.endsWith(Params.State) && param.nonTrainable && param.shape == hPrev.shape
+          }
+          .mapValues(_ => hPrev)
+        val cellParams = params.children(name) ++ cellState
+        cell.build_(input, cellParams)._1
     }
     val c = cPrev * f + i * g
     val h = o * activation.build(c)
-    (h, Seq(c, h))
+    (h, Params(CellState -> c, HiddenState -> h))
   }
 
-  private def unpackWeights[E](input: Shape, weights: Seq[Expr[E]]): Seq[Seq[Expr[E]]] = {
-    val (_, unpacked) = cells.foldLeft((weights, Seq.empty[Seq[Expr[E]]])) {
-      case ((weights, acc), cell) =>
-        val size = cell.weightsShapes(input).size
-        val (cellWeights, remainWeights) = weights.splitAt(size)
-        (remainWeights, acc :+ cellWeights)
-    }
-    unpacked
-  }
-
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
-    cells.zip(unpackWeights(input, weights)).foldLeft(Floating[E].zero.const) {
-      case (sum, (cell, weights)) => sum + cell.penalty(input, weights)
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+    cells_.foldLeft(Floating[E].zero.const) {
+      case (sum, (name, cell)) =>
+        val cellParams = params.children(name)
+        sum + cell.penalty_(input, cellParams)
     }
 
   override def outputShape(input: Shape): Shape =
-    oCell.outputShape(input)
-
-  override def weightsShapes(input: Shape): Seq[Shape] =
-    cells.flatMap(_.weightsShapes(input))
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
-    cells.flatMap(_.initWeights[E](input))
-
-  override def stateShapes(input: Shape): Seq[Shape] =
-    Seq.fill(2)(outputShape(input))
+    oCell._2.outputShape(input)
 }

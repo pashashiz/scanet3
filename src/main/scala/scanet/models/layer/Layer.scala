@@ -1,16 +1,16 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, Shape}
+import scanet.core.{Expr, Floating, Params, Shape}
 import scanet.math.syntax.zeros
-import scanet.models.Model
+import scanet.models.{Model, ParamDef}
 
 import scala.collection.immutable.Seq
-
 import scala.annotation.nowarn
 
 trait Layer extends Model {
 
   def trainable: Boolean = true
+  def stateful: Boolean
 
   /** Compose `right` layer with `this` (`left`) layer.
     *
@@ -31,21 +31,29 @@ trait Layer extends Model {
 
 trait StatelessLayer extends Layer {
 
-  def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E]
+  override def stateful: Boolean = false
 
-  override def buildStateful[E: Floating](
+  def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E]
+
+  override def build_[E: Floating](
       input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) =
-    (build(input, weights), Seq.empty)
-
-  override def stateShapes(input: Shape): Seq[Shape] = Seq.empty
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
+    (buildStateless_(input, params), Params.empty)
+  }
 }
 
-trait WeightlessLayer extends StatelessLayer {
+trait NotTrainableLayer extends StatelessLayer {
+
   override def trainable: Boolean = false
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
+
+  override def params_(input: Shape): Params[ParamDef] = Params.empty
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
     zeros[E](Shape())
-  override def weightsShapes(input: Shape): Seq[Shape] = Seq.empty
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] = Seq.empty
+
+  def build_[E: Floating](input: Expr[E]): Expr[E]
+
+  override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] = {
+    require(params.isEmpty, s"$this layer does not require params")
+    build_(input)
+  }
 }

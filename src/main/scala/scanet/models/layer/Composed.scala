@@ -1,7 +1,8 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, Shape}
+import scanet.core.{Expr, Floating, Params, Shape}
 import scanet.math.syntax._
+import scanet.models.ParamDef
 
 import scala.collection.immutable.Seq
 
@@ -12,41 +13,34 @@ import scala.collection.immutable.Seq
   */
 case class Composed(left: Layer, right: Layer) extends Layer {
 
-  override def buildStateful[E: Floating](
+  override def params_(input: Shape): Params[ParamDef] = {
+    // todo: flatten
+    val leftParams = left.params_(input).prependPath("l")
+    val rightParams = right.params_(left.outputShape(input)).prependPath("r")
+    leftParams ++ rightParams
+  }
+
+  override def build_[E: Floating](
       input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
-    val (leftWeights, rightWeights) = weights.splitAt(left.weightsShapes(input.shape).size)
-    val (leftState, rightState) = state.splitAt(left.stateShapes(input.shape).size)
-    val (leftOutput, leftNewState) = left.buildStateful(input, leftWeights, leftState)
-    val (rightOutput, rightNewState) = right.buildStateful(leftOutput, rightWeights, rightState)
-    (rightOutput, leftNewState ++ rightNewState)
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
+    val leftParams = params.children("l")
+    val rightParams = params.children("r")
+    val (leftOutput, leftState) = left.build_(input, leftParams)
+    val (rightOutput, rightState) = right.build_(leftOutput, rightParams)
+    (rightOutput, leftState.prependPath("l") ++ rightState.prependPath("r"))
   }
 
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]) = {
-    val (leftWeights, rightWeights) = weights.splitAt(left.weightsShapes(input).size)
-    left.penalty(input, leftWeights) plus right.penalty(left.outputShape(input), rightWeights)
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] = {
+    val leftParams = params.children("l")
+    val rightParams = params.children("r")
+    left.penalty_(input, leftParams) plus right.penalty_(left.outputShape(input), rightParams)
   }
 
-  override def outputShape(input: Shape): Shape = right.outputShape(left.outputShape(input))
+  override def outputShape(input: Shape): Shape =
+    right.outputShape(left.outputShape(input))
 
-  override def weightsShapes(input: Shape): Seq[Shape] = {
-    val leftShapes = left.weightsShapes(input)
-    val rightShapes = right.weightsShapes(left.outputShape(input))
-    leftShapes ++ rightShapes
-  }
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] = {
-    val leftShapes = left.initWeights[E](input)
-    val rightShapes = right.initWeights[E](left.outputShape(input))
-    leftShapes ++ rightShapes
-  }
-
-  override def stateShapes(input: Shape): Seq[Shape] = {
-    val leftShapes = left.stateShapes(input)
-    val rightShapes = right.stateShapes(left.outputShape(input))
-    leftShapes ++ rightShapes
-  }
+  override def stateful: Boolean =
+    left.stateful || right.stateful
 
   override def info(input: Shape): Seq[LayerInfo] = {
     val rightInput = left.outputShape(input)
@@ -54,5 +48,4 @@ case class Composed(left: Layer, right: Layer) extends Layer {
   }
 
   override def toString: String = s"$left >> $right"
-
 }

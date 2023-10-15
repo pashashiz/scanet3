@@ -1,7 +1,7 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Tensor
+import scanet.core.{Params, Tensor}
 import scanet.models.Activation.Sigmoid
 import scanet.syntax._
 import scanet.test.CustomMatchers
@@ -19,13 +19,13 @@ class ActivateLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(1f, 0f, 1f),
         Array(1f, 1f, 1f))
       val model = Sigmoid.layer
-      val result = model.result[Float].compile
+      val result = model.result_[Float].compile
       val y = Tensor.matrix(
         Array(0.5f, 0.5f, 0.7310586f),
         Array(0.5f, 0.7310586f, 0.7310586f),
         Array(0.7310586f, 0.5f, 0.7310586f),
         Array(0.7310586f, 0.7310586f, 0.7310586f))
-      result(x, Seq.empty) should be(y)
+      result(x, Params.empty) should be(y)
     }
 
     "have string repr" in {

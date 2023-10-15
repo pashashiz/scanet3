@@ -1,9 +1,11 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, Shape}
+import scanet.core.Params.Weights
+import scanet.core.{Expr, Floating, Params, Shape}
+import scanet.models.Aggregation.Avg
 import scanet.models.Initializer.{GlorotUniform, Zeros}
 import scanet.models.Regularization.Zero
-import scanet.models.{Activation, Initializer, Regularization}
+import scanet.models.{Activation, Initializer, ParamDef, Regularization}
 import scanet.syntax._
 
 import scala.collection.immutable.Seq
@@ -42,25 +44,17 @@ object Dense {
 case class Dense private (outputs: Int, reg: Regularization, initializer: Initializer)
     extends StatelessLayer {
 
-  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]) = {
-    require(weights.size == 1, "Dense layer can have only one set of weights")
+  override def params_(input: Shape): Params[ParamDef] =
+    Params(Weights -> ParamDef(Shape(input(1), outputs), initializer, Some(Avg), trainable = true))
+
+  override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
     // x:(samples, features)
     // w:(features, outputs)
     // x * w -> (samples, features) * (features, outputs) -> (samples, outputs)
-    input matmul weights.head
-  }
+    input matmul params.weights
 
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]) =
-    reg.build(weights.head)
-
-  override def weightsShapes(input: Shape): Seq[Shape] = {
-    require(input.rank == 2, "features should have a shape (batch, features)")
-    Seq(Shape(input(1), outputs))
-  }
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
-    Seq(initializer.build[E](weightsShapes(input).head))
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+    reg.build(params.weights)
 
   override def outputShape(input: Shape): Shape = Shape(input.head, outputs)
-
 }

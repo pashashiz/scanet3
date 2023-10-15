@@ -27,6 +27,10 @@ object TF {
     def tf: TF5[A1, A2, A3, A4, A5, R] = TF5(f)
   }
 
+  class TF6Ops[A1, A2, A3, A4, A5, A6, R](f: (A1, A2, A3, A4, A5, A6) => R) {
+    def tf: TF6[A1, A2, A3, A4, A5, A6, R] = TF6(f)
+  }
+
   trait AllSyntax {
 
     // implicit conversions to TF when, useful when we want to compile regular function
@@ -36,6 +40,8 @@ object TF {
     implicit def toTF4[A1, A2, A3, A4, R](f: (A1, A2, A3, A4) => R): TF4[A1, A2, A3, A4, R] = TF4(f)
     implicit def toTF5[A1, A2, A3, A4, A5, R](f: (A1, A2, A3, A4, A5) => R)
         : TF5[A1, A2, A3, A4, A5, R] = TF5(f)
+    implicit def toTF6[A1, A2, A3, A4, A5, A6, R](f: (A1, A2, A3, A4, A5, A6) => R)
+        : TF6[A1, A2, A3, A4, A5, A6, R] = TF6(f)
 
     // ops to by calling f.tf we can convert a function to FT on demand
     implicit def toTF1Ops[A1, R](f: A1 => R): TF1Ops[A1, R] = new TF1Ops(f)
@@ -46,7 +52,8 @@ object TF {
       new TF4Ops(f)
     implicit def toTF5Ops[A1, A2, A3, A4, A5, R](f: (A1, A2, A3, A4, A5) => R)
         : TF5Ops[A1, A2, A3, A4, A5, R] = new TF5Ops(f)
-
+    implicit def toTF6Ops[A1, A2, A3, A4, A5, A6, R](f: (A1, A2, A3, A4, A5, A6) => R)
+        : TF6Ops[A1, A2, A3, A4, A5, A6, R] = new TF6Ops(f)
   }
 
   object syntax extends AllSyntax
@@ -346,6 +353,88 @@ object TF5 {
           val rRaw = session.runner.feed(pAll zip aTAll: _*).evalUnsafe(rIn)
           rMat.constructOutRaw(rLayout, rRaw)
         }
+    }
+  }
+}
+
+trait TF6[A1, A2, A3, A4, A5, A6, R] {
+  def compileWith(session: Session)(
+      implicit a1Mat: Mat[A1],
+      a2Mat: Mat[A2],
+      a3Mat: Mat[A3],
+      a4Mat: Mat[A4],
+      a5Mat: Mat[A5],
+      a6Mat: Mat[A6],
+      rMat: Mat[R]): (a1Mat.Out, a2Mat.Out, a3Mat.Out, a4Mat.Out, a5Mat.Out, a6Mat.Out) => rMat.Out
+  def compile(
+      implicit a1Mat: Mat[A1],
+      a2Mat: Mat[A2],
+      a3Mat: Mat[A3],
+      a4Mat: Mat[A4],
+      a5Mat: Mat[A5],
+      a6Mat: Mat[A6],
+      rMat: Mat[R])
+      : (a1Mat.Out, a2Mat.Out, a3Mat.Out, a4Mat.Out, a5Mat.Out, a6Mat.Out) => rMat.Out =
+    compileWith(new Session())(a1Mat, a2Mat, a3Mat, a4Mat, a5Mat, a6Mat, rMat)
+}
+
+object TF6 {
+
+  def apply[A1, A2, A3, A4, A5, A6, R](func: (A1, A2, A3, A4, A5, A6) => R): TF6[A1, A2, A3, A4, A5, A6, R] =
+    new TF6Cached[A1, A2, A3, A4, A5, A6, R](func)
+
+  class TF6Cached[A1, A2, A3, A4, A5, A6, R](func: (A1, A2, A3, A4, A5, A6) => R)
+    extends TF6[A1, A2, A3, A4, A5, A6, R] {
+
+    private val cache = TF.Cache[R]()
+
+    override def compileWith(session: Session)(
+      implicit a1Mat: Mat[A1],
+      a2Mat: Mat[A2],
+      a3Mat: Mat[A3],
+      a4Mat: Mat[A4],
+      a5Mat: Mat[A5],
+      a6Mat: Mat[A6],
+      rMat: Mat[R]): (a1Mat.Out, a2Mat.Out, a3Mat.Out, a4Mat.Out, a5Mat.Out, a6Mat.Out) => rMat.Out = {
+      (a1Out: a1Mat.Out, a2Out: a2Mat.Out, a3Out: a3Mat.Out, a4Out: a4Mat.Out, a5Out: a5Mat.Out, a6Out: a6Mat.Out) =>
+      {
+        val (a1Layout, a1T) = a1Mat.deconstructOut(a1Out)
+        val (a2Layout, a2T) = a2Mat.deconstructOut(a2Out)
+        val (a3Layout, a3T) = a3Mat.deconstructOut(a3Out)
+        val (a4Layout, a4T) = a4Mat.deconstructOut(a4Out)
+        val (a5Layout, a5T) = a5Mat.deconstructOut(a5Out)
+        val (a6Layout, a6T) = a6Mat.deconstructOut(a6Out)
+        val aTAll = a1T ++ a2T ++ a3T ++ a4T ++ a5T ++ a6T
+        val a1Type = a1T.map(tensor => (tensor.`type`, tensor.shape))
+        val a2Type = a2T.map(tensor => (tensor.`type`, tensor.shape))
+        val a3Type = a3T.map(tensor => (tensor.`type`, tensor.shape))
+        val a4Type = a4T.map(tensor => (tensor.`type`, tensor.shape))
+        val a5Type = a5T.map(tensor => (tensor.`type`, tensor.shape))
+        val a6Type = a6T.map(tensor => (tensor.`type`, tensor.shape))
+        val aShapes = a1Type.map(_._2) ++ a2Type.map(_._2) ++ a3Type.map(_._2) ++
+          a4Type.map(_._2) ++ a5Type.map(_._2) ++ a6Type.map(_._2)
+
+        val (pAll, r) = cache.getOrCompute(aShapes) {
+          val p1 = a1Type.map { case (t, s) => placeholderRaw(t, s) }
+          val p2 = a2Type.map { case (t, s) => placeholderRaw(t, s) }
+          val p3 = a3Type.map { case (t, s) => placeholderRaw(t, s) }
+          val p4 = a4Type.map { case (t, s) => placeholderRaw(t, s) }
+          val p5 = a5Type.map { case (t, s) => placeholderRaw(t, s) }
+          val p6 = a6Type.map { case (t, s) => placeholderRaw(t, s) }
+          val a1 = a1Mat.constructIn(a1Layout, p1)
+          val a2 = a2Mat.constructIn(a2Layout, p2)
+          val a3 = a3Mat.constructIn(a3Layout, p3)
+          val a4 = a4Mat.constructIn(a4Layout, p4)
+          val a5 = a5Mat.constructIn(a5Layout, p5)
+          val a6 = a6Mat.constructIn(a6Layout, p6)
+          val r = func(a1, a2, a3, a4, a5, a6)
+          (p1 ++ p2 ++ p3 ++ p4 ++ p5 ++ p6, r)
+        }
+
+        val (rLayout, rIn) = rMat.deconstructIn(r)
+        val rRaw = session.runner.feed(pAll zip aTAll: _*).evalUnsafe(rIn)
+        rMat.constructOutRaw(rLayout, rRaw)
+      }
     }
   }
 }

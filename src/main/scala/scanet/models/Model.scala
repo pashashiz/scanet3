@@ -11,49 +11,43 @@ abstract class Model extends Serializable {
 
   def name: String = getClass.getSimpleName.replace("$", "")
 
-  def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] =
-    buildStateful(input, weights, stateShapes(input.shape).map(s => zeros[E](s)))._1
+  /** Model params, both trainable and non-trainable (model state)
+    * @param input input shape
+    * @return param definitions
+    */
+  def params_(input: Shape): Params[ParamDef]
 
   /** Build a model
     *
-    * @param input   training set, where first dimension equals to number of samples (batch size)
-    * @param weights model weights
-    * @param state model state
-    * @return model
+    * @param input training set, where first dimension equals to number of samples (batch size)
+    * @param params initialized or calculated model params
+    * @return tuple where the first element is model output and second is changed params
     */
-  def buildStateful[E: Floating](
-      input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]])
+  def build_[E: Floating](input: Expr[E], params: Params[Expr[E]]): (Expr[E], Params[Expr[E]])
 
   /** Additional model penalty to be added to the loss
     *
-    * @param weights model weights
+    * @param params initialized or calculated model params
     * @return penalty
     */
-  def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E]
+  def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E]
 
-  def result[E: Floating]: (Expr[E], Seq[Expr[E]]) => Expr[E] =
-    (input, weights) =>
-      buildStateful(input, weights, stateShapes(input.shape).map(s => zeros[E](s)))._1
+  def result_[E: Floating]: (Expr[E], Params[Expr[E]]) => Expr[E] =
+    (input, params) => build_(input, params)._1
 
-  def resultStateful[E: Floating]
-      : (Expr[E], Seq[Expr[E]], Seq[Expr[E]]) => (Expr[E], Seq[Expr[E]]) =
-    (input, weights, state) => buildStateful(input, weights, state)
+  def resultStateful_[E: Floating]: (Expr[E], Params[Expr[E]]) => (Expr[E], Params[Expr[E]]) =
+    (input, params) => build_(input, params)
 
+  // do we really need that???
   def outputShape(input: Shape): Shape
-
-  def weightsShapes(input: Shape): Seq[Shape]
-  def initWeights[E: Floating](input: Shape): Seq[Expr[E]]
-
-  def stateShapes(input: Shape): Seq[Shape]
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
-  private def makeGraph[E: Floating](input: Shape) =
-    build(
-      placeholder[E](input),
-      weightsShapes(input).map(s => placeholder[E](s)))
+  private def makeGraph[E: Floating](input: Shape): Expr[E] =
+    build_(
+      input = placeholder[E](input),
+      params = params_(input).mapValues(paramDef => placeholder[E](paramDef.shape)))
+      ._1
 
   def displayResult[E: Floating](input: Shape, dir: String = ""): Unit =
     makeGraph[E](input).as("result").display(dir)
@@ -61,101 +55,118 @@ abstract class Model extends Serializable {
   def printResult[E: Floating](input: Shape): Unit =
     println(makeGraph[E](input).as("result").toString)
 
-  def info(input: Shape): Seq[LayerInfo] =
-    Seq(LayerInfo(toString, weightsShapes(input), outputShape(input)))
+  def info(input: Shape): Seq[LayerInfo] = {
+    val (weights, state) = params_(input).partitionValues(_.trainable)
+    Seq(LayerInfo(
+      toString,
+      weights.values.map(_.shape).toList,
+      state.values.map(_.shape).toList,
+      outputShape(input)))
+  }
 
   def describe[E: Floating](input: Shape): String = {
     val layersInfo = info(input)
-    val layers = (LayerInfo("Input", Seq.empty, input) +: layersInfo).map(_.toRow)
-    val table = Tabulator.format(Seq("name", "weights", "params", "output") +: layers)
-    val total = layersInfo.flatMap(info => info.weights.map(_.power)).sum
-    val size = Bytes.formatSize(TensorType[E].codec.sizeOf(total))
-    s"$table\nTotal params: $total ($size)"
+    val layers = (LayerInfo("Input", Seq.empty, Seq.empty, input) +: layersInfo).map(_.toRow)
+    val table =
+      Tabulator.format(Seq("name", "weights", "weights params", "state params", "output") +: layers)
+    val weightTotal = layersInfo.map(info => info.weightsTotal).sum
+    val weightSize = Bytes.formatSize(TensorType[E].codec.sizeOf(weightTotal))
+    val stateTotal = layersInfo.map(info => info.stateTotal).sum
+    val stateSize = Bytes.formatSize(TensorType[E].codec.sizeOf(stateTotal))
+    s"$table\nTotal weight params: $weightTotal ($weightSize), state params: $stateTotal ($stateSize)"
   }
 }
 
 case class LossModel(model: Model, lossF: Loss) extends Serializable {
 
-  def build[E: Floating](input: Expr[E], output: Expr[E], weights: Seq[Expr[E]]): Expr[E] =
-    lossF.build(model.build(input, weights), output) plus model.penalty(input.shape, weights)
-
-  def buildStateful[E: Floating](
+  def build_[E: Floating](
       input: Expr[E],
       output: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
-    val (result, nextState) = model.buildStateful(input, weights, state)
-    val loss = lossF.build(result, output) plus model.penalty(input.shape, weights)
-    (loss, nextState)
+      params: Params[Expr[E]]): Expr[E] =
+    buildStateful_(input, output, params)._1
+
+  def buildStateful_[E: Floating](
+      input: Expr[E],
+      output: Expr[E],
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
+    val (result, nextParams) = model.build_(input, params)
+    val loss = lossF.build(result, output) plus model.penalty_(input.shape, params)
+    (loss, nextParams)
   }
 
-  def loss[E: Floating]: (Expr[E], Expr[E], Seq[Expr[E]]) => Expr[E] =
-    (input, output, weights) => build(input, output, weights)
+  def loss_[E: Floating]: (Expr[E], Expr[E], Params[Expr[E]]) => Expr[E] =
+    (input, output, params) => buildStateful_(input, output, params)._1
 
-  def lossStateful[E: Floating]
-      : (Expr[E], Expr[E], Seq[Expr[E]], Seq[Expr[E]]) => (Expr[E], Seq[Expr[E]]) =
-    (input, output, weights, state) => buildStateful(input, output, weights, state)
+  def lossStateful_[E: Floating]
+      : (Expr[E], Expr[E], Params[Expr[E]]) => (Expr[E], Params[Expr[E]]) =
+    (input, output, params) => buildStateful_(input, output, params)
 
-  def grad[E: Floating]: (Expr[E], Expr[E], Seq[Expr[E]]) => Seq[Expr[E]] =
-    (input, output, weights) => build(input, output, weights).grad(weights).returns[E]
+  def grad_[E: Floating]: (Expr[E], Expr[E], Params[Expr[E]]) => Params[Expr[E]] =
+    (input, output, weights) => {
+      val loss = build_(input, output, weights)
+      loss.grad(weights).returns[E]
+    }
 
-  def gradStateful[E: Floating]
-      : (Expr[E], Expr[E], Seq[Expr[E]], Seq[Expr[E]]) => (Seq[Expr[E]], Seq[Expr[E]]) =
+  def gradStateful_[E: Floating]
+      : (Expr[E], Expr[E], Params[Expr[E]], Params[Expr[E]]) => (Params[Expr[E]], Params[Expr[E]]) =
     (input, output, weights, state) => {
-      val (loss, nextState) = buildStateful(input, output, weights, state)
+      val (loss, nextState) = buildStateful_(input, output, weights ++ state)
       val grad = loss.grad(weights).returns[E]
       (grad, nextState)
     }
 
-  def trained[E: Floating](weights: Seq[Tensor[E]]) = new TrainedModel(this, weights)
+  def trained_[E: Floating](params: Params[Tensor[E]]) = new TrainedModel_(this, params)
 
   def displayLoss[E: Floating](input: Shape, dir: String = ""): Unit = {
-    build(
-      placeholder[E](input),
-      placeholder[E](model.outputShape(input)),
-      model.weightsShapes(input).map(s => placeholder[E](s)))
+    val params = model.params_(input)
+    build_(
+      input = placeholder[E](input),
+      output = placeholder[E](model.outputShape(input)),
+      params = params.mapValues(paramDef => placeholder[E](paramDef.shape)))
       .as("loss")
       .display(dir)
   }
 
   def displayGrad[E: Floating](input: Shape, dir: String = ""): Unit = {
-    grad[E].apply(
+    val (weights, state) = model.params_(input).partitionValues(_.trainable)
+    val (grad, _) = gradStateful_[E].apply(
       placeholder[E](input),
       placeholder[E](model.outputShape(input)),
-      model.weightsShapes(input).map(s => placeholder[E](s)))
-      .zipWithIndex
-      .map { case (w, i) => w.as(s"loss_grad_${i}_layer") }
+      weights.mapValues(paramDef => placeholder[E](paramDef.shape)),
+      state.mapValues(paramDef => placeholder[E](paramDef.shape)))
+    grad.params
+      .map { case (path, w) => (path, w.as(s"loss_grad_${path}_layer")) }
       .display(dir)
   }
 
   override def toString: String = s"$lossF($model)"
 }
 
-class TrainedModel[E: Floating](val lossModel: LossModel, val weights: Seq[Tensor[E]]) {
+class TrainedModel_[E: Floating](val lossModel: LossModel, val params: Params[Tensor[E]]) {
 
-  def buildResult(input: Expr[E]): Expr[E] = lossModel.model.build(input, weights.map(_.const))
+  def buildResult(input: Expr[E]): Expr[E] =
+    buildResultStateful(input)._1
 
-  def buildResultStateful(input: Expr[E], state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) =
-    lossModel.model.buildStateful(input, weights.map(_.const), state)
+  def buildResultStateful(input: Expr[E]): (Expr[E], Params[Expr[E]]) =
+    lossModel.model.build_(input, params.mapValues(_.const))
 
   def result: Expr[E] => Expr[E] = (input: Expr[E]) => buildResult(input)
 
-  def resultStateful: (Expr[E], Seq[Expr[E]]) => (Expr[E], Seq[Expr[E]]) =
-    (input: Expr[E], state: Seq[Expr[E]]) => buildResultStateful(input, state)
+  def resultStateful: Expr[E] => (Expr[E], Params[Expr[E]]) =
+    (input: Expr[E]) => buildResultStateful(input)
 
   def buildLoss(input: Expr[E], output: Expr[E]): Expr[E] =
-    lossModel.build(input, output, weights.map(_.const))
+    buildLossStateful(input, output)._1
 
   def buildLossStateful(
       input: Expr[E],
-      output: Expr[E],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) =
-    lossModel.buildStateful(input, output, weights.map(_.const), state)
+      output: Expr[E]): (Expr[E], Params[Expr[E]]) =
+    lossModel.buildStateful_(input, output, params.mapValues(_.const))
 
   def loss: (Expr[E], Expr[E]) => Expr[E] = (input, output) => buildLoss(input, output)
 
-  def lossStateful: (Expr[E], Expr[E], Seq[Expr[E]]) => (Expr[E], Seq[Expr[E]]) =
-    (input, output, state) => buildLossStateful(input, output, state)
+  def lossStateful: (Expr[E], Expr[E]) => (Expr[E], Params[Expr[E]]) =
+    (input, output) => buildLossStateful(input, output)
 
   def outputShape(input: Shape): Shape = lossModel.model.outputShape(input)
 }

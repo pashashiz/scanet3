@@ -1,7 +1,9 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.{Shape, Tensor}
+import scanet.core.Params.Weights
+import scanet.core.Path._
+import scanet.core.{Params, Shape, Tensor}
 import scanet.models.Activation.Identity
 import scanet.syntax._
 import scanet.test.CustomMatchers
@@ -22,14 +24,18 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(-0.6313778f, 0.7754754f))
       val b = Tensor.vector(0f, 0f)
       val expected = Tensor.matrix(Array(0.222901f, -6.019066f))
-      val result = layer.result[Float].compile
-      val prediction = result(input, Seq(wx, wh, b)).const.roundAt(6).eval
+      val result = layer.result_[Float].compile
+      val params = Params(
+        "l" / "kernel_weights" -> wx,
+        "l" / "recurrent_weights" -> wh,
+        "r" / Weights -> b)
+      val prediction = result(input, params).const.roundAt(6).eval
       prediction shouldBe expected
     }
 
     "have string repr" in {
       val model = RNN(SimpleRNNCell(units = 2))
-      model.toString shouldBe "RNN(SimpleRNNCell(2,GlorotUniform,Orthogonal,Zero,Zero) >> Bias(2,Zero,Zeros) >> Tanh,false)"
+      model.toString shouldBe "RNN(SimpleRNNCell(2,GlorotUniform,Orthogonal,Zero,Zero) >> Bias(2,Zero,Zeros) >> Tanh,false,false)"
     }
   }
 
@@ -54,15 +60,28 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
         Tensor.matrix(Array(-0.02363521f, 0.1830315f)),
         Tensor.matrix(Array(-0.37248448f, 0.07327155f), Array(-0.70414686f, -0.3490578f)),
         Tensor.vector(0f, 0f))
-      val w = wf ++ wi ++ wg ++ wo
-      val result = layer.result[Float].compile
-      val prediction = result(input, w).const.roundAt(6).eval
+      val params = Params(
+        "forget" / "l" / "l" / "kernel_weights" -> wf(0),
+        "forget" / "l" / "l" / "recurrent_weights" -> wf(1),
+        "forget" / "l" / "r" / Weights -> wf(2),
+        "input" / "l" / "l" / "kernel_weights" -> wi(0),
+        "input" / "l" / "l" / "recurrent_weights" -> wi(1),
+        "input" / "l" / "r" / Weights -> wi(2),
+        "gate" / "l" / "l" / "kernel_weights" -> wg(0),
+        "gate" / "l" / "l" / "recurrent_weights" -> wg(1),
+        "gate" / "l" / "r" / Weights -> wg(2),
+        "output" / "l" / "l" / "kernel_weights" -> wo(0),
+        "output" / "l" / "l" / "recurrent_weights" -> wo(1),
+        "output" / "l" / "r" / Weights -> wo(2),
+       )
+      val result = layer.result_[Float].compile
+      val prediction = result(input, params).const.roundAt(6).eval
       prediction shouldBe Tensor.matrix(Array(0.382158f, 0.029766f))
     }
 
     "have string repr" in {
       val model = RNN(LSTMCell(units = 2))
-      model.toString shouldBe "RNN(LSTMCell(2,Tanh,Sigmoid,true,GlorotUniform,Orthogonal,Zeros,Ones,Zero,Zero,Zero),false)"
+      model.toString shouldBe "RNN(LSTMCell(2,Tanh,Sigmoid,true,GlorotUniform,Orthogonal,Zeros,Ones,Zero,Zero,Zero),false,false)"
     }
   }
 }

@@ -50,7 +50,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       // metrics.R2Score
     }
 
-    "train as forecast predictor using LSTM Cell" in {
+    "train as forecast predictor using LSTM Cell in stateless mode" in {
       val Array(train, test) = monthlySunspots(12).randomSplit(Array(0.8, 0.2), 1)
       val model = LSTM(2) >> Dense(1, Tanh)
       val trained = train

@@ -5,7 +5,7 @@ import scanet.core.{Expr, Numeric, Session, Shape}
 
 import scala.{math => m}
 import scanet.math.syntax._
-import scanet.models.TrainedModel
+import scanet.models.{TrainedModel_}
 import scanet.optimizers.Iterators.Partial
 import scanet.optimizers.syntax._
 import scanet.optimizers.Record
@@ -16,7 +16,7 @@ import scala.collection.immutable.Seq
 package object estimators {
 
   def accuracy[A: Numeric](
-      model: TrainedModel[A],
+      model: TrainedModel_[A],
       ds: Dataset[Record[A]],
       batch: Int = 1000): Float = {
     import ds.sparkSession.implicits._
@@ -47,13 +47,13 @@ package object estimators {
   }
 
   def RMSE[A: Numeric](
-      model: TrainedModel[A],
+      model: TrainedModel_[A],
       ds: Dataset[Record[A]],
       batch: Int = 1000): Float =
     m.sqrt(MSE(model, ds, batch)).toFloat
 
   def MSE[A: Numeric](
-      model: TrainedModel[A],
+      model: TrainedModel_[A],
       ds: Dataset[Record[A]],
       batch: Int = 1000): Float =
     meanError(model, ds, batch) {
@@ -61,7 +61,7 @@ package object estimators {
     }
 
   def MAE[A: Numeric](
-      model: TrainedModel[A],
+      model: TrainedModel_[A],
       ds: Dataset[Record[A]],
       batch: Int = 1000): Float =
     meanError(model, ds, batch) {
@@ -69,7 +69,7 @@ package object estimators {
     }
 
   private def meanError[A: Numeric](
-      model: TrainedModel[A],
+      model: TrainedModel_[A],
       ds: Dataset[Record[A]],
       batch: Int)(
       error: (Expr[A], Expr[A]) => Expr[A]): Float = {
@@ -100,7 +100,7 @@ package object estimators {
   }
 
   def R2Score[A: Numeric](
-      model: TrainedModel[A],
+      model: TrainedModel_[A],
       ds: Dataset[Record[A]],
       batch: Int = 1000): Float = {
     require(ds.labelsShape == Shape(1), "labels should have shape (1)")

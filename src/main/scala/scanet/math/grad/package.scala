@@ -1,6 +1,6 @@
 package scanet.math.grad
 
-import scanet.core.{Expr, Floating, Node, Numeric, Shape}
+import scanet.core.{Expr, Floating, Node, Numeric, Params, Shape}
 import scanet.math.alg.kernels.syntax._
 
 import scala.collection.immutable.Seq
@@ -41,7 +41,14 @@ class GradCalc[A: Numeric, R: Floating](out: Expr[A]) {
   }
 }
 
-class GradCalcNOps[A: Numeric, B: Numeric](
+class GradCalcOps[A: Numeric, B: Numeric](
+    out: Expr[A],
+    withRespectTo: Expr[B]) {
+  def returns[R: Floating]: Expr[R] =
+    new GradCalc[A, R](out).calc[B](withRespectTo)
+}
+
+class GradCalcSeqOps[A: Numeric, B: Numeric](
     out: Expr[A],
     withRespectTo: Seq[Expr[B]]) {
   def returns[R: Floating]: Seq[Expr[R]] = {
@@ -50,11 +57,13 @@ class GradCalcNOps[A: Numeric, B: Numeric](
   }
 }
 
-class GradCalcOps[A: Numeric, B: Numeric](
+class GradCalcParamsOps[A: Numeric, B: Numeric](
     out: Expr[A],
-    withRespectTo: Expr[B]) {
-  def returns[R: Floating]: Expr[R] =
-    new GradCalc[A, R](out).calc[B](withRespectTo)
+    withRespectTo: Params[Expr[B]]) {
+  def returns[R: Floating]: Params[Expr[R]] = {
+    val calc = new GradCalc[A, R](out)
+    withRespectTo.mapValues(calc.calc[B])
+  }
 }
 
 class GradOps[A: Numeric](expr: Expr[A]) {
@@ -62,8 +71,11 @@ class GradOps[A: Numeric](expr: Expr[A]) {
   def grad[B: Numeric](withRespectTo: Expr[B]): GradCalcOps[A, B] =
     new GradCalcOps[A, B](expr, withRespectTo)
 
-  def grad[B: Numeric](withRespectTo: Seq[Expr[B]]): GradCalcNOps[A, B] =
-    new GradCalcNOps[A, B](expr, withRespectTo)
+  def grad[B: Numeric](withRespectTo: Seq[Expr[B]]): GradCalcSeqOps[A, B] =
+    new GradCalcSeqOps[A, B](expr, withRespectTo)
+
+  def grad[B: Numeric](withRespectTo: Params[Expr[B]]): GradCalcParamsOps[A, B] =
+    new GradCalcParamsOps[A, B](expr, withRespectTo)
 }
 
 trait GradSyntax {

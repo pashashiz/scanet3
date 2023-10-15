@@ -5,7 +5,7 @@ import scanet.core.Shape
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 
-case class LayerInfo(name: String, weights: Seq[Shape], output: Shape) {
+case class LayerInfo(name: String, weights: Seq[Shape], state: Seq[Shape], output: Shape) {
 
   private def group[A](input: Seq[A]): (Seq[A], Int) = {
     def repeated(size: Int): Boolean = {
@@ -36,10 +36,14 @@ case class LayerInfo(name: String, weights: Seq[Shape], output: Shape) {
     if (size > 1) s"[$value]x$size" else value
   }
 
+  def weightsTotal: Int = weights.map(_.power).sum
+  def stateTotal: Int = state.map(_.power).sum
+
   def toRow: Seq[String] = {
     val weightsStr = groupConcat(weights)
-    val params = groupConcat(weights.map(_.power))
+    val weightParams = groupConcat(weights.map(_.power))
+    val stateParams = groupConcat(state.map(_.power))
     val outputStr = ("_" +: output.tail.dims.map(_.toString)).mkString("(", ",", ")")
-    Seq(name, weightsStr, params, outputStr)
+    Seq(name, weightsStr, weightParams, stateParams, outputStr)
   }
 }

@@ -55,7 +55,7 @@ object Effect {
       tensorboard: Boolean = false)
       extends Effect[E] {
     override def apply(state: State, next: StepContext[E]): State = {
-      val trained = next.lossModel.trained(next.result.weights)
+      val trained = next.lossModel.trained_(next.result.params)
       val a = accuracy(trained, ds, next.step.batch)
       if (tensorboard)
         state.board.addScalar("accuracy", a, next.step.iter)

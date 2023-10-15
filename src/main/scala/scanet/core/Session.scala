@@ -17,7 +17,8 @@ case class Runner(session: Session, feed: Map[Expr[_], Tensor[_]] = Map()) {
   def feed(elems: (Expr[_], Tensor[_])*): Runner = copy(feed = feed ++ Map(elems: _*))
 
   def evalUnsafe(outs: Seq[Expr[_]]): Seq[RawTensor] = {
-    session.eval(outs, feed)
+    if (outs.isEmpty) Seq.empty
+    else session.eval(outs, feed)
   }
 
   def eval[A](value: A)(implicit m: Mat[A]): m.Out = {
@@ -53,13 +54,13 @@ case class SessionState(scope: NativeScope, cache: Map[String, LabeledOperationO
   */
 class Session(verbose: Boolean = false) extends AutoCloseable {
 
-  val nGraph = new Graph()
-  val config: ConfigProto = ConfigProto
+  private val nGraph = new Graph()
+  private val config = ConfigProto
     .newBuilder(ConfigProto.getDefaultInstance)
     .setLogDevicePlacement(verbose)
     .build()
-  val nSession = new NativeSession(nGraph, config)
-  var state = SessionState(new OpScope(nGraph), Map.empty)
+  private val nSession = new NativeSession(nGraph, config)
+  @volatile private var state = SessionState(new OpScope(nGraph), Map.empty)
 
   def runner: Runner = Runner(this)
 
@@ -94,7 +95,7 @@ class Session(verbose: Boolean = false) extends AutoCloseable {
     outputs.uncompress(outTensors)
   }
 
-  def nativeHandle: TF_Session = {
+  private[core] def nativeHandle: TF_Session = {
     val nativeHandleField = classOf[NativeSession].getDeclaredField("nativeHandle")
     nativeHandleField.setAccessible(true)
     nativeHandleField.get(nSession).asInstanceOf[TF_Session]
@@ -143,27 +144,25 @@ object Session {
   }
 }
 
-class LazySession {
-  lazy val get = new Session()
-}
+class SessionPool(val maxSize: Int) extends AutoCloseable {
 
-class SessionPool(val maxSize: Int) {
-
-  private val pool: BlockingDeque[LazySession] = new LinkedBlockingDeque[LazySession](maxSize)
+  private val pool: BlockingDeque[Session] = new LinkedBlockingDeque[Session](maxSize)
   private val inUse: AtomicInteger = new AtomicInteger(0)
 
-  pool.addAll(List.fill(maxSize)(new LazySession()).asJavaCollection)
+  pool.addAll(List.fill(maxSize)(new Session()).asJavaCollection)
 
   def used: Int = inUse.get
 
   def within[R](f: Session => R): R = {
     val session = pool.takeFirst()
     inUse.incrementAndGet()
-    val result = Try { f(session.get) }
+    val result = Try { f(session) }
     pool.addFirst(session)
     inUse.decrementAndGet()
     result.get
   }
+
+  override def close(): Unit = pool.forEach(_.close())
 }
 
 object SessionPool {

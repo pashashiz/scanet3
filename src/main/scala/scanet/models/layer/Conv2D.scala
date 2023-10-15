@@ -1,12 +1,14 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, Shape}
+import scanet.core.Params.Weights
+import scanet.core.{Expr, Floating, Params, Shape}
 import scanet.math.nn.ConvFormat._
 import scanet.math.nn.Padding._
 import scanet.math.nn.{ConvFormat, Padding}
 import scanet.math.syntax.zeros
-import scanet.models.{Activation, Initializer, Regularization}
+import scanet.models.{Activation, Initializer, ParamDef, Regularization}
 import scanet.models.Activation.Identity
+import scanet.models.Aggregation.Avg
 import scanet.models.Initializer.{GlorotUniform, Zeros}
 import scanet.models.Regularization.Zero
 import scanet.syntax._
@@ -78,32 +80,29 @@ case class Conv2D private (
   def filterHeight: Int = kernel._1
   def filterWidth: Int = kernel._2
 
-  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
-    require(weights.size == 1, "Conv2D layer can have only one set of weights")
+  override def params_(input: Shape): Params[ParamDef] = {
+    require(
+      input.rank == 4,
+      s"Conv2D input should have a shape (NHWC) or (NCHW) but was $input")
+    val shape = Shape(filterHeight, filterWidth, input(format.cAxis), filters)
+    Params(Weights -> ParamDef(shape, initializer, Some(Avg), trainable = true))
+  }
+
+  override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] = {
     // Conv2D example:
     // input   = (batch_shape, in_height, in_width, in_channels)          = (1, 5, 5, 1)
     // filters = (filter_height, filter_width, in_channels, out_channels) = (2, 2, 1, 1)
     // output  = (batch_shape, out_height, out_width, out_channels)       = (1, 5, 5, 1)
     conv2D[E](
       input = input,
-      filters = weights.head,
+      filters = params.weights,
       strides = Seq(strides._1, strides._2),
       padding = padding,
       format = format)
   }
 
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]): Expr[E] =
+  override def penalty_[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
     zeros[E](Shape())
-
-  override def weightsShapes(input: Shape): Seq[Shape] = {
-    require(
-      input.rank == 4,
-      s"Conv2D input should have a shape (NHWC) or (NCHW) but was $input")
-    Seq(Shape(filterHeight, filterWidth, input(format.cAxis), filters))
-  }
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] =
-    Seq(initializer.build[E](weightsShapes(input).head))
 
   override def outputShape(input: Shape): Shape = {
     require(
