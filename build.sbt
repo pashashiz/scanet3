@@ -18,7 +18,6 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.4.5",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5",
-  "com.softwaremill.magnolia1_2" %% "magnolia" % "1.1.3",
   "org.scalacheck" %% "scalacheck" % "1.17.0" % Test,
   "org.scalatest" %% "scalatest" % "3.2.14" % Test)
 
