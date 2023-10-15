@@ -16,9 +16,9 @@ import scala.collection.immutable.Seq
 package object estimators {
 
   def accuracy[A: Numeric](
-                            model: TrainedModel[A],
-                            ds: Dataset[Record[A]],
-                            batch: Int = 1000): Float = {
+      model: TrainedModel[A],
+      ds: Dataset[Record[A]],
+      batch: Int = 1000): Float = {
     import ds.sparkSession.implicits._
     val brModel = ds.sparkSession.sparkContext.broadcast(model)
     val (positives, total) = ds
@@ -47,31 +47,31 @@ package object estimators {
   }
 
   def RMSE[A: Numeric](
-                        model: TrainedModel[A],
-                        ds: Dataset[Record[A]],
-                        batch: Int = 1000): Float =
+      model: TrainedModel[A],
+      ds: Dataset[Record[A]],
+      batch: Int = 1000): Float =
     m.sqrt(MSE(model, ds, batch)).toFloat
 
   def MSE[A: Numeric](
-                       model: TrainedModel[A],
-                       ds: Dataset[Record[A]],
-                       batch: Int = 1000): Float =
+      model: TrainedModel[A],
+      ds: Dataset[Record[A]],
+      batch: Int = 1000): Float =
     meanError(model, ds, batch) {
       (predicted, expected) => (predicted - expected).sqr
     }
 
   def MAE[A: Numeric](
-                       model: TrainedModel[A],
-                       ds: Dataset[Record[A]],
-                       batch: Int = 1000): Float =
+      model: TrainedModel[A],
+      ds: Dataset[Record[A]],
+      batch: Int = 1000): Float =
     meanError(model, ds, batch) {
       (predicted, expected) => (predicted - expected).abs
     }
 
   private def meanError[A: Numeric](
-                                     model: TrainedModel[A],
-                                     ds: Dataset[Record[A]],
-                                     batch: Int)(
+      model: TrainedModel[A],
+      ds: Dataset[Record[A]],
+      batch: Int)(
       error: (Expr[A], Expr[A]) => Expr[A]): Float = {
     import ds.sparkSession.implicits._
     val brModel = ds.sparkSession.sparkContext.broadcast(model)
@@ -100,9 +100,9 @@ package object estimators {
   }
 
   def R2Score[A: Numeric](
-                           model: TrainedModel[A],
-                           ds: Dataset[Record[A]],
-                           batch: Int = 1000): Float = {
+      model: TrainedModel[A],
+      ds: Dataset[Record[A]],
+      batch: Int = 1000): Float = {
     require(ds.labelsShape == Shape(1), "labels should have shape (1)")
     import ds.sparkSession.implicits._
     val brModel = ds.sparkSession.sparkContext.broadcast(model)
