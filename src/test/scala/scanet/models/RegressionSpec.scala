@@ -17,8 +17,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(2.0f), Array(3.0f))
     val bias = Tensor.vector(1.0f)
     val params = Params(
-      "l" / Weights -> weights,
-      "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     loss(x, y, params) should be(Tensor.scalar(17f))
   }
 
@@ -29,8 +29,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(2.0), Array(3.0))
     val bias = Tensor.vector(1.0)
     val params = Params(
-      "l" / Weights -> weights,
-      "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     loss(x, y, params) should be(Tensor.scalar(17))
   }
 
@@ -41,8 +41,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(2.0f), Array(3.0f))
     val bias = Tensor.vector(1.0f)
     val params = Params(
-      "l" / Weights -> weights,
-      "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     result(x, params) should be(y)
   }
 
@@ -53,11 +53,11 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(0.0f), Array(0.0f))
     val bias = Tensor.vector(0.0f)
     val params = Params(
-      "l" / Weights -> weights,
-      "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     grad(x, y, params) shouldBe Params(
-      "l" / Weights -> Tensor.matrix(Array(-30.0f), Array(-60.0f)),
-      "r" / Weights -> Tensor.vector(-18.0f))
+      "0" / Weights -> Tensor.matrix(Array(-30.0f), Array(-60.0f)),
+      "1" / Weights -> Tensor.vector(-18.0f))
   }
 
   it should "produce unique toString to be used as a cache key" in {
@@ -71,8 +71,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(0.2f), Array(0.3f))
     val bias = Tensor.vector(0.1f)
     val params = Params(
-      "l" / "l" / Weights -> weights,
-      "l" / "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     regression(x, y, params).toScalar should be(0.7422824f +- 1e-6f)
   }
 
@@ -83,8 +83,8 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(0.2f), Array(0.3f))
     val bias = Tensor.vector(0.1f)
     val params = Params(
-      "l" / "l" / Weights -> weights,
-      "l" / "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     val predicted = result(x, params)
     predicted.const.roundAt(6).eval should be(y)
   }
@@ -96,12 +96,12 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val weights = Tensor.matrix(Array(0.2f), Array(0.3f))
     val bias = Tensor.vector(0.1f)
     val params = Params(
-      "l" / "l" / Weights -> weights,
-      "l" / "r" / Weights -> bias)
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
     val result = grad(x, y, params).mapValues(_.const.roundAt(6).eval)
     result shouldBe Params(
-      "l" / "l" / Weights -> Tensor.matrix(Array(0.075301f), Array(0.136784f)),
-      "l" / "r" / Weights -> Tensor.vector(0.168222f))
+      "0" / Weights -> Tensor.matrix(Array(0.075301f), Array(0.136784f)),
+      "1" / Weights -> Tensor.vector(0.168222f))
   }
 
   it should "produce unique toString to be used as a cache key" in {

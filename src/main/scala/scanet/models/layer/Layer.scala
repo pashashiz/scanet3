@@ -4,7 +4,6 @@ import scanet.core.{Expr, Floating, Params, Shape}
 import scanet.math.syntax.zeros
 import scanet.models.{Model, ParamDef}
 
-import scala.collection.immutable.Seq
 import scala.annotation.nowarn
 
 trait Layer extends Model {
@@ -21,9 +20,9 @@ trait Layer extends Model {
     * @param right layer
     * @return composed
     */
-  def >>(right: Layer): Composed = andThen(right)
+  def >>(right: Layer): Layer = andThen(right)
 
-  def andThen(right: Layer): Composed = Composed(this, right)
+  def andThen(right: Layer): Layer = Composed(this, right)
 
   @nowarn def ?>>(cond: Boolean, right: => Layer): Layer =
     if (cond) this >> right else this

@@ -10,8 +10,6 @@ import scanet.models.Regularization.L2
 import scanet.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-import scala.collection.immutable.Seq
-
 class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Datasets {
 
   "layers composition" should {
@@ -41,10 +39,10 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
         Array(0.762753f),
         Array(0.801886f))
       val params = Params(
-        "l" / "l" / "l" / Weights -> w1,
-        "l" / "l" / "r" / Weights -> b1,
-        "r" / "l" / "l" / Weights -> w2,
-        "r" / "l" / "r" / Weights -> b2)
+        0 / Weights -> w1,
+        1 / Weights -> b1,
+        3 / Weights -> w2,
+        4 / Weights -> b2)
       val result = forward(x, params).const.roundAt(6).eval
       result should be(expected)
     }
@@ -62,10 +60,10 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       Array(0.1f, 0.5f, 1f, 0f))
     val b2 = Tensor.vector(0f)
     val params = Params(
-      "l" / "l" / "l" / Weights -> w1,
-      "l" / "l" / "r" / Weights -> b1,
-      "r" / "l" / "l" / Weights -> w2,
-      "r" / "l" / "r" / Weights -> b2)
+      0 / Weights -> w1,
+      1 / Weights -> b1,
+      3 / Weights -> w2,
+      4 / Weights -> b2)
     model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(
       Tensor.scalar(3.83f))
   }
@@ -87,10 +85,10 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       Array(1f))
     val b2 = Tensor.vector(0f)
     val params = Params(
-      "l" / "l" / "l" / Weights -> w1,
-      "l" / "l" / "r" / Weights -> b1,
-      "r" / "l" / "l" / Weights -> w2,
-      "r" / "l" / "r" / Weights -> b2)
+      0 / Weights -> w1,
+      1 / Weights -> b1,
+      3 / Weights -> w2,
+      4 / Weights -> b2)
     val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     val result = loss(x, y, params).const.roundAt(6).eval
     result should be(Tensor.scalar(0.339962f))
@@ -113,10 +111,10 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       Array(1f))
     val b2 = Tensor.vector(0f)
     val params = Params(
-      "l" / "l" / "l" / Weights -> w1,
-      "l" / "l" / "r" / Weights -> b1,
-      "r" / "l" / "l" / Weights -> w2,
-      "r" / "l" / "r" / Weights -> b2)
+      0 / Weights -> w1,
+      1 / Weights -> b1,
+      3 / Weights -> w2,
+      4 / Weights -> b2)
     val loss = model.withLoss(MeanSquaredError).loss[Float].compile
     loss(x, y, params) should be(Tensor.scalar(3.6199622f))
   }

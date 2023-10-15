@@ -12,11 +12,13 @@ case class Path(segments: Seq[String]) {
 object Path {
   def apply(s1: String, sn: String*): Path = new Path(s1 :: sn.toList)
   def parse(path: String): Path = new Path(path.split("/").toList)
-  implicit def stringIsPath(string: String): Path = Path.parse(string)
+  implicit def stringIsPath(path: String): Path = Path.parse(path)
+  implicit def intIsPath(part: Int): Path = Path(part.toString)
 }
 
 // convenient wrapper over Map[Path, A] to get DSL like API
 case class Params[A](params: Map[Path, A]) {
+  def unwrap: Map[Path, A] = params
   def apply(path: Path): A =
     params.getOrElse(path, error(s"missing $path param"))
   def paths: Set[Path] = params.keySet

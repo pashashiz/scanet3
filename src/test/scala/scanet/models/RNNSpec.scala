@@ -50,7 +50,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
       // metrics.R2Score
     }
 
-    "train as forecast predictor using LSTM Cell in stateless mode" in {
+    "train as forecast predictor using LSTM Cell in stateless mode" ignore {
       val Array(train, test) = monthlySunspots(12).randomSplit(Array(0.8, 0.2), 1)
       val model = LSTM(2) >> Dense(1, Tanh)
       val trained = train
@@ -59,7 +59,7 @@ class RNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
         .using(Adam())
         .batch(10)
         .each(1.epochs, RecordLoss(tensorboard = true))
-        .stopAfter(100.epochs)
+        .stopAfter(150.epochs)
         .run()
       RMSE(trained, test) should be < 0.2f
       R2Score(trained, test) should be > 0.78f

@@ -26,9 +26,9 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
       val expected = Tensor.matrix(Array(0.222901f, -6.019066f))
       val result = layer.result[Float].compile
       val params = Params(
-        "l" / "kernel_weights" -> wx,
-        "l" / "recurrent_weights" -> wh,
-        "r" / Weights -> b)
+        "0" / "kernel_weights" -> wx,
+        "0" / "recurrent_weights" -> wh,
+        "1" / Weights -> b)
       val prediction = result(input, params).const.roundAt(6).eval
       prediction shouldBe expected
     }
@@ -61,19 +61,18 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
         Tensor.matrix(Array(-0.37248448f, 0.07327155f), Array(-0.70414686f, -0.3490578f)),
         Tensor.vector(0f, 0f))
       val params = Params(
-        "forget" / "l" / "l" / "kernel_weights" -> wf(0),
-        "forget" / "l" / "l" / "recurrent_weights" -> wf(1),
-        "forget" / "l" / "r" / Weights -> wf(2),
-        "input" / "l" / "l" / "kernel_weights" -> wi(0),
-        "input" / "l" / "l" / "recurrent_weights" -> wi(1),
-        "input" / "l" / "r" / Weights -> wi(2),
-        "gate" / "l" / "l" / "kernel_weights" -> wg(0),
-        "gate" / "l" / "l" / "recurrent_weights" -> wg(1),
-        "gate" / "l" / "r" / Weights -> wg(2),
-        "output" / "l" / "l" / "kernel_weights" -> wo(0),
-        "output" / "l" / "l" / "recurrent_weights" -> wo(1),
-        "output" / "l" / "r" / Weights -> wo(2),
-       )
+        "forget" / "0" / "kernel_weights" -> wf(0),
+        "forget" / "0" / "recurrent_weights" -> wf(1),
+        "forget" / "1" / Weights -> wf(2),
+        "input" / "0" / "kernel_weights" -> wi(0),
+        "input" / "0" / "recurrent_weights" -> wi(1),
+        "input" / "1" / Weights -> wi(2),
+        "gate" / "0" / "kernel_weights" -> wg(0),
+        "gate" / "0" / "recurrent_weights" -> wg(1),
+        "gate" / "1" / Weights -> wg(2),
+        "output" / "0" / "kernel_weights" -> wo(0),
+        "output" / "0" / "recurrent_weights" -> wo(1),
+        "output" / "1" / Weights -> wo(2))
       val result = layer.result[Float].compile
       val prediction = result(input, params).const.roundAt(6).eval
       prediction shouldBe Tensor.matrix(Array(0.382158f, 0.029766f))

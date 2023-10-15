@@ -37,7 +37,7 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(0.890903f, 0.817574f, 0.900250f, 0.802184f))
       val model = Dense(4, Sigmoid)
       val forward = model.result[Float].compile
-      val params = Params("l" / "l" / Weights -> w, "l" / "r" / Weights -> b)
+      val params = Params(0 / Weights -> w, 1 / Weights -> b)
       val y = forward(x, params).const.roundAt(6).eval
       y should be(yExpected)
     }
@@ -50,7 +50,7 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(1f, 0f))
       val b = Tensor.vector(0f, 0f)
       val model = Dense(4, Sigmoid, reg = L2(lambda = 1))
-      val params = Params("l" / "l" / Weights -> w, "l" / "r" / Weights -> b)
+      val params = Params(0 / Weights -> w, 1 / Weights -> b)
       model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(Tensor.scalar(1.63f))
     }
 
@@ -74,8 +74,8 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(-0.040072710f, -0.034289565f, -0.041798398f, -0.036751173f),
         Array(-0.078313690f, -0.041943270f, -0.061695820f, -0.047571808f))
       val biasGrad = Tensor.vector(-0.078313690f, -0.041943270f, -0.061695820f, -0.047571808f)
-      val before = Params("l" / "l" / Weights -> weights, "l" / "r" / Weights -> bias)
-      val after = Params("l" / "l" / Weights -> weightsGrad, "l" / "r" / Weights -> biasGrad)
+      val before = Params(0 / Weights -> weights, 1 / Weights -> bias)
+      val after = Params(0 / Weights -> weightsGrad, 1 / Weights -> biasGrad)
       grad(x, y, before) should be(after)
     }
   }
