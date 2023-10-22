@@ -25,12 +25,13 @@ case class Step[A: Numeric](batch: Int, epoch: Int = 0, iter: Int = 0) {
 
 case class StepResult[A: Numeric](
     iterations: Int,
-    paramsDef: Params[ParamDef],
-    params: Params[Tensor[A]],
-    meta: Params[Tensor[A]],
+    modelParamsDef: Params[ParamDef],
+    modelParams: Params[Tensor[A]],
+    optParamsDef: Params[ParamDef],
+    optParams: Params[Tensor[A]],
     loss: A) {
-  def paramsWithDef: Params[(ParamDef, Tensor[A])] =
-    paramsDef.join(params)
+  def modelParamsWithDef: Params[(ParamDef, Tensor[A])] =
+    modelParamsDef.join(modelParams)
 }
 
 case class StepContext[A: Numeric](
@@ -66,17 +67,23 @@ case class Optimizer[A: Floating](
     @tailrec
     def optimize(
         prevStep: Step[A],
-        params: Params[Tensor[A]],
-        meta: Params[Tensor[A]]): Params[Tensor[A]] = {
-      val weightsBr = sc.broadcast(params)
-      val metaBr = sc.broadcast(meta)
+        modelParams: Params[Tensor[A]],
+        optParams: Params[Tensor[A]]): Params[Tensor[A]] = {
+      val modelParamsBr = sc.broadcast(modelParams)
+      val optParamsBr = sc.broadcast(optParams)
       val start = System.currentTimeMillis()
       val result = ds.rdd
         .mapPartitions { it =>
           Iterator(
-            optimizeOnPartition(jobId, it, shapes, prevStep.iter, weightsBr.value, metaBr.value))
+            optimizeOnPartition(
+              jobId,
+              it,
+              shapes,
+              prevStep.iter,
+              modelParamsBr.value,
+              optParamsBr.value))
         }
-        .treeReduce(aggParamsAndMeta(jobId))
+        .treeReduce(aggregateParams(jobId))
       val finish = System.currentTimeMillis()
       val step: Step[A] = prevStep.nextEpoch.incIter(result.iterations)
       val stepCtx = StepContext(step, result, lossModel, finish - start)
@@ -86,9 +93,9 @@ case class Optimizer[A: Floating](
         .run()
 
       if (stop(stepCtx)) {
-        result.params
+        result.modelParams
       } else {
-        optimize(step, result.params, result.meta)
+        optimize(step, result.modelParams, result.optParams)
       }
     }
     val params = optimize(Step(batchSize), Params.empty, Params.empty)
@@ -101,23 +108,26 @@ case class Optimizer[A: Floating](
       it: scala.Iterator[Record[A]],
       shapes: (Shape, Shape),
       globalIter: Int,
-      params: Params[Tensor[A]],
-      meta: Params[Tensor[A]]): StepResult[A] = {
+      modelParams: Params[Tensor[A]],
+      optParams: Params[Tensor[A]]): StepResult[A] = {
     val resource = Optimizer.resource(jobId)
     val result = resource.sessionPool.within(session => {
       val batches = TensorIterator(it, shapes, batchSize)
       val batchedInputShape = batchSize +: shapes._1
-      val paramsDef = model.params(batchedInputShape)
-      val weightNames = paramsDef.filterValues(_.trainable).paths
-      val (paramsInitialized, metaInitialized) =
+      val modelParamsDef = model.params(batchedInputShape)
+      val optParamsDef = modelParamsDef.filterValues(_.trainable).flatMap {
+        case (path, paramDef) =>
+          alg.params(paramDef.shape).prependPath(path)
+      }
+      val weightNames = modelParamsDef.filterValues(_.trainable).paths
+      val (modelParamsInitialized, optParamsInitialized) =
         if (globalIter == 0) {
-          val params = initParams()
-            .getOrElse(paramsDef.mapValues(param => param.initialize[A].eval))
-          val meta = paramsDef.filterValues(_.trainable)
-            .mapValues(param => alg.initMeta[A](param.shape))
-          (params, meta)
+          val modelParams =
+            initParams().getOrElse(modelParamsDef.mapValues(param => param.initialize[A].eval))
+          val optParams = optParamsDef.mapValues(param => param.initialize[A].eval)
+          (modelParams, optParams)
         } else {
-          (params, meta)
+          (modelParams, optParams)
         }
       val backprop = compileBackprop(resource.tfCache, session)
       val loss: (Tensor[A], Tensor[A], Params[Tensor[A]]) => (Tensor[A], Params[Tensor[A]]) =
@@ -125,21 +135,27 @@ case class Optimizer[A: Floating](
       @tailrec
       def optimize(
           iter: Int,
-          params: Params[Tensor[A]],
-          meta: Params[Tensor[A]]): StepResult[A] = {
+          modelParams: Params[Tensor[A]],
+          optParams: Params[Tensor[A]]): StepResult[A] = {
         val (x, y) = batches.next()
-        val (weights, state) = params.partitionPaths(weightNames.contains)
-        val (nextWeights, nextMeta, nextState) =
-          backprop(x, y, weights, meta, state, Tensor.scalar(globalIter + iter + 1))
+        val (weights, state) = modelParams.partitionPaths(weightNames.contains)
+        val (nextWeights, nextOptParams, nextState) =
+          backprop(x, y, weights, optParams, state, Tensor.scalar(globalIter + iter + 1))
         val nextParams = nextWeights ++ nextState
         if (batches.hasNext) {
-          optimize(iter + 1, nextParams, nextMeta)
+          optimize(iter + 1, nextParams, nextOptParams)
         } else {
           val (lossResult, _) = loss(x, y, nextParams)
-          StepResult(iter + 1, paramsDef, nextWeights, nextMeta, lossResult.toScalar)
+          StepResult(
+            iter + 1,
+            modelParamsDef,
+            nextWeights,
+            optParamsDef,
+            nextOptParams,
+            lossResult.toScalar)
         }
       }
-      optimize(0, paramsInitialized, metaInitialized)
+      optimize(0, modelParamsInitialized, optParamsInitialized)
     })
     result
   }
@@ -158,35 +174,35 @@ case class Optimizer[A: Floating](
             x: Expr[A],
             y: Expr[A],
             weights: Params[Expr[A]],
-            metas: Params[Expr[A]],
+            opt: Params[Expr[A]],
             state: Params[Expr[A]],
             iter: Expr[Int]) => {
           val (grads, nextState) = lossModel.gradStateful[A].apply(x, y, weights, state)
-          val (nextAcc, nextMeta) = weights.join(grads).join(metas).params
+          val (nextAcc, nextOptParams) = weights.join(grads).prefixJoin(opt).params
             .foldLeft((newOutputSeq, newOutputSeq)) { (acc, next) =>
-              val (gAcc, metaAcc) = acc
-              val (path, ((w, g), meta)) = next
-              val Delta(del, metaNext) = alg.delta[A](g, meta, iter)
-              val d = del.cast[A]
-              val gNext = if (minimizing) w - d else w + d
-              (gAcc + (path -> gNext), metaAcc + (path -> metaNext))
+              val (gAcc, optAcc) = acc
+              val (path, ((w, g), opt)) = next
+              val Delta(del, optParamsNext) = alg.build[A](g, opt, iter)
+              val gNext = if (minimizing) w - del else w + del
+              (gAcc + (path -> gNext), optAcc ++ optParamsNext.prependPath(path))
             }
-          (nextAcc, nextMeta, nextState)
+          (nextAcc, nextOptParams, nextState)
         }
         func.tf
       })
     tf compileWith session
   }
 
-  private def aggParamsAndMeta(jobId: String)(
+  private def aggregateParams(jobId: String)(
       left: StepResult[A],
       right: StepResult[A]): StepResult[A] = {
     val resource = Optimizer.resource(jobId)
     resource.sessionPool.within { session =>
       def buildParamsAgg(
+          paramsDef: Params[ParamDef],
           leftParams: Params[Expr[A]],
           rightParams: Params[Expr[A]]): Params[Expr[A]] = {
-        left.paramsDef.join(leftParams.join(rightParams)).mapValues {
+        paramsDef.join(leftParams.join(rightParams)).mapValues {
           case (paramDef, (l, r)) =>
             paramDef.aggregation match {
               case Some(agg) => agg.build(Seq(l, r))
@@ -194,19 +210,21 @@ case class Optimizer[A: Floating](
             }
         }
       }
-      def buildMetaAgg(leftMeta: Params[Expr[A]], rightMeta: Params[Expr[A]]) = {
-        (leftMeta join rightMeta).mapValues { case (l, r) => (l + r) / 2.0f.const.cast[A] }
-      }
-      val weightsAvg =
-        resource.tfCache.getOrCompute("paramsAgg", (buildParamsAgg _).tf) compileWith session
-      val metaAvg =
-        resource.tfCache.getOrCompute("metaAvg", (buildMetaAgg _).tf) compileWith session
+      val modelParamsAgg =
+        resource.tfCache.getOrCompute(
+          "modelParamsAgg",
+          ((l, r) => buildParamsAgg(left.modelParamsDef, l, r)).tf).compileWith(session)
+      val optParamsAgg =
+        resource.tfCache.getOrCompute(
+          "optParamsAgg",
+          ((l, r) => buildParamsAgg(left.optParamsDef, l, r)).tf).compileWith(session)
       val lossAvg = (left.loss plus right.loss) / c.convert(2)
       StepResult(
         left.iterations + right.iterations,
-        left.paramsDef,
-        weightsAvg(left.params, right.params),
-        metaAvg(left.meta, right.meta),
+        left.modelParamsDef,
+        modelParamsAgg(left.modelParams, right.modelParams),
+        left.optParamsDef,
+        optParamsAgg(left.optParams, right.optParams),
         lossAvg)
     }
   }

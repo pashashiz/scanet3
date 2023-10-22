@@ -33,6 +33,8 @@ case class Params[A](params: Map[Path, A]) {
   def -(other: Path): Params[A] = Params(params - other)
   def ++(other: Params[A]): Params[A] =
     Params(params ++ other.params)
+  def flatMap[B](f: (Path, A) => Params[B]): Params[B] =
+    Params(params.flatMap(f.tupled andThen (_.params)))
   def map[B](f: (Path, A) => (Path, B)): Params[B] =
     Params(params.map(f.tupled))
   def mapValues[B](f: A => B): Params[B] =
@@ -55,6 +57,11 @@ case class Params[A](params: Map[Path, A]) {
   def join[B](other: Params[B]): Params[(A, B)] = {
     val allPaths = paths ++ other.paths
     val joinedItems = allPaths.map(path => (path, (this(path), other(path))))
+    Params(joinedItems.toMap)
+  }
+  def prefixJoin[B](other: Params[B]): Params[(A, Params[B])] = {
+    val joinedItems = paths
+      .map { path => path -> ((apply(path), other.children(path))) }
     Params(joinedItems.toMap)
   }
   def size: Int = params.size

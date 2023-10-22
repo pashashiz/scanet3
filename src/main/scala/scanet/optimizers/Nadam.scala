@@ -1,6 +1,9 @@
 package scanet.optimizers
 
 import scanet.core._
+import scanet.models.Aggregation.Avg
+import scanet.models.{Initializer, ParamDef}
+import scanet.optimizers.Nadam.{Momentum, Velocity}
 import scanet.syntax._
 
 /** Much like Adam is essentially RMSprop with momentum, Nadam is Adam with Nesterov momentum.
@@ -20,22 +23,33 @@ case class Nadam(
     initAcc: Float = 0.001f)
     extends Algorithm {
 
-  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
-    val m = fill[Float](shape)(initAcc).cast[T]
-    val v = fill[Float](shape)(initAcc).cast[T]
-    (m zip v).eval
-  }
+  override def params(input: Shape): Params[ParamDef] =
+    Params(
+      Momentum -> ParamDef(
+        shape = input,
+        initializer = Initializer.Const(initAcc),
+        aggregation = Some(Avg)),
+      Velocity -> ParamDef(
+        shape = input,
+        initializer = Initializer.Const(initAcc),
+        aggregation = Some(Avg)))
 
-  override def delta[T: Floating](
+  override def build[T: Floating](
       grad: Expr[T],
-      meta: Expr[T],
+      params: Params[Expr[T]],
       iter: Expr[Int]): Delta[T] = {
-    val (prevM, prevV) = meta.unzip
+    val prevM = params(Momentum)
+    val prevV = params(Velocity)
     val m = prevM.decayingAvg(grad, beta1.const.cast[T])
     val v = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
     val mNesterov = (beta1.const.cast[T] * m.boost(beta1.const.cast[T], iter)) +
       ((1f.const.cast[T] - beta1.const.cast[T]) * grad.boost(beta1.const.cast[T], iter))
     val delta = mNesterov / (v.boost(beta2.const.cast[T], iter).sqrt + epsilon.const.cast[T])
-    Delta(delta, m zip v)
+    Delta(delta, Params(Momentum -> m, Velocity -> v))
   }
+}
+
+object Nadam {
+  val Momentum: Path = "momentum"
+  val Velocity: Path = "velocity"
 }

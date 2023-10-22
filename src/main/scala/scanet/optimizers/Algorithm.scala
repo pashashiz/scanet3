@@ -1,13 +1,11 @@
 package scanet.optimizers
 
-import scanet.core.{Expr, Floating, Shape, Tensor}
+import scanet.core.{Expr, Floating, Params, Shape}
+import scanet.models.ParamDef
 
 trait Algorithm {
-
-  // todo: Expr[T]
-  def initMeta[T: Floating](shape: Shape): Tensor[T]
-
-  def delta[T: Floating](grad: Expr[T], meta: Expr[T], iter: Expr[Int]): Delta[T]
+  def params(input: Shape): Params[ParamDef]
+  def build[T: Floating](grad: Expr[T], params: Params[Expr[T]], iter: Expr[Int]): Delta[T]
 }
 
-case class Delta[T: Floating](delta: Expr[T], meta: Expr[T])
+case class Delta[T: Floating](value: Expr[T], params: Params[Expr[T]])
