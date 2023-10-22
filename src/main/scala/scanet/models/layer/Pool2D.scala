@@ -31,17 +31,15 @@ case class Pool2D(
     padding: Padding = Valid,
     format: ConvFormat = NHWC,
     reduce: Reduce = Reduce.Max)
-    extends WeightlessLayer {
+    extends NotTrainableLayer {
 
-  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
-    require(weights.isEmpty, "Pool2D layer does not require weights")
+  override def build[E: Floating](input: Expr[E]): Expr[E] =
     pool2D[E](
       input = input,
       window = Seq(window._1, window._2),
       strides = Seq(strides._1, strides._2),
       padding = padding,
       format = format)
-  }
 
   override def outputShape(input: Shape): Shape = {
     require(

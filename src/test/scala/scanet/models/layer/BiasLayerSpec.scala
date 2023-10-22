@@ -1,11 +1,10 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Tensor
+import scanet.core.Params.Weights
+import scanet.core.{Params, Tensor}
 import scanet.syntax._
 import scanet.test.CustomMatchers
-
-import scala.collection.immutable.Seq
 
 class BiasLayerSpec extends AnyWordSpec with CustomMatchers {
 
@@ -25,7 +24,7 @@ class BiasLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(1f, 3f, 4f),
         Array(2f, 2f, 4f),
         Array(2f, 3f, 4f))
-      result(x, Seq(b)) should be(y)
+      result(x, Params(Weights -> b)) should be(y)
     }
 
     "have string repr" in {

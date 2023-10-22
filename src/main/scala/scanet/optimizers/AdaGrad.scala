@@ -1,6 +1,9 @@
 package scanet.optimizers
 
 import scanet.core._
+import scanet.models.Aggregation.Avg
+import scanet.models.ParamDef
+import scanet.optimizers.AdaGrad.GradAcc
 import scanet.syntax._
 
 /** Adagrad is an optimizer with parameter-specific learning rates,
@@ -12,19 +15,23 @@ import scanet.syntax._
   */
 case class AdaGrad(rate: Float = 0.001f, epsilon: Float = 1e-7f) extends Algorithm {
 
-  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
-    Tensor.zeros[T](shape)
-  }
+  override def params(input: Shape): Params[ParamDef] =
+    Params(GradAcc -> ParamDef(shape = input, aggregation = Some(Avg)))
 
-  override def delta[T: Floating](
+  override def build[T: Floating](
       grad: Expr[T],
-      prevGradAcc: Expr[T],
+      params: Params[Expr[T]],
       iter: Expr[Int]): Delta[T] = {
+    val prevGradAcc = params(GradAcc)
     // we accumulate all squared gradient per each weight
     val gradAcc = prevGradAcc + grad.sqr
     // the larger gradient is accumulated the lower rate is applied for a given weight
     val rates = rate.const.cast[T] / gradAcc.sqrtZeroSafe(epsilon.const.cast[T])
     val delta = rates * grad
-    Delta(delta, gradAcc)
+    Delta(delta, Params(GradAcc -> gradAcc))
   }
+}
+
+object AdaGrad {
+  val GradAcc: Path = "grad_acc"
 }

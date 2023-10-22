@@ -1,6 +1,9 @@
 package scanet.optimizers
 
 import scanet.core._
+import scanet.models.Aggregation.Avg
+import scanet.models.ParamDef
+import scanet.optimizers.AMSGrad.{CorrectedVelocity, Momentum, Velocity}
 import scanet.syntax._
 
 /** AMSGrad optimizer which is based on Adam and RMSProp.
@@ -22,22 +25,29 @@ case class AMSGrad(
     epsilon: Float = 1e-7f)
     extends Algorithm {
 
-  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
-    val m = zeros[T](shape)
-    val vCurrent = zeros[T](shape)
-    val v = zeros[T](shape)
-    zip(m, vCurrent, v).eval
-  }
+  override def params(input: Shape): Params[ParamDef] =
+    Params(
+      Momentum -> ParamDef(shape = input, aggregation = Some(Avg)),
+      Velocity -> ParamDef(shape = input, aggregation = Some(Avg)),
+      CorrectedVelocity -> ParamDef(shape = input, aggregation = Some(Avg)))
 
-  override def delta[T: Floating](
+  override def build[T: Floating](
       grad: Expr[T],
-      meta: Expr[T],
+      params: Params[Expr[T]],
       iter: Expr[Int]): Delta[T] = {
-    val (prevM, prevV, prevCorrectedVelocity) = meta.unzip3
+    val prevM = params(Momentum)
+    val prevV = params(Velocity)
+    val prevCorrectedVelocity = params(CorrectedVelocity)
     val m = prevM.decayingAvg(grad, beta1.const.cast[T])
     val vCurrent = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
     val v = max(prevCorrectedVelocity, vCurrent)
     val delta = rate.const.cast[T] * m / (v.sqrt + epsilon.const.cast[T])
-    Delta(delta, zip(m, vCurrent, v))
+    Delta(delta, Params(Momentum -> m, Velocity -> vCurrent, CorrectedVelocity -> v))
   }
+}
+
+object AMSGrad {
+  val Momentum: Path = "momentum"
+  val Velocity: Path = "velocity"
+  val CorrectedVelocity: Path = "corrected_velocity"
 }

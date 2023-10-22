@@ -1,14 +1,17 @@
 package scanet.optimizers
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import org.apache.spark.sql.Dataset
 import scanet.core.{Tensor, _}
 import scanet.math.syntax._
-import scanet.models.{Loss, LossModel, Model, TrainedModel}
-import scanet.optimizers.syntax._
+import scanet.models._
 import scanet.optimizers.Condition.always
 import scanet.optimizers.Optimizer.BuilderState._
-import scanet.optimizers.Optimizer.{sessionsPool, tfCache}
+import scanet.optimizers.syntax._
 
+import java.time.Duration
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.{nowarn, tailrec}
 import scala.collection._
 import scala.collection.immutable.Seq
@@ -22,9 +25,14 @@ case class Step[A: Numeric](batch: Int, epoch: Int = 0, iter: Int = 0) {
 
 case class StepResult[A: Numeric](
     iterations: Int,
-    weights: Seq[Tensor[A]],
-    meta: Seq[Tensor[A]],
-    loss: A)
+    modelParamsDef: Params[ParamDef],
+    modelParams: Params[Tensor[A]],
+    optParamsDef: Params[ParamDef],
+    optParams: Params[Tensor[A]],
+    loss: A) {
+  def modelParamsWithDef: Params[(ParamDef, Tensor[A])] =
+    modelParamsDef.join(modelParams)
+}
 
 case class StepContext[A: Numeric](
     step: Step[A],
@@ -38,7 +46,7 @@ case class Optimizer[A: Floating](
     alg: Algorithm,
     model: Model,
     loss: Loss,
-    initWeights: () => Option[Seq[Tensor[A]]],
+    initParams: () => Option[Params[Tensor[A]]],
     dataset: Dataset[Record[A]],
     batchSize: Int,
     minimizing: Boolean,
@@ -49,6 +57,7 @@ case class Optimizer[A: Floating](
   private val lossModel = model.withLoss(loss)
 
   def run(): TrainedModel[A] = {
+    val jobId = UUID.randomUUID().toString
     val ds: Dataset[Record[A]] = dataset.cache()
     val sc = ds.sparkSession.sparkContext
     val board = TensorBoard(boardDir)
@@ -58,21 +67,23 @@ case class Optimizer[A: Floating](
     @tailrec
     def optimize(
         prevStep: Step[A],
-        weights: Seq[Tensor[A]],
-        meta: Seq[Tensor[A]]): Seq[Tensor[A]] = {
-      val weightsBr = sc.broadcast(weights)
-      val metaBr = sc.broadcast(meta)
+        modelParams: Params[Tensor[A]],
+        optParams: Params[Tensor[A]]): Params[Tensor[A]] = {
+      val modelParamsBr = sc.broadcast(modelParams)
+      val optParamsBr = sc.broadcast(optParams)
       val start = System.currentTimeMillis()
       val result = ds.rdd
         .mapPartitions { it =>
-          Iterator(optimizeOnPartition(
-            it,
-            shapes,
-            prevStep.iter,
-            weightsBr.value,
-            metaBr.value))
+          Iterator(
+            optimizeOnPartition(
+              jobId,
+              it,
+              shapes,
+              prevStep.iter,
+              modelParamsBr.value,
+              optParamsBr.value))
         }
-        .treeReduce(averageMetaAndWeights)
+        .treeReduce(aggregateParams(jobId))
       val finish = System.currentTimeMillis()
       val step: Step[A] = prevStep.nextEpoch.incIter(result.iterations)
       val stepCtx = StepContext(step, result, lossModel, finish - start)
@@ -82,112 +93,165 @@ case class Optimizer[A: Floating](
         .run()
 
       if (stop(stepCtx)) {
-        result.weights
+        result.modelParams
       } else {
-        optimize(step, result.weights, result.meta)
+        optimize(step, result.modelParams, result.optParams)
       }
     }
-    val weights = optimize(Step(batchSize), Seq(), Seq())
-    lossModel.trained(weights)
+    val params = optimize(Step(batchSize), Params.empty, Params.empty)
+
+    lossModel.trained(params)
   }
 
   private def optimizeOnPartition(
+      jobId: String,
       it: scala.Iterator[Record[A]],
       shapes: (Shape, Shape),
       globalIter: Int,
-      weights: Seq[Tensor[A]],
-      meta: Seq[Tensor[A]]): StepResult[A] = {
-    val result = sessionsPool.within(session => {
+      modelParams: Params[Tensor[A]],
+      optParams: Params[Tensor[A]]): StepResult[A] = {
+    val resource = Optimizer.resource(jobId)
+    val result = resource.sessionPool.within(session => {
       val batches = TensorIterator(it, shapes, batchSize)
-      val batchedShapes = (batchSize +: shapes._1, batchSize +: shapes._2)
-      val (weightsInitialized, metaInitialized) =
+      val batchedInputShape = batchSize +: shapes._1
+      val modelParamsDef = model.params(batchedInputShape)
+      val optParamsDef = modelParamsDef.filterValues(_.trainable).flatMap {
+        case (path, paramDef) =>
+          alg.params(paramDef.shape).prependPath(path)
+      }
+      val weightNames = modelParamsDef.filterValues(_.trainable).paths
+      val (modelParamsInitialized, optParamsInitialized) =
         if (globalIter == 0) {
-          val weights = initWeights().getOrElse(model.initWeights[A](batchedShapes._1).eval)
-          val weightShapes = model.weightsShapes(batchedShapes._1)
-          val meta = weightShapes.map(alg.initMeta[A](_))
-          (weights, meta)
+          val modelParams =
+            initParams().getOrElse(modelParamsDef.mapValues(param => param.initialize[A].eval))
+          val optParams = optParamsDef.mapValues(param => param.initialize[A].eval)
+          (modelParams, optParams)
         } else {
-          (weights, meta)
+          (modelParams, optParams)
         }
-      val loss = compileLoss(session)
-      val calc = compileCalc(session)
+      val backprop = compileBackprop(resource.tfCache, session)
+      val loss: (Tensor[A], Tensor[A], Params[Tensor[A]]) => (Tensor[A], Params[Tensor[A]]) =
+        compileLoss(resource.tfCache, session)
       @tailrec
-      def optimize(iter: Int, weights: Seq[Tensor[A]], meta: Seq[Tensor[A]]): StepResult[A] = {
+      def optimize(
+          iter: Int,
+          modelParams: Params[Tensor[A]],
+          optParams: Params[Tensor[A]]): StepResult[A] = {
         val (x, y) = batches.next()
-        /*_*/
-        val (nextWeights, nextMeta) =
-          calc(x, y, weights, meta, Tensor.scalar(globalIter + iter + 1))
-        /*_*/
+        val (weights, state) = modelParams.partitionPaths(weightNames.contains)
+        val (nextWeights, nextOptParams, nextState) =
+          backprop(x, y, weights, optParams, state, Tensor.scalar(globalIter + iter + 1))
+        val nextParams = nextWeights ++ nextState
         if (batches.hasNext) {
-          optimize(iter + 1, nextWeights, nextMeta)
+          optimize(iter + 1, nextParams, nextOptParams)
         } else {
-          StepResult(iter + 1, nextWeights, nextMeta, loss(x, y, nextWeights).toScalar)
+          val (lossResult, _) = loss(x, y, nextParams)
+          StepResult(
+            iter + 1,
+            modelParamsDef,
+            nextWeights,
+            optParamsDef,
+            nextOptParams,
+            lossResult.toScalar)
         }
       }
-      optimize(0, weightsInitialized, metaInitialized)
+      optimize(0, modelParamsInitialized, optParamsInitialized)
     })
     result
   }
 
-  private def compileLoss(session: Session) = {
-    tfCache.getOrCompute(
+  private def compileLoss(cache: Optimizer.Cache, session: Session) = {
+    cache.getOrCompute(
       s"$lossModel:loss[${TensorType[A].classTag}]",
-      lossModel.loss[A].tf) compileWith session
+      lossModel.lossStateful[A].tf) compileWith session
   }
 
-  private def compileCalc(session: Session) = {
-    def newOutputSeq = Seq[Expr[A]]()
-    tfCache.getOrCompute(
+  private def compileBackprop(cache: Optimizer.Cache, session: Session) = {
+    def newOutputSeq = Params[Expr[A]]()
+    val tf = cache.getOrCompute(
       s"$lossModel:$alg:calc[${TensorType[A].classTag}]]", {
-        val func =
-          (x: Expr[A], y: Expr[A], ws: Seq[Expr[A]], metas: Seq[Expr[A]], iter: Expr[Int]) => {
-            val gs = lossModel.grad[A].apply(x, y, ws)
-            ws.zip(gs).zip(metas).foldLeft((newOutputSeq, newOutputSeq))((acc, next) => {
-              val (gAcc, metaAcc) = acc
-              val ((w, g), meta) = next
-              val Delta(del, metaNext) = alg.delta[A](g, meta, iter)
-              val d = del.cast[A]
-              val gNext = if (minimizing) w - d else w + d
-              (gAcc :+ gNext, metaAcc :+ metaNext)
-            })
-          }
+        val func = (
+            x: Expr[A],
+            y: Expr[A],
+            weights: Params[Expr[A]],
+            opt: Params[Expr[A]],
+            state: Params[Expr[A]],
+            iter: Expr[Int]) => {
+          val (grads, nextState) = lossModel.gradStateful[A].apply(x, y, weights, state)
+          val (nextAcc, nextOptParams) = weights.join(grads).prefixJoin(opt).params
+            .foldLeft((newOutputSeq, newOutputSeq)) { (acc, next) =>
+              val (gAcc, optAcc) = acc
+              val (path, ((w, g), opt)) = next
+              val Delta(del, optParamsNext) = alg.build[A](g, opt, iter)
+              val gNext = if (minimizing) w - del else w + del
+              (gAcc + (path -> gNext), optAcc ++ optParamsNext.prependPath(path))
+            }
+          (nextAcc, nextOptParams, nextState)
+        }
         func.tf
-      }) compileWith session
+      })
+    tf compileWith session
   }
 
-  private def averageMetaAndWeights(left: StepResult[A], right: StepResult[A]): StepResult[A] = {
-    sessionsPool.within { session =>
-      val weightsAvg = tfCache.getOrCompute("weightsAvg", avg[A].tf) compileWith session
-      val metaAvg = tfCache.getOrCompute("metaAvg", avg[A].tf) compileWith session
+  private def aggregateParams(jobId: String)(
+      left: StepResult[A],
+      right: StepResult[A]): StepResult[A] = {
+    val resource = Optimizer.resource(jobId)
+    resource.sessionPool.within { session =>
+      def buildParamsAgg(
+          paramsDef: Params[ParamDef],
+          leftParams: Params[Expr[A]],
+          rightParams: Params[Expr[A]]): Params[Expr[A]] = {
+        paramsDef.join(leftParams.join(rightParams)).mapValues {
+          case (paramDef, (l, r)) =>
+            paramDef.aggregation match {
+              case Some(agg) => agg.build(Seq(l, r))
+              case None      => paramDef.initializer.build[A](l.shape)
+            }
+        }
+      }
+      val modelParamsAgg =
+        resource.tfCache.getOrCompute(
+          "modelParamsAgg",
+          ((l, r) => buildParamsAgg(left.modelParamsDef, l, r)).tf).compileWith(session)
+      val optParamsAgg =
+        resource.tfCache.getOrCompute(
+          "optParamsAgg",
+          ((l, r) => buildParamsAgg(left.optParamsDef, l, r)).tf).compileWith(session)
       val lossAvg = (left.loss plus right.loss) / c.convert(2)
       StepResult(
         left.iterations + right.iterations,
-        weightsAvg(left.weights, right.weights),
-        metaAvg(left.meta, right.meta),
+        left.modelParamsDef,
+        modelParamsAgg(left.modelParams, right.modelParams),
+        left.optParamsDef,
+        optParamsAgg(left.optParams, right.optParams),
         lossAvg)
     }
   }
 
-  private def avg[X: Numeric] =
-    (arg1: Seq[Expr[X]], arg2: Seq[Expr[X]]) => {
-      (arg1 zip arg2).map { case (l, r) => (l + r) / 2.0f.const.cast[X] }
-    }
 }
 
 object Optimizer {
 
-  class Cache {
-    private val map = concurrent.TrieMap[String, Any]()
-    def getOrCompute[A](key: String, op: => A): A = {
-      map.get(key) match {
-        case Some(v) => v.asInstanceOf[A]
-        case None    => val d = op; map(key) = d; d
-      }
-    }
+  case class Resource(sessionPool: SessionPool, tfCache: Cache) extends AutoCloseable {
+    override def close(): Unit = sessionPool.close()
   }
 
-  val sessionsPool = new SessionPool(64)
-  val tfCache = new Cache
+  class Cache {
+    private val map = new ConcurrentHashMap[String, Any]()
+    def getOrCompute[A](key: String, op: => A): A =
+      map.computeIfAbsent(key, _ => op).asInstanceOf[A]
+  }
+
+  private def CPUs: Int = Runtime.getRuntime.availableProcessors()
+
+  private val resources = Caffeine.newBuilder()
+    .maximumSize(5)
+    .expireAfterAccess(Duration.ofSeconds(300))
+    .removalListener((_: String, resource: Resource, _) => resource.close())
+    .build((_: String) => Resource(new SessionPool(CPUs), new Cache))
+
+  def resource(id: String): Resource = resources.get(id)
 
   sealed trait BuilderState
 
@@ -209,8 +273,8 @@ object Optimizer {
     def using(alg: Algorithm): Builder[A, State with WithAlg] =
       copy(optimizer = optimizer.copy(alg = alg))
 
-    def initWeights(args: => Seq[Tensor[A]]): Builder[A, State] =
-      copy(optimizer = optimizer.copy(initWeights = () => Some(args)))
+    def initParams(args: => Params[Tensor[A]]): Builder[A, State] =
+      copy(optimizer = optimizer.copy(initParams = () => Some(args)))
 
     def on(dataset: Dataset[Record[A]]): Builder[A, State with WithDataset] =
       copy(optimizer = optimizer.copy(dataset = dataset))
@@ -252,7 +316,7 @@ object Optimizer {
         alg = null,
         model = model,
         loss = null,
-        initWeights = () => None,
+        initParams = () => None,
         dataset = null,
         batchSize = 10000,
         minimizing = true,
@@ -266,7 +330,7 @@ object Optimizer {
         alg = null,
         model = model,
         loss = null,
-        initWeights = () => None,
+        initParams = () => None,
         dataset = null,
         batchSize = 10000,
         minimizing = false,

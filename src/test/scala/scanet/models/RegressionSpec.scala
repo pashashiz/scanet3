@@ -1,11 +1,12 @@
 package scanet.models
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
+import scanet.core.Params.Weights
+import scanet.core.Path.stringIsPath
+import scanet.core.{Params, Tensor}
 import scanet.math.syntax._
 import scanet.models.Loss._
 import scanet.test.CustomMatchers
-import scala.collection.immutable.Seq
 
 class RegressionSpec extends AnyFlatSpec with CustomMatchers {
 
@@ -15,7 +16,10 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.matrix(Array(2.0f), Array(3.0f))
     val bias = Tensor.vector(1.0f)
-    loss(x, y, Seq(weights, bias)) should be(Tensor.scalar(17f))
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    loss(x, y, params) should be(Tensor.scalar(17f))
   }
 
   it should "calculate loss with Double precision" in {
@@ -24,7 +28,10 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(6.0), Array(12.0))
     val weights = Tensor.matrix(Array(2.0), Array(3.0))
     val bias = Tensor.vector(1.0)
-    loss(x, y, Seq(weights, bias)) should be(Tensor.scalar(17))
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    loss(x, y, params) should be(Tensor.scalar(17))
   }
 
   it should "calculate result" in {
@@ -33,7 +40,10 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(9.0f), Array(17.0f))
     val weights = Tensor.matrix(Array(2.0f), Array(3.0f))
     val bias = Tensor.vector(1.0f)
-    result(x, Seq(weights, bias)) should be(y)
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    result(x, params) should be(y)
   }
 
   it should "calculate gradient" in {
@@ -42,9 +52,12 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(6.0f), Array(12.0f))
     val weights = Tensor.matrix(Array(0.0f), Array(0.0f))
     val bias = Tensor.vector(0.0f)
-    grad(x, y, Seq(weights, bias)) should be(Seq(
-      Tensor.matrix(Array(-30.0f), Array(-60.0f)),
-      Tensor.vector(-18.0f)))
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    grad(x, y, params) shouldBe Params(
+      "0" / Weights -> Tensor.matrix(Array(-30.0f), Array(-60.0f)),
+      "1" / Weights -> Tensor.vector(-18.0f))
   }
 
   it should "produce unique toString to be used as a cache key" in {
@@ -57,7 +70,10 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.matrix(Array(0.2f), Array(0.3f))
     val bias = Tensor.vector(0.1f)
-    regression(x, y, Seq(weights, bias)).toScalar should be(0.7422824f +- 1e-6f)
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    regression(x, y, params).toScalar should be(0.7422824f +- 1e-6f)
   }
 
   it should "calculate result" in {
@@ -66,7 +82,10 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(0.599168f), Array(0.617276f))
     val weights = Tensor.matrix(Array(0.2f), Array(0.3f))
     val bias = Tensor.vector(0.1f)
-    val predicted = result(x, Seq(weights, bias))
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    val predicted = result(x, params)
     predicted.const.roundAt(6).eval should be(y)
   }
 
@@ -76,11 +95,13 @@ class RegressionSpec extends AnyFlatSpec with CustomMatchers {
     val y = Tensor.matrix(Array(0.402f), Array(0.47800002f))
     val weights = Tensor.matrix(Array(0.2f), Array(0.3f))
     val bias = Tensor.vector(0.1f)
-    val result = grad(x, y, Seq(weights, bias))
-      .map(_.const.roundAt(6).eval)
-    result should be(Seq(
-      Tensor.matrix(Array(0.075301f), Array(0.136784f)),
-      Tensor.vector(0.168222f)))
+    val params = Params(
+      "0" / Weights -> weights,
+      "1" / Weights -> bias)
+    val result = grad(x, y, params).mapValues(_.const.roundAt(6).eval)
+    result shouldBe Params(
+      "0" / Weights -> Tensor.matrix(Array(0.075301f), Array(0.136784f)),
+      "1" / Weights -> Tensor.vector(0.168222f))
   }
 
   it should "produce unique toString to be used as a cache key" in {

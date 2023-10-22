@@ -1,58 +1,99 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, Shape}
+import scanet.core.{Expr, Floating, Params, Path, Shape}
 import scanet.math.syntax._
+import scanet.models.ParamDef
 
 import scala.collection.immutable.Seq
 
-/** Layer which composes 2 other layers
+/** Layer which composes multiple other layers sequentially
   *
-  * @param left layer
-  * @param right layer
+  * @param layers layers to compose from left to right, such as
+  *               {{{layer 1 >>> layer 2 >>> ... >>> layer last}}}
   */
-case class Composed(left: Layer, right: Layer) extends Layer {
+case class Composed private (layers: Seq[Layer]) extends Layer {
 
-  override def buildStateful[E: Floating](
+  override def stateful: Boolean = layers.forall(_.stateful)
+
+  override def params(input: Shape): Params[ParamDef] = {
+    val (_, layerParams) = layers.zipWithIndex
+      .foldLeft((input, Seq.empty[Params[ParamDef]])) {
+        case ((in, paramsAcc), (layer, index)) =>
+          val out = layer.outputShape(in)
+          val params = layer.params(in).prependPath(index)
+          (out, params +: paramsAcc)
+      }
+    layerParams.reduce(_ ++ _)
+  }
+
+  private def recoverLayerParams[E: Floating](params: Params[Expr[E]]): Map[Int, Params[Expr[E]]] =
+    params.unwrap
+      .toList
+      .map {
+        case (path, expr) =>
+          (path.segments.head.toInt, (Path(path.segments.tail), expr))
+      }
+      .groupBy(_._1)
+      .map {
+        case (index, values) =>
+          (index, Params(values.map { case (_, kv) => kv }: _*))
+      }
+
+  override def build[E: Floating](
       input: Expr[E],
-      weights: Seq[Expr[E]],
-      state: Seq[Expr[E]]): (Expr[E], Seq[Expr[E]]) = {
-    val (leftWeights, rightWeights) = weights.splitAt(left.weightsShapes(input.shape).size)
-    val (leftState, rightState) = state.splitAt(left.stateShapes(input.shape).size)
-    val (leftOutput, leftNewState) = left.buildStateful(input, leftWeights, leftState)
-    val (rightOutput, rightNewState) = right.buildStateful(leftOutput, rightWeights, rightState)
-    (rightOutput, leftNewState ++ rightNewState)
+      params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
+    val layerParams = recoverLayerParams(params)
+    val (out, stateParams) = layers.zipWithIndex
+      .foldLeft((input, Seq.empty[Params[Expr[E]]])) {
+        case ((in, stateParamsAcc), (layer, index)) =>
+          val (out, stateParams) = layer.build(in, layerParams.getOrElse(index, Params.empty))
+          (out, stateParams.prependPath(index) +: stateParamsAcc)
+      }
+    (out, stateParams.reduce(_ ++ _))
   }
 
-  override def penalty[E: Floating](input: Shape, weights: Seq[Expr[E]]) = {
-    val (leftWeights, rightWeights) = weights.splitAt(left.weightsShapes(input).size)
-    left.penalty(input, leftWeights) plus right.penalty(left.outputShape(input), rightWeights)
+  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] = {
+    val layerParams = recoverLayerParams(params)
+    val (_, layerPenalty) = layers.zipWithIndex
+      .foldLeft((input, Seq.empty[Expr[E]])) {
+        case ((input, penaltyAcc), (layer, index)) =>
+          val outShape = layer.outputShape(input)
+          val penalty = layer.penalty(input, layerParams.getOrElse(index, Params.empty))
+          (outShape, penalty +: penaltyAcc)
+      }
+    plus(layerPenalty)
   }
 
-  override def outputShape(input: Shape): Shape = right.outputShape(left.outputShape(input))
-
-  override def weightsShapes(input: Shape): Seq[Shape] = {
-    val leftShapes = left.weightsShapes(input)
-    val rightShapes = right.weightsShapes(left.outputShape(input))
-    leftShapes ++ rightShapes
-  }
-
-  override def initWeights[E: Floating](input: Shape): Seq[Expr[E]] = {
-    val leftShapes = left.initWeights[E](input)
-    val rightShapes = right.initWeights[E](left.outputShape(input))
-    leftShapes ++ rightShapes
-  }
-
-  override def stateShapes(input: Shape): Seq[Shape] = {
-    val leftShapes = left.stateShapes(input)
-    val rightShapes = right.stateShapes(left.outputShape(input))
-    leftShapes ++ rightShapes
-  }
+  override def outputShape(input: Shape): Shape =
+    layers.foldLeft(input) {
+      case (in, layer) => layer.outputShape(in)
+    }
 
   override def info(input: Shape): Seq[LayerInfo] = {
-    val rightInput = left.outputShape(input)
-    left.info(input) ++ right.info(rightInput)
+    val (_, layersInfo) = layers.foldLeft((input, Seq.empty[LayerInfo])) {
+      case ((in, acc), layer) =>
+        (layer.outputShape(in), acc ++ layer.info(in))
+    }
+    layersInfo
   }
 
-  override def toString: String = s"$left >> $right"
+  override def toString: String = layers.mkString(" >> ")
+}
 
+object Composed {
+
+  def apply(layers: Seq[Layer]): Layer = {
+    require(layers.nonEmpty, "at least 1 layer is required")
+    val flatten = layers.flatMap {
+      case Composed(nested) => nested
+      case regular          => Seq(regular)
+    }
+    flatten match {
+      case single +: Nil => single
+      case multiple      => new Composed(multiple)
+    }
+  }
+
+  def apply(first: Layer, rest: Layer*): Layer =
+    Composed((first +: rest).toList)
 }

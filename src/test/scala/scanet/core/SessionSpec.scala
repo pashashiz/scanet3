@@ -24,6 +24,13 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
     }
   }
 
+  it should "eval an empty sequence of outputs" in {
+    withing { session =>
+      session.runner.eval[Seq[Expr[Int]]](Seq.empty) should
+        be(Seq.empty[Tensor[Int]])
+    }
+  }
+
   it should "eval a tuple2 of outputs" in {
     withing { session =>
       session.runner.eval((5.const, 10.const)) should
@@ -33,7 +40,6 @@ class SessionSpec extends AnyFlatSpec with CustomMatchers {
 
   it should "eval a tuple2 with one output and sequence of outputs" in {
     withing { session =>
-      println(session.devices)
       session.runner.eval[(Expr[Int], Seq[Expr[Int]])]((1.const, Seq(5.const, 10.const))) should
       be((scalar(1), Seq(scalar(5), scalar(10))))
     }

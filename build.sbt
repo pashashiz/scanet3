@@ -10,13 +10,14 @@ addCommandAlias("testFast", "testOnly -- -l org.scalatest.tags.Slow")
 
 libraryDependencies ++= Seq(
   "org.typelevel" %% "simulacrum" % "1.0.1",
-  "org.tensorflow" % "tensorflow-core-platform" % "0.5.0-SNAPSHOT",
+  "org.tensorflow" % "tensorflow-core-platform" % "0.5.0",
   // NOTE: needed for crc32c only, need to reimplement and remove the dependency
   "com.google.guava" % "guava" % "29.0-jre",
   "org.apache.spark" %% "spark-sql" % "3.3.1",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
   "ch.qos.logback" % "logback-classic" % "1.4.5",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",
+  "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5",
   "org.scalacheck" %% "scalacheck" % "1.17.0" % Test,
   "org.scalatest" %% "scalatest" % "3.2.14" % Test)
 

@@ -2,7 +2,6 @@ package scanet.models.layer
 
 import scanet.core.{Expr, Floating, Shape}
 import scanet.models.Activation
-import scala.collection.immutable.Seq
 
 /** A layer which applies activation function to the input.
   *
@@ -10,14 +9,12 @@ import scala.collection.immutable.Seq
   *
   * @param activation activation function
   */
-case class Activate(activation: Activation) extends WeightlessLayer {
+case class Activate(activation: Activation) extends NotTrainableLayer {
 
   override def name: String = activation.toString
 
-  override def build[E: Floating](input: Expr[E], weights: Seq[Expr[E]]): Expr[E] = {
-    require(weights.isEmpty, "Activate layer does not require weights")
+  override def build[E: Floating](input: Expr[E]): Expr[E] =
     activation.build(input)
-  }
 
   override def outputShape(input: Shape): Shape = input
 

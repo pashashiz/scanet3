@@ -35,6 +35,18 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
     func(scalar(5)) should be(Seq(scalar(5), scalar(6)))
   }
 
+  it should "work with map of outputs as arg" in {
+    val sum = (arg: Map[String, Expr[Int]]) => arg("a") plus arg("b")
+    val func = sum.compile
+    func(Map("a" -> scalar(1), "b" -> scalar(2))) should be(scalar(3))
+  }
+
+  it should "return map of outputs" in {
+    val double = (arg: Expr[Int]) => Map("a" -> (arg + 0.const), "b" -> (arg + 1.const))
+    val func = double.compile
+    func(scalar(5)) should be(Map("a" -> scalar(5), "b" -> scalar(6)))
+  }
+
   it should "return complex tuple" in {
     val complex = (arg: Expr[Int]) => (arg + 0.const, Seq(arg + 0.const, arg + 2.const))
     val func = complex.compile
@@ -64,5 +76,13 @@ class TFSpec extends AnyFlatSpec with CustomMatchers {
       a1 + a2 + a3 + a4 + a5
     val func = plus.compile
     func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(5)) should be(scalar(15))
+  }
+
+  "tensor function of 6 args" should "work" in {
+    val plus =
+      (a1: Expr[Int], a2: Expr[Int], a3: Expr[Int], a4: Expr[Int], a5: Expr[Int], a6: Expr[Int]) =>
+        a1 + a2 + a3 + a4 + a5 + a6
+    val func = plus.compile
+    func(scalar(1), scalar(2), scalar(3), scalar(4), scalar(5), scalar(6)) should be(scalar(21))
   }
 }

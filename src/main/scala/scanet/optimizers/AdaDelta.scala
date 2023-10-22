@@ -1,6 +1,9 @@
 package scanet.optimizers
 
 import scanet.core._
+import scanet.models.Aggregation.Avg
+import scanet.models.ParamDef
+import scanet.optimizers.AdaDelta.{AvgDelta, AvgGrad}
 import scanet.syntax._
 
 /** `Adadelta` optimization is a stochastic gradient descent method that is based on adaptive
@@ -22,21 +25,26 @@ import scanet.syntax._
 case class AdaDelta(rate: Float = 1.0f, rho: Float = 0.9f, epsilon: Float = 1e-7f)
     extends Algorithm {
 
-  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
-    val avgGrad = zeros[T](shape)
-    val avgDelta = zeros[T](shape)
-    (avgGrad zip avgDelta).eval
-  }
+  override def params(input: Shape): Params[ParamDef] =
+    Params(
+      AvgGrad -> ParamDef(shape = input, aggregation = Some(Avg)),
+      AvgDelta -> ParamDef(shape = input, aggregation = Some(Avg)))
 
-  override def delta[T: Floating](
+  override def build[T: Floating](
       grad: Expr[T],
-      meta: Expr[T],
+      params: Params[Expr[T]],
       iter: Expr[Int]): Delta[T] = {
-    val (prevAvgGrad, prevAvgDelta) = meta.unzip
+    val prevAvgGrad = params(AvgGrad)
+    val prevAvgDelta = params(AvgDelta)
     val avgGrad = prevAvgGrad.decayingAvg(grad.sqr, rho.const.cast[T])
     val delta = rate.const.cast[T] * ((prevAvgDelta.sqrtZeroSafe(epsilon.const.cast[T]) / avgGrad
       .sqrtZeroSafe(epsilon.const.cast[T])) * grad)
     val avgDelta = prevAvgDelta.decayingAvg(delta.sqr, rho.const.cast[T])
-    Delta(delta, avgGrad zip avgDelta)
+    Delta(delta, Params(AvgGrad -> avgGrad, AvgDelta -> avgDelta))
   }
+}
+
+object AdaDelta {
+  val AvgGrad: Path = "avg_grad"
+  val AvgDelta: Path = "avg_delta"
 }

@@ -1,6 +1,9 @@
 package scanet.optimizers
 
 import scanet.core._
+import scanet.models.Aggregation.Avg
+import scanet.models.{Initializer, ParamDef}
+import scanet.optimizers.Adamax.{Momentum1, Momentum2}
 import scanet.syntax._
 
 /** Adamax is a variant of Adam based on the infinity norm.
@@ -24,21 +27,32 @@ case class Adamax(
     initAcc: Float = 0.001f)
     extends Algorithm {
 
-  override def initMeta[T: Floating](shape: Shape): Tensor[T] = {
-    val m1 = fill[Float](shape)(initAcc).cast[T]
-    val m2 = fill[Float](shape)(initAcc).cast[T]
-    (m1 zip m2).eval
-  }
+  override def params(input: Shape): Params[ParamDef] =
+    Params(
+      Momentum1 -> ParamDef(
+        shape = input,
+        initializer = Initializer.Const(initAcc),
+        aggregation = Some(Avg)),
+      Momentum2 -> ParamDef(
+        shape = input,
+        initializer = Initializer.Const(initAcc),
+        aggregation = Some(Avg)))
 
-  override def delta[T: Floating](
+  override def build[T: Floating](
       grad: Expr[T],
-      meta: Expr[T],
+      params: Params[Expr[T]],
       iter: Expr[Int]): Delta[T] = {
-    val (prevM1, prevM2) = meta.unzip
+    val prevM1 = params(Momentum1)
+    val prevM2 = params(Momentum2)
     val m1 = prevM1.decayingAvg(grad, beta1.const.cast[T])
     val m2 = max(beta2.const.cast[T] * prevM2, (1f.const.cast[T] - beta2.const.cast[T]) * grad.abs)
     val delta =
       rate.const.cast[T] * m1.boost(beta1.const.cast[T], iter) / (m2 + epsilon.const.cast[T])
-    Delta(delta, m1 zip m2)
+    Delta(delta, Params(Momentum1 -> m1, Momentum2 -> m2))
   }
+}
+
+object Adamax {
+  val Momentum1: Path = "momentum_1"
+  val Momentum2: Path = "momentum_2"
 }

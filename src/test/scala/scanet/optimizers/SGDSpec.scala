@@ -1,7 +1,8 @@
 package scanet.optimizers
 
 import org.scalatest.flatspec.AnyFlatSpec
-import scanet.core.Tensor
+import scanet.core.Params.Weights
+import scanet.core.{Params, Tensor}
 import scanet.math.syntax._
 import scanet.models.LinearRegression
 import scanet.models.Loss._
@@ -10,8 +11,6 @@ import scanet.optimizers.Effect.RecordLoss
 import scanet.optimizers.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-import scala.collection.immutable.Seq
-
 class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
 
   "Plain SGD" should "minimize x^2" in {
@@ -19,7 +18,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
       .minimize[Float](`x^2`)
       .loss(Identity)
       .using(SGD(rate = 0.1f))
-      .initWeights(Seq(Tensor.scalar(5.0f)))
+      .initParams(Params(Weights -> Tensor.scalar(5.0f)))
       .each(1.epochs, RecordLoss())
       .on(zero)
       .batch(1)

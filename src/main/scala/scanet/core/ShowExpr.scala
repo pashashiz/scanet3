@@ -43,7 +43,7 @@ case class ShowExpr(expr: Expr[_]) {
   private def showRecN(
       exprs: Seq[Expr[_]],
       refs: Map[String, String]): (Seq[String], Map[String, String]) =
-    exprs.foldLeft(Seq.empty[String], refs) {
+    exprs.foldLeft((Seq.empty[String], refs)) {
       case ((repr, accRefs), exprChild) =>
         val (childRepr, childRefs) = showRec(exprChild, accRefs)
         if (outerRefCount(exprChild.ref) == 1) {

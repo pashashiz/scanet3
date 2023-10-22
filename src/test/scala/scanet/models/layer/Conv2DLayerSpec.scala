@@ -1,11 +1,10 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.Tensor
+import scanet.core.Params.Weights
+import scanet.core.{Params, Tensor}
 import scanet.syntax._
 import scanet.test.CustomMatchers
-
-import scala.collection.immutable.Seq
 
 class Conv2DLayerSpec extends AnyWordSpec with CustomMatchers {
 
@@ -33,7 +32,7 @@ class Conv2DLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(10.0, 7.0, 4.0, 7.0))
         .reshape(1, 4, 4, 1)
       val result = model.result[Double].compile
-      result(input, Seq(filters)).const.roundAt(2).eval shouldBe output
+      result(input, Params(Weights -> filters)).const.roundAt(2).eval shouldBe output
     }
 
     "have string repr" in {

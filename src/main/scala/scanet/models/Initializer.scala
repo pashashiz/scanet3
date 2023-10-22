@@ -39,6 +39,12 @@ object Initializer {
     override def toString: String = "Ones"
   }
 
+  case class Const(value: Float) extends Initializer {
+    override def build[E: Floating](shape: Shape): Expr[E] =
+      fill(shape)(value).cast[E]
+    override def toString: String = s"Const($value)"
+  }
+
   case class RandomUniform(min: Float = -0.05f, max: Float = 0.05f, seed: Option[Long] = None)
       extends Initializer {
     override def build[E: Floating](shape: Shape): Expr[E] =

@@ -27,7 +27,6 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
   }
 
   "composite output" should "have toString which includes operators chain" in {
-    println(5.0f.const.reshape(1).toString)
     5.0f.const.reshape(1).toString should
     be("Reshape(Const(5.0)[Float]:(),new_shape:Const(1)[Int]:(1))[Float]:(1)")
   }
@@ -36,13 +35,54 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
     5.0f.const.eval should be(Tensor.scalar(5.0f))
   }
 
-  "product of 2 ops" should "be evaluated" in {
+  "product of 2 expr" should "be evaluated" in {
     (1.const, 2.const).eval should be((Tensor.scalar(1), Tensor.scalar(2)))
   }
 
-  "product of 3 ops" should "be evaluated" in {
+  "product of 3 expr" should "be evaluated" in {
     (1.const, 2.const, 3.const).eval should be(
       (Tensor.scalar(1), Tensor.scalar(2), Tensor.scalar(3)))
+  }
+
+  "seq of expr" should "be evaluated" in {
+    Seq(1.const, 2.const).eval should be(Seq(Tensor.scalar(1), Tensor.scalar(2)))
+  }
+
+  "seq of tuple expr" should "be evaluated" in {
+    Seq((1.const, 2.const), (3.const, 4.const)).eval should be(
+      Seq((Tensor.scalar(1), Tensor.scalar(2)), (Tensor.scalar(3), Tensor.scalar(4))))
+  }
+
+  "seq of seq expr" should "be evaluated" in {
+    Seq(Seq(1.const, 2.const), Seq(3.const, 4.const, 5.const)).eval should be(
+      Seq(
+        Seq(Tensor.scalar(1), Tensor.scalar(2)),
+        Seq(Tensor.scalar(3), Tensor.scalar(4), Tensor.scalar(5))))
+  }
+
+  "map of expr" should "be evaluated" in {
+    Map("a" -> 1.const, "b" -> 2.const).eval should be(
+      Map("a" -> Tensor.scalar(1), "b" -> Tensor.scalar(2)))
+  }
+
+  "map of tuple expr" should "be evaluated" in {
+    Map("a" -> (1.const -> 2.const), "b" -> (3.const -> 4.const)).eval should be(
+      Map("a" -> (Tensor.scalar(1) -> Tensor.scalar(2)), "b" -> (Tensor.scalar(3) -> Tensor.scalar(4))))
+  }
+
+  "map of map expr" should "be evaluated" in {
+    val in = Map(
+      1 -> Map("a" -> 1.const, "b" -> 2.const),
+      2 -> Map("a" -> 3.const, "b" -> 4.const, "c" -> 5.const))
+    val out = Map(
+      1 -> Map("a" -> Tensor.scalar(1), "b" -> Tensor.scalar(2)),
+      2 -> Map("a" -> Tensor.scalar(3), "b" -> Tensor.scalar(4), "c" -> Tensor.scalar(5)))
+    in.eval should be(out)
+  }
+
+  "params of expr" should "be evaluated" in {
+    Params(Path("a") -> 1.const, Path("b") -> 2.const).eval should be(
+      Params(Path("a") -> Tensor.scalar(1), Path("b") -> Tensor.scalar(2)))
   }
 
   "reshape" should "transform vector into matrix" in {

@@ -1,14 +1,14 @@
 package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
-import scanet.core.{Shape, Tensor}
+import scanet.core.Params.Weights
+import scanet.core.{Params, Shape, Tensor}
+import scanet.core.Path._
 import scanet.models.Activation._
 import scanet.models.Loss._
 import scanet.models.Regularization.L2
 import scanet.syntax._
 import scanet.test.CustomMatchers
-
-import scala.collection.immutable.Seq
 
 class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
 
@@ -35,7 +35,8 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(0.890903f, 0.817574f, 0.900250f, 0.802184f))
       val model = Dense(4, Sigmoid)
       val forward = model.result[Float].compile
-      val y = forward(x, Seq(w, b)).const.roundAt(6).eval
+      val params = Params(0 / Weights -> w, 1 / Weights -> b)
+      val y = forward(x, params).const.roundAt(6).eval
       y should be(yExpected)
     }
 
@@ -47,7 +48,8 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(1f, 0f))
       val b = Tensor.vector(0f, 0f)
       val model = Dense(4, Sigmoid, reg = L2(lambda = 1))
-      model.penalty(Shape(1, 4), Seq(w.const, b.const)).eval should be(Tensor.scalar(1.63f))
+      val params = Params(0 / Weights -> w, 1 / Weights -> b)
+      model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(Tensor.scalar(1.63f))
     }
 
     "produce gradient when combined with loss function" in {
@@ -70,7 +72,9 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(-0.040072710f, -0.034289565f, -0.041798398f, -0.036751173f),
         Array(-0.078313690f, -0.041943270f, -0.061695820f, -0.047571808f))
       val biasGrad = Tensor.vector(-0.078313690f, -0.041943270f, -0.061695820f, -0.047571808f)
-      grad(x, y, Seq(weights, bias)) should be(Seq(weightsGrad, biasGrad))
+      val before = Params(0 / Weights -> weights, 1 / Weights -> bias)
+      val after = Params(0 / Weights -> weightsGrad, 1 / Weights -> biasGrad)
+      grad(x, y, before) should be(after)
     }
   }
 }
