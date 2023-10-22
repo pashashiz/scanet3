@@ -11,8 +11,6 @@ import scanet.optimizers.Effect.RecordLoss
 import scanet.optimizers.syntax._
 import scanet.test.{CustomMatchers, Datasets, SharedSpark}
 
-import scala.collection.immutable.Seq
-
 class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Datasets {
 
   "Plain SGD" should "minimize x^2" in {

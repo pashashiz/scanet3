@@ -8,8 +8,6 @@ import scanet.models.Regularization.Zero
 import scanet.models.{Initializer, ParamDef, Regularization}
 import scanet.syntax._
 
-import scala.collection.immutable.Seq
-
 /** A layer which sums up a bias vector (weights) with the input.
   * When input has rank > 1 the summation will be broadcasted.
   *

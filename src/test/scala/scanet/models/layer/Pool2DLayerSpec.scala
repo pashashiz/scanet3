@@ -5,8 +5,6 @@ import scanet.core.{Params, Tensor}
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
-import scala.collection.immutable.Seq
-
 class Pool2DLayerSpec extends AnyWordSpec with CustomMatchers {
 
   "Pool2D layer" should {

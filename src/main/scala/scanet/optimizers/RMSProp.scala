@@ -1,6 +1,6 @@
 package scanet.optimizers
 
-import scanet.core.{Expr, Floating, Params, Path, Shape, Tensor}
+import scanet.core.{Expr, Floating, Params, Path, Shape}
 import scanet.math.syntax._
 import scanet.models.Aggregation.Avg
 import scanet.models.ParamDef

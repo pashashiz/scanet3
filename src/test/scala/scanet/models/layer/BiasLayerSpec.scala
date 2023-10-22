@@ -6,8 +6,6 @@ import scanet.core.{Params, Tensor}
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
-import scala.collection.immutable.Seq
-
 class BiasLayerSpec extends AnyWordSpec with CustomMatchers {
 
   "bias layer" should {

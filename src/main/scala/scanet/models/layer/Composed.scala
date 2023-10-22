@@ -95,5 +95,5 @@ object Composed {
   }
 
   def apply(first: Layer, rest: Layer*): Layer =
-    Composed(first +: rest)
+    Composed((first +: rest).toList)
 }

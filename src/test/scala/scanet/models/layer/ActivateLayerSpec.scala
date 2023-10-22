@@ -6,8 +6,6 @@ import scanet.models.Activation.Sigmoid
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
-import scala.collection.immutable.Seq
-
 class ActivateLayerSpec extends AnyWordSpec with CustomMatchers {
 
   "activate layer" should {

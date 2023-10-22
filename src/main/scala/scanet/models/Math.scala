@@ -6,8 +6,6 @@ import scanet.math.syntax._
 import scanet.models.Aggregation.Avg
 import scanet.models.layer.StatelessLayer
 
-import scala.collection.immutable.Seq
-
 object Math {
 
   case object `x^2` extends StatelessLayer {

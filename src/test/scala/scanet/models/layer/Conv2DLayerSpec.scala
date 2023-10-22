@@ -6,8 +6,6 @@ import scanet.core.{Params, Tensor}
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
-import scala.collection.immutable.Seq
-
 class Conv2DLayerSpec extends AnyWordSpec with CustomMatchers {
 
   "Conv2D layer" should {

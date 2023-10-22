@@ -10,8 +10,6 @@ import scanet.models.Regularization.L2
 import scanet.syntax._
 import scanet.test.CustomMatchers
 
-import scala.collection.immutable.Seq
-
 class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
 
   "dense layer" should {

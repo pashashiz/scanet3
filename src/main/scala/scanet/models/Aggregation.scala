@@ -2,6 +2,7 @@ package scanet.models
 
 import scanet.core.{Expr, Floating}
 import scanet.math.syntax._
+import scala.collection.immutable.Seq
 
 trait Aggregation {
   def build[E: Floating](inputs: Seq[Expr[E]]): Expr[E]

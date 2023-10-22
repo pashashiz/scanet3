@@ -8,8 +8,6 @@ import scanet.models.Regularization.Zero
 import scanet.models.{Activation, Initializer, ParamDef, Regularization}
 import scanet.syntax._
 
-import scala.collection.immutable.Seq
-
 object Dense {
 
   /** Regular densely-connected NN layer.

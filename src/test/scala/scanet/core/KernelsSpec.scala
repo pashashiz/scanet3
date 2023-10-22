@@ -66,8 +66,8 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
   }
 
   "map of tuple expr" should "be evaluated" in {
-    Map("a" -> (1.const, 2.const), "b" -> (3.const, 4.const)).eval should be(
-      Map("a" -> (Tensor.scalar(1), Tensor.scalar(2)), "b" -> (Tensor.scalar(3), Tensor.scalar(4))))
+    Map("a" -> (1.const -> 2.const), "b" -> (3.const -> 4.const)).eval should be(
+      Map("a" -> (Tensor.scalar(1) -> Tensor.scalar(2)), "b" -> (Tensor.scalar(3) -> Tensor.scalar(4))))
   }
 
   "map of map expr" should "be evaluated" in {

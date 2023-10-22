@@ -7,8 +7,6 @@ import scanet.models.Loss.MeanSquaredError
 import scanet.models.layer.Dense
 import scanet.syntax._
 
-import scala.collection.immutable.Seq
-
 object Neuron {
 
   def main(args: Array[String]): Unit = {
