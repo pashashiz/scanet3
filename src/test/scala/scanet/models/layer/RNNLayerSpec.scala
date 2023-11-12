@@ -35,7 +35,7 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
 
     "have string repr" in {
       val model = RNN(SimpleRNNCell(units = 2))
-      model.toString shouldBe "RNN(SimpleRNNCell(2,GlorotUniform,Orthogonal,Zero,Zero) >> Bias(2,Zero,Zeros) >> Tanh,false,false)"
+      model.toString shouldBe "RNN(SimpleRNNCell(2) >> Bias(2) >> Tanh)"
     }
   }
 
@@ -80,7 +80,7 @@ class RNNLayerSpec extends AnyWordSpec with CustomMatchers {
 
     "have string repr" in {
       val model = RNN(LSTMCell(units = 2))
-      model.toString shouldBe "RNN(LSTMCell(2,Tanh,Sigmoid,true,GlorotUniform,Orthogonal,Zeros,Ones,Zero,Zero,Zero),false,false)"
+      model.toString shouldBe "RNN(LSTMCell(2,Tanh,Sigmoid,true))"
     }
   }
 }

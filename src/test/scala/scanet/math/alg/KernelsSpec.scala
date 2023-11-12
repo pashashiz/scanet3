@@ -313,7 +313,13 @@ class KernelsSpec extends AnyWordSpec with Matchers {
       ((x * x) grad x).returns[Float].eval should be(Tensor.scalar(6))
     }
 
-    "calculate a gradient with broadcasting when smaller tensor is a differentiable variable" in {
+    "x" in {
+      val x = Tensor.matrix(Array(1, 2, 3)).const
+      val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
+      println((a * x).eval)
+    }
+
+    "calculate a gradient with full dimension broadcasting when smaller tensor is a differentiable variable" in {
       val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val x = Tensor.vector(1, 2, 3).const
       val grad = Tensor.vector(25, 35, 45)
@@ -321,11 +327,25 @@ class KernelsSpec extends AnyWordSpec with Matchers {
       ((x * a).sum grad x).returns[Float].eval should be(grad)
     }
 
-    "calculate a gradient with broadcasting when bigger tensor is a differentiable variable" in {
+    "calculate a gradient with full dimension broadcasting broadcasting when bigger tensor is a differentiable variable" in {
       val x = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
       val a = Tensor.vector(1, 2, 3).const
       val grad = Tensor.matrix(Array(1, 2, 3), Array(1, 2, 3))
       ((x * a).sum grad x).returns[Float].eval should be(grad)
+      ((a * x).sum grad x).returns[Float].eval should be(grad)
+    }
+
+    "calculate a gradient with broadcasting of dimensions with size 1 when smaller tensor is a differentiable variable" in {
+      val a = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
+      val x = Tensor.matrix(Array(1, 2, 3)).const
+      val grad = Tensor.matrix(Array(25.0f, 35.0f, 45.0f))
+      ((a * x).sum grad x).returns[Float].eval should be(grad)
+    }
+
+    "calculate a gradient with broadcasting of dimensions with size 1 when bigger tensor is a differentiable variable" in {
+      val x = Tensor.matrix(Array(5, 10, 15), Array(20, 25, 30)).const
+      val a = Tensor.matrix(Array(1, 2, 3)).const
+      val grad = Tensor.matrix(Array(1.0f, 2.0f, 3.0f), Array(1.0f, 2.0f, 3.0f))
       ((a * x).sum grad x).returns[Float].eval should be(grad)
     }
   }
@@ -471,8 +491,16 @@ class KernelsSpec extends AnyWordSpec with Matchers {
 
     "have correct gradient" in {
       val x = Tensor.matrix(Array(1f, 2f, 3f), Array(4f, 5f, 6f)).const
+      val y = x.mean(Seq(0))
       val grad = Tensor.matrix(Array(0.5f, 0.5f, 0.5f), Array(0.5f, 0.5f, 0.5f))
-      x.mean(Seq(0)).sum.grad(x).returns[Float].eval should be(grad)
+      y.sum.grad(x).returns[Float].eval should be(grad)
+    }
+
+    "have correct gradient and keep dimensions" in {
+      val x = Tensor.matrix(Array(1f, 2f, 3f), Array(4f, 5f, 6f)).const
+      val y = x.mean(Seq(0), keepDims = true)
+      val grad = Tensor.matrix(Array(0.5f, 0.5f, 0.5f), Array(0.5f, 0.5f, 0.5f))
+      y.sum.grad(x).returns[Float].eval should be(grad)
     }
   }
 

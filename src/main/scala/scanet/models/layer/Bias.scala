@@ -2,10 +2,11 @@ package scanet.models.layer
 
 import scanet.core.Params._
 import scanet.core.{Expr, Floating, Params, Shape}
+import scanet.math.syntax.zeros
 import scanet.models.Aggregation.Avg
 import scanet.models.Initializer.Zeros
 import scanet.models.Regularization.Zero
-import scanet.models.{Initializer, ParamDef, Regularization}
+import scanet.models.{Initializer, Model, ParamDef, Regularization}
 import scanet.syntax._
 
 /** A layer which sums up a bias vector (weights) with the input.
@@ -18,18 +19,25 @@ import scanet.syntax._
   * @param reg regularization
   * @param initializer kernel initializer
   */
-case class Bias(features: Int, reg: Regularization = Zero, initializer: Initializer = Zeros)
+case class Bias(
+    features: Int,
+    reg: Regularization = Zero,
+    initializer: Initializer = Zeros,
+    override val trainable: Boolean = true)
     extends StatelessLayer {
 
   override def params(input: Shape): Params[ParamDef] =
-    Params(Weights -> ParamDef(Shape(features), initializer, Some(Avg), trainable = true))
+    Params(Weights -> ParamDef(Shape(features), initializer, Some(Avg), trainable = trainable))
 
-  override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
+  override def buildStateless[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
     input + params.weights
 
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
-    reg.build(params.weights)
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
+    if (trainable) reg.build(params.weights) else zeros[E](Shape())
 
   override def outputShape(input: Shape): Shape = input
 
+  override def makeTrainable(trainable: Boolean): Bias = copy(trainable = trainable)
+
+  override def toString: String = s"Bias($features)"
 }

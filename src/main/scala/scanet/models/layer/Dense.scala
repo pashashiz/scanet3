@@ -29,30 +29,43 @@ object Dense {
     */
   def apply(
       outputs: Int,
-      activation: Activation,
+      activation: Activation = Activation.Identity,
       reg: Regularization = Zero,
       bias: Boolean = true,
       kernelInitializer: Initializer = GlorotUniform(),
-      biasInitializer: Initializer = Zeros): Layer = {
-    val dense = new Dense(outputs, reg, kernelInitializer)
+      biasInitializer: Initializer = Zeros,
+      trainable: Boolean = true): Layer = {
+    val dense = new Dense(outputs, reg, kernelInitializer, trainable)
     dense ?>> (bias, Bias(outputs, reg, biasInitializer)) ?>> (activation.ni, activation.layer)
   }
 }
 
-case class Dense private (outputs: Int, reg: Regularization, initializer: Initializer)
+case class Dense private (
+    outputs: Int,
+    reg: Regularization,
+    initializer: Initializer,
+    override val trainable: Boolean)
     extends StatelessLayer {
 
   override def params(input: Shape): Params[ParamDef] =
-    Params(Weights -> ParamDef(Shape(input(1), outputs), initializer, Some(Avg), trainable = true))
+    Params(Weights -> ParamDef(
+      Shape(input(1), outputs),
+      initializer,
+      Some(Avg),
+      trainable = trainable))
 
-  override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
+  override def buildStateless[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] =
     // x:(samples, features)
     // w:(features, outputs)
     // x * w -> (samples, features) * (features, outputs) -> (samples, outputs)
     input matmul params.weights
 
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
     reg.build(params.weights)
 
   override def outputShape(input: Shape): Shape = Shape(input.head, outputs)
+
+  override def makeTrainable(trainable: Boolean): Dense = copy(trainable = trainable)
+
+  override def toString: String = s"Dense($outputs)"
 }

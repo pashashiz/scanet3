@@ -149,7 +149,7 @@ case class Optimizer[A: Floating](
           StepResult(
             iter + 1,
             modelParamsDef,
-            nextWeights,
+            nextParams,
             optParamsDef,
             nextOptParams,
             lossResult.toScalar)

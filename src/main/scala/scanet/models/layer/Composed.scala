@@ -52,14 +52,13 @@ case class Composed private (layers: Seq[Layer]) extends Layer {
     (out, stateParams.reduce(_ ++ _))
   }
 
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] = {
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] = {
     val layerParams = recoverLayerParams(params)
-    val (_, layerPenalty) = layers.zipWithIndex
-      .foldLeft((input, Seq.empty[Expr[E]])) {
-        case ((input, penaltyAcc), (layer, index)) =>
-          val outShape = layer.outputShape(input)
-          val penalty = layer.penalty(input, layerParams.getOrElse(index, Params.empty))
-          (outShape, penalty +: penaltyAcc)
+    val layerPenalty = layers.zipWithIndex
+      .foldLeft(Seq.empty[Expr[E]]) {
+        case (penaltyAcc, (layer, index)) =>
+          val penalty = layer.penalty(layerParams.getOrElse(index, Params.empty))
+          penalty +: penaltyAcc
       }
     plus(layerPenalty)
   }
@@ -76,6 +75,11 @@ case class Composed private (layers: Seq[Layer]) extends Layer {
     }
     layersInfo
   }
+
+  override def makeTrainable(trainable: Boolean): Layer =
+    copy(layers = layers.map(_.makeTrainable(trainable)))
+
+  override def trainable: Boolean = layers.exists(_.trainable)
 
   override def toString: String = layers.mkString(" >> ")
 }

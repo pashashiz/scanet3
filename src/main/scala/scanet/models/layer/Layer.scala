@@ -8,8 +8,9 @@ import scala.annotation.nowarn
 
 trait Layer extends Model {
 
-  def trainable: Boolean = true
   def stateful: Boolean
+
+  override def makeTrainable(trainable: Boolean): Layer
 
   /** Compose `right` layer with `this` (`left`) layer.
     *
@@ -32,26 +33,27 @@ trait StatelessLayer extends Layer {
 
   override def stateful: Boolean = false
 
-  def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E]
+  def buildStateless[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E]
 
   override def build[E: Floating](
       input: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
-    (buildStateless_(input, params), Params.empty)
+    (buildStateless(input, params), Params.empty)
   }
 }
 
 trait NotTrainableLayer extends StatelessLayer {
 
   override def trainable: Boolean = false
+  override def makeTrainable(trainable: Boolean): Layer = this
 
   override def params(input: Shape): Params[ParamDef] = Params.empty
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
     zeros[E](Shape())
 
   def build[E: Floating](input: Expr[E]): Expr[E]
 
-  override def buildStateless_[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] = {
+  override def buildStateless[E: Floating](input: Expr[E], params: Params[Expr[E]]): Expr[E] = {
     require(params.isEmpty, s"$this layer does not require params")
     build(input)
   }

@@ -1,6 +1,6 @@
 package scanet.models.layer
 
-import scanet.core.{Expr, Floating, Params, Path, Shape}
+import scanet.core._
 import scanet.math.syntax.zeros
 import scanet.models.Activation.{Sigmoid, Tanh}
 import scanet.models.Aggregation.Avg
@@ -35,7 +35,8 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
   }
 
   private def paramsPartitioned(input: Shape): (Params[ParamDef], Params[ParamDef]) =
-    cell.params(dropTime(input)).partitionValues(_.trainable)
+    cell.params(dropTime(input))
+      .partitionPaths(path => !path.segments.lastOption.exists(_.endsWith("state")))
 
   override def build[E: Floating](
       input: Expr[E],
@@ -71,8 +72,8 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
     (output, lastOutputState)
   }
 
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
-    cell.penalty(dropTime(input), params)
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
+    cell.penalty(params)
 
   private def dropTime(input: Shape): Shape = input.remove(1)
 
@@ -83,6 +84,13 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
     else
       cell.outputShape(cellOutput)
   }
+
+  override def trainable: Boolean = cell.trainable
+
+  override def makeTrainable(trainable: Boolean): RNN =
+    copy(cell = cell.makeTrainable(trainable))
+
+  override def toString: String = s"RNN($cell)"
 }
 
 object SimpleRNN {
@@ -140,10 +148,17 @@ object SimpleRNNCell {
       biasInitializer: Initializer = Zeros,
       kernelReg: Regularization = Zero,
       recurrentReg: Regularization = Zero,
-      biasReg: Regularization = Zero): Layer = {
+      biasReg: Regularization = Zero,
+      trainable: Boolean = true): Layer = {
     require(units > 0, "RNN Cell should contain at least one unit")
     val cell =
-      new SimpleRNNCell(units, kernelInitializer, recurrentInitializer, kernelReg, recurrentReg)
+      new SimpleRNNCell(
+        units,
+        kernelInitializer,
+        recurrentInitializer,
+        kernelReg,
+        recurrentReg,
+        trainable)
     cell ?>> (bias, Bias(units, biasReg, biasInitializer)) ?>> (activation.ni, activation.layer)
   }
 
@@ -157,7 +172,8 @@ case class SimpleRNNCell(
     kernelInitializer: Initializer,
     recurrentInitializer: Initializer,
     kernelReg: Regularization,
-    recurrentReg: Regularization)
+    recurrentReg: Regularization,
+    override val trainable: Boolean)
     extends Layer {
   import SimpleRNNCell._
 
@@ -165,9 +181,9 @@ case class SimpleRNNCell(
 
   override def params(input: Shape): Params[ParamDef] = Params(
     // (features, units)
-    Kernel -> ParamDef(Shape(input(1), units), kernelInitializer, Some(Avg), trainable = true),
+    Kernel -> ParamDef(Shape(input(1), units), kernelInitializer, Some(Avg), trainable = trainable),
     // (units, units)
-    Recurrent -> ParamDef(Shape(units, units), recurrentInitializer, Some(Avg), trainable = true),
+    Recurrent -> ParamDef(Shape(units, units), recurrentInitializer, Some(Avg), trainable = trainable),
     // state, keeps previous output
     State -> ParamDef(outputShape(input), Initializer.Zeros))
 
@@ -179,10 +195,14 @@ case class SimpleRNNCell(
     (result, Params(State -> result))
   }
 
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
     kernelReg.build(params(Kernel)) + recurrentReg.build(params(Recurrent))
 
   override def outputShape(input: Shape): Shape = Shape(input.head, units)
+
+  override def makeTrainable(trainable: Boolean): SimpleRNNCell = copy(trainable = trainable)
+
+  override def toString: String = s"SimpleRNNCell($units)"
 }
 
 object LSTM {
@@ -245,7 +265,8 @@ case class LSTMCell(
     biasForgetInitializer: Initializer = Ones,
     kernelReg: Regularization = Zero,
     recurrentReg: Regularization = Zero,
-    biasReg: Regularization = Zero)
+    biasReg: Regularization = Zero,
+    override val trainable: Boolean = true)
     extends Layer {
   import LSTM._
 
@@ -317,13 +338,18 @@ case class LSTMCell(
     (h, Params(CellState -> c, HiddenState -> h))
   }
 
-  override def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E] =
+  override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
     cells.foldLeft(Floating[E].zero.const) {
       case (sum, (name, cell)) =>
         val cellParams = params.children(name)
-        sum + cell.penalty(input, cellParams)
+        sum + cell.penalty(cellParams)
     }
 
   override def outputShape(input: Shape): Shape =
     oCell._2.outputShape(input)
+
+  override def makeTrainable(trainable: Boolean): LSTMCell =
+    copy(trainable = trainable)
+
+  override def toString: String = s"LSTMCell($units,$activation,$recurrentActivation,$bias)"
 }

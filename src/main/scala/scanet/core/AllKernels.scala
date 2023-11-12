@@ -85,6 +85,12 @@ case class DependsOn[A: TensorType](expr: Expr[A], dep: Expr[_]) extends Expr[A]
   override def inputs: Seq[Expr[_]] = Seq(expr)
   override def controls: Seq[Expr[_]] = Seq(dep)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
+  override def localGrad: Grad[A] = new Grad[A] {
+    override def calc[R: Floating](
+        current: Expr[A],
+        parentGrad: Expr[R]): Seq[Expr[R]] =
+      List(parentGrad)
+  }
 }
 
 case class Switch[A: TensorType](cond: Expr[Boolean], output: Expr[A]) extends Expr[(A, A)] {

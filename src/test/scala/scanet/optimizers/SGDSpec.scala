@@ -15,7 +15,7 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
 
   "Plain SGD" should "minimize x^2" in {
     val trained = Optimizer
-      .minimize[Float](`x^2`)
+      .minimize[Float](`x^2`())
       .loss(Identity)
       .using(SGD(rate = 0.1f))
       .initParams(Params(Weights -> Tensor.scalar(5.0f)))
