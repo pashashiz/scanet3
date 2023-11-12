@@ -11,7 +11,10 @@ class KernelsSpec extends AnyWordSpec with Matchers {
 
   "variance" should {
 
-    val tensor = Tensor.matrix(Array(1f, 1.3f, 1.1f), Array(4f, 5f, 4.6f)).const
+    val tensor = Tensor.matrix(
+      Array(1f, 1.3f, 1.1f),
+      Array(4f, 5f, 4.6f))
+      .const
 
     "calculate variance across all axis by default" in {
       tensor.variance.roundAt(2).eval should be(Tensor.scalar(2.98f))
@@ -19,6 +22,10 @@ class KernelsSpec extends AnyWordSpec with Matchers {
 
     "support reducing along matrix columns" in {
       tensor.variance(Seq(0)).roundAt(2).eval should be(Tensor.vector(2.25f, 3.42f, 3.06f))
+    }
+
+    "x" in {
+      println(tensor.variance(Seq(0), keepDims = true).roundAt(2).eval)
     }
 
     "support reducing along matrix rows" in {

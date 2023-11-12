@@ -24,10 +24,18 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     indexes.reverse
   }
 
-  def apply(dim: Int): Int = dims(dim)
-  def get(dim: Int): Int = dims(dim)
+  def get(dim: Int): Int = if (dim == -1) last else dims(dim)
+
+  def apply(dim: Int): Int = get(dim)
 
   def rank: Int = dims.size
+
+  def axis: List[Int] = dims.indices.toList
+
+  def axisExcept(other: Int*): List[Int] = {
+    val indexedAxis = indexAxis(other)
+    (dims.indices.toSet -- indexedAxis.toSet).toList.sorted
+  }
 
   def isScalar: Boolean = rank == 0
 
@@ -52,7 +60,10 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def drop(n: Int): Shape = Shape(dims.drop(n))
   def dropRight(n: Int): Shape = Shape(dims.dropRight(n))
 
-  def last: Int = dims.last
+  def last: Int = {
+    require(!isScalar, "cannot get last dimension for scalar")
+    dims.last
+  }
 
   def prepend(dim: Int): Shape = Shape(dim +: dims: _*)
   def +:(dim: Int): Shape = prepend(dim)
@@ -159,29 +170,44 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
     }
   }
 
-  def permute(indexes: Int*): Shape = {
+  def maxDims(other: Shape): Shape = {
+    val maxRank = rank max other.rank
+    val left = alignLeft(maxRank, 1)
+    val right = other.alignLeft(maxRank, 1)
+    val dimsResult = left.dims.zip(right.dims)
+      .map { case (l, r) => l max r }
+    Shape(dimsResult)
+  }
+
+  def permute(axis: Int*): Shape = {
+    val indexedAxis = indexAxis(axis)
     require(
-      rank == indexes.size,
+      rank == indexedAxis.size,
       "the number of permutation indexes " +
-      s"should be equal to rank $rank, but was (${indexes.mkString(", ")})")
-    Shape(indexes.foldLeft(List[Int]())((permDims, index) => dims(index) :: permDims).reverse)
+      s"should be equal to rank $rank, but was (${axis.mkString(", ")})")
+    Shape(indexedAxis.foldLeft(List[Int]())((permDims, index) => dims(index) :: permDims).reverse)
   }
 
   def select(axis: Int*): Shape = {
+    val indexedAxis = indexAxis(axis)
     require(
-      axis.forall(_ < rank),
+      indexedAxis.forall(i => i < rank && i >= 0),
       s"the number of selected axis " +
       s"should be less or equal to rank $rank, but was (${axis.mkString(", ")})")
-    Shape(axis.map(dims(_)).toList)
+    Shape(indexedAxis.map(get).toList)
   }
 
   def remove(axis: Int*): Shape = {
+    val indexedAxis = indexAxis(axis)
     require(
-      axis.forall(_ < rank),
+      indexedAxis.forall(i => i < rank && i >= 0),
       s"the number of removed axis " +
       s"should be less or equal to rank $rank, but was (${axis.mkString(", ")})")
     val filteredDims = dims.zipWithIndex
-      .filter { case (_, i) => !axis.contains(i) }
+      .filter {
+        case (_, i) =>
+          !indexedAxis.contains(i)
+      }
       .map { case (dim, _) => dim }
     Shape(filteredDims)
   }
@@ -189,16 +215,26 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def updated(axis: Int, value: Int): Shape = updateAll(value)(axis)
 
   def updateAll(value: Int)(axis: Int*): Shape = {
+    val indexedAxis = indexAxis(axis)
     require(
-      axis.forall(_ < rank),
+      indexedAxis.forall(i => i < rank && i >= 0),
       s"the number of updated axis " +
       s"should be less or equal to rank $rank, but was (${axis.mkString(", ")})")
     val updatedDims = dims.zipWithIndex.map {
       case (dim, i) =>
-        if (axis.contains(i)) value else dim
+        if (indexedAxis.contains(i)) value else dim
     }
     Shape(updatedDims)
   }
+
+  def updateAllExcept(value: Int)(axis: Int*): Shape = {
+    val indexedAxis = indexAxis(axis)
+    val axisToUpdate = dims.indices.toSet -- indexedAxis.toSet
+    updateAll(value)(axisToUpdate.toList: _*)
+  }
+
+  private def indexAxis(axis: Seq[Int]): Seq[Int] =
+    axis.map(a => if (a == -1) dims.size - 1 else a)
 
   def minus(other: Shape): Shape = {
     require(broadcastableAny(other), s"cannot $this - $other")

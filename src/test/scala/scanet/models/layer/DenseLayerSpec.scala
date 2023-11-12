@@ -2,7 +2,7 @@ package scanet.models.layer
 
 import org.scalatest.wordspec.AnyWordSpec
 import scanet.core.Params.Weights
-import scanet.core.{Params, Shape, Tensor}
+import scanet.core.{Params, Tensor}
 import scanet.core.Path._
 import scanet.models.Activation._
 import scanet.models.Loss._
@@ -49,7 +49,7 @@ class DenseLayerSpec extends AnyWordSpec with CustomMatchers {
       val b = Tensor.vector(0f, 0f)
       val model = Dense(4, Sigmoid, reg = L2(lambda = 1))
       val params = Params(0 / Weights -> w, 1 / Weights -> b)
-      model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(Tensor.scalar(1.63f))
+      model.penalty(params.mapValues(_.const)).eval should be(Tensor.scalar(1.63f))
     }
 
     "produce gradient when combined with loss function" in {

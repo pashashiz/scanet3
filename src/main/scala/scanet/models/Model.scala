@@ -30,7 +30,7 @@ abstract class Model extends Serializable {
     * @param params initialized or calculated model params
     * @return penalty
     */
-  def penalty[E: Floating](input: Shape, params: Params[Expr[E]]): Expr[E]
+  def penalty[E: Floating](params: Params[Expr[E]]): Expr[E]
 
   def result[E: Floating]: (Expr[E], Params[Expr[E]]) => Expr[E] =
     (input, params) => build(input, params)._1
@@ -39,6 +39,11 @@ abstract class Model extends Serializable {
     (input, params) => build(input, params)
 
   def outputShape(input: Shape): Shape
+
+  def trainable: Boolean
+  def makeTrainable(trainable: Boolean): Model
+  def freeze: Model = makeTrainable(false)
+  def unfreeze: Model = makeTrainable(true)
 
   def withLoss(loss: Loss): LossModel = LossModel(this, loss)
 
@@ -89,15 +94,14 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
       output: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
     val (result, nextParams) = model.build(input, params)
-    val loss = lossF.build(result, output) plus model.penalty(input.shape, params)
+    val loss = lossF.build(result, output) plus model.penalty(params)
     (loss, nextParams)
   }
 
   def loss[E: Floating]: (Expr[E], Expr[E], Params[Expr[E]]) => Expr[E] =
     (input, output, params) => buildStateful(input, output, params)._1
 
-  def lossStateful[E: Floating]
-      : (Expr[E], Expr[E], Params[Expr[E]]) => (Expr[E], Params[Expr[E]]) =
+  def lossStateful[E: Floating]: (Expr[E], Expr[E], Params[Expr[E]]) => (Expr[E], Params[Expr[E]]) =
     (input, output, params) => buildStateful(input, output, params)
 
   def grad[E: Floating]: (Expr[E], Expr[E], Params[Expr[E]]) => Params[Expr[E]] =
@@ -114,7 +118,13 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
       (grad, nextState)
     }
 
-  def trained[E: Floating](params: Params[Tensor[E]]) = new TrainedModel(this, params)
+  def trainable: Boolean = model.trainable
+  def makeTrainable(trainable: Boolean): LossModel = copy(model = model.makeTrainable(trainable))
+  def freeze: LossModel = makeTrainable(false)
+  def unfreeze: LossModel = makeTrainable(true)
+
+  def trained[E: Floating](params: Params[Tensor[E]]): TrainedModel[E] =
+    TrainedModel(this.freeze, params)
 
   def displayLoss[E: Floating](input: Shape, dir: String = ""): Unit = {
     val params = model.params(input)
@@ -141,7 +151,7 @@ case class LossModel(model: Model, lossF: Loss) extends Serializable {
   override def toString: String = s"$lossF($model)"
 }
 
-class TrainedModel[E: Floating](val lossModel: LossModel, val params: Params[Tensor[E]]) {
+case class TrainedModel[E: Floating](lossModel: LossModel, params: Params[Tensor[E]]) {
 
   def buildResult(input: Expr[E]): Expr[E] =
     buildResultStateful(input)._1
@@ -168,4 +178,10 @@ class TrainedModel[E: Floating](val lossModel: LossModel, val params: Params[Ten
     (input, output) => buildLossStateful(input, output)
 
   def outputShape(input: Shape): Shape = lossModel.model.outputShape(input)
+
+  def trainable: Boolean = lossModel.trainable
+  def makeTrainable(trainable: Boolean): TrainedModel[E] =
+    copy(lossModel = lossModel.makeTrainable(trainable))
+  def freeze: TrainedModel[E] = makeTrainable(false)
+  def unfreeze: TrainedModel[E] = makeTrainable(true)
 }

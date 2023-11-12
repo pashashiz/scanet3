@@ -127,12 +127,20 @@ class ViewSpec extends AnyWordSpec with Matchers {
       Shape(2, 3, 4).select(1, 2) should be(Shape(3, 4))
     }
 
+    "support selecting of last dimension" in {
+      Shape(2, 3, 4).select(1, -1) should be(Shape(3, 4))
+    }
+
     "support removing" in {
       Shape(2, 3, 4).remove(1, 2) should be(Shape(2))
     }
 
     "support updating all" in {
       Shape(2, 3, 4).updateAll(1)(0, 2) should be(Shape(1, 3, 1))
+    }
+
+    "support updating all except" in {
+      Shape(2, 3, 4).updateAllExcept(1)(0, 2) should be(Shape(2, 1, 4))
     }
 
     "have minus operation" which {
@@ -223,6 +231,13 @@ class ViewSpec extends AnyWordSpec with Matchers {
 
     "shift dimensions to the left dropping dimensions which are out of window" in {
       Shape(2, 3, 4) >> 2 shouldBe Shape(2)
+    }
+
+    "found max dimension of both shapes" in {
+      Shape(2, 3, 4).maxDims(Shape(5, 2, 2)) shouldBe Shape(5, 3, 4)
+      Shape(2, 3, 4).maxDims(Shape(2, 2)) shouldBe Shape(2, 3, 4)
+      Shape(2, 3, 4).maxDims(Shape(2, 5)) shouldBe Shape(2, 3, 5)
+      Shape(2, 3, 4).maxDims(Shape(6)) shouldBe Shape(2, 3, 6)
     }
   }
 }

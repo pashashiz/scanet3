@@ -6,7 +6,7 @@ import scanet.core._
 import scanet.estimators.accuracy
 import scanet.models.Activation._
 import scanet.models.Loss._
-import scanet.models.layer.{Dense, Flatten}
+import scanet.models.layer.{BatchNorm, Dense, Flatten}
 import scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import scanet.optimizers.syntax._
 import scanet.optimizers.{Adam, TRecord}
@@ -20,7 +20,7 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
 
     "minimize logistic regression" in {
       val ds = logisticRegression
-      val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
+      val model = Dense(4, Sigmoid) >> BatchNorm() >> Dense(1, Sigmoid)
       val trained = ds
         .train(model)
         .loss(BinaryCrossentropy)

@@ -3,7 +3,7 @@ package scanet.models.layer
 import org.scalatest.wordspec.AnyWordSpec
 import scanet.core.Params.Weights
 import scanet.core.Path._
-import scanet.core.{Params, Shape, Tensor}
+import scanet.core.{Params, Tensor}
 import scanet.models.Activation._
 import scanet.models.Loss.MeanSquaredError
 import scanet.models.Regularization.L2
@@ -64,7 +64,7 @@ class ComposedLayerSpec extends AnyWordSpec with CustomMatchers with SharedSpark
       1 / Weights -> b1,
       3 / Weights -> w2,
       4 / Weights -> b2)
-    model.penalty(Shape(1, 4), params.mapValues(_.const)).eval should be(
+    model.penalty(params.mapValues(_.const)).eval should be(
       Tensor.scalar(3.83f))
   }
 

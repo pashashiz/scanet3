@@ -103,7 +103,7 @@ case class Multiply[A: Numeric] private (left: Expr[A], right: Expr[A]) extends 
     s"cannot multiply tensors with shapes ${left.shape} * ${right.shape}")
   override def name: String = "Mul"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override def shape: Shape = left.shape max right.shape
+  override val shape: Shape = left.shape maxDims right.shape
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: core.Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
@@ -233,8 +233,10 @@ case class Mean[A: Numeric] private (expr: Expr[A], axis: Seq[Int], keepDims: Bo
     override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      // we need to recover reduced axis with 1, cause broadcasting will not always work
-      val parentShape = axis.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
+      val parentShape =
+        if (keepDims) parentGrad.shape
+        // we need to recover reduced axis with 1, cause broadcasting will not always work
+        else axis.foldLeft(parentGrad.shape)((s, axis) => s.insert(axis, 1))
       val size = expr.shape.select(axis: _*).power
       List(kernels.ones[R](expr.shape) * parentGrad.reshape(parentShape) / size.const.cast[R])
     }

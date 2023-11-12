@@ -6,7 +6,8 @@ package object core {
 
   object syntax extends CoreSyntax
 
-  def error(message: String): Nothing = throw new RuntimeException(message)
+  def error(message: String): Nothing =
+    throw new RuntimeException(message)
 
   def memoize[I1, O](f: I1 => O): I1 => O = {
     val cache = mutable.HashMap[I1, O]()
