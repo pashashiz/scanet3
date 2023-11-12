@@ -6,7 +6,7 @@ import scanet.math.syntax.zeros
 import scanet.models.Aggregation.Avg
 import scanet.models.Initializer.Zeros
 import scanet.models.Regularization.Zero
-import scanet.models.{Initializer, Model, ParamDef, Regularization}
+import scanet.models.{Initializer, ParamDef, Regularization}
 import scanet.syntax._
 
 /** A layer which sums up a bias vector (weights) with the input.

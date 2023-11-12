@@ -98,10 +98,6 @@ case class Negate[A: Numeric](expr: Expr[A]) extends Expr[A] {
 }
 
 case class Multiply[A: Numeric] private (left: Expr[A], right: Expr[A]) extends Expr[A] {
-  if (!left.broadcastableAny(right)) {
-    println(s"$left * $right")
-    println(s"!!!")
-  }
   require(
     left.broadcastableAny(right),
     s"cannot multiply tensors with shapes ${left.shape} * ${right.shape}")

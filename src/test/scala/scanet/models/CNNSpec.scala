@@ -6,7 +6,7 @@ import scanet.core.Shape
 import scanet.estimators.accuracy
 import scanet.models.Activation._
 import scanet.models.Loss._
-import scanet.models.layer.{Activate, BatchNorm, Conv2D, Dense, Flatten, Pool2D}
+import scanet.models.layer.{Activate, Conv2D, Dense, Flatten, Pool2D}
 import scanet.optimizers.Adam
 import scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import scanet.optimizers.syntax._

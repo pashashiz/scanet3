@@ -173,7 +173,7 @@ case class Shape(dims: List[Int]) extends Ordered[Shape] {
   def maxDims(other: Shape): Shape = {
     val maxRank = rank max other.rank
     val left = alignLeft(maxRank, 1)
-    val right = other.alignLeft(maxRank, 2)
+    val right = other.alignLeft(maxRank, 1)
     val dimsResult = left.dims.zip(right.dims)
       .map { case (l, r) => l max r }
     Shape(dimsResult)
