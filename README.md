@@ -144,7 +144,7 @@ R2Score(trained, test) should be > 0.8f
     - Add state between batches
     - Try LSTM weights fusing (x4 less weights)
 - [ ] Layers Dropout (provide random generator to layers)(Wanted!)
-- [ ] Batch Normalization (Wanted!)
+- [x] Batch Normalization
 - [ ] others
 
 # Localization & Object Detection & Instance Segmentation

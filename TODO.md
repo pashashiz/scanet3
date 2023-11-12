@@ -1,4 +1,0 @@
-- Lift optimizer inside a function with params
-- Expose params in LossModel, TrainedModel
-- Check if needs farther refactoring
-- Batch Norm
