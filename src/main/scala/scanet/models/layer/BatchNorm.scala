@@ -1,11 +1,14 @@
 package scanet.models.layer
 
+import scanet.core.Require.fail
 import scanet.core._
+import scanet.math.nn.ConvFormat
 import scanet.math.syntax.zeros
 import scanet.models.Aggregation.Avg
 import scanet.models.layer.BatchNorm.{Beta, Gamma, MovingMean, MovingVariance}
 import scanet.models.{Initializer, ParamDef, Regularization}
 import scanet.syntax._
+import scala.collection.immutable.Seq
 
 /** Layer that normalizes its inputs.
   *
@@ -42,7 +45,7 @@ import scanet.syntax._
   *
   * Reference [Ioffe and Szegedy, 2015](https://arxiv.org/abs/1502.03167).
   *
-  * @param axis Axis that should be normalized (typically the features axis).
+  * @param axes Axes that should be normalized (typically the features axes).
   * @param momentum Momentum for the moving average.
   * @param epsilon Small float added to variance to avoid dividing by zero.
   * @param betaInitializer Initializer for the beta weight
@@ -51,10 +54,14 @@ import scanet.syntax._
   * @param movingVarianceInitializer Initializer for the moving variance.
   * @param betaRegularizer Regularizer for the beta weight.
   * @param gammaRegularizer Regularizer for the gamma weight.
+  * @param fused if `true`, use a faster, fused implementation, or raise an error
+  *              if the fused implementation cannot be used.
+  *              If `false`, do not used the fused implementation.
+  *              If `None`, use the faster implementation if possible.
   * @param trainable Whether layer is trainable
   */
 case class BatchNorm(
-    axis: Seq[Int] = Seq(-1),
+    axes: Seq[Int] = Seq(-1),
     momentum: Float = 0.99f,
     epsilon: Float = 1e-3f,
     betaInitializer: Initializer = Initializer.Zeros,
@@ -63,6 +70,7 @@ case class BatchNorm(
     movingVarianceInitializer: Initializer = Initializer.Ones,
     betaRegularizer: Regularization = Regularization.Zero,
     gammaRegularizer: Regularization = Regularization.Zero,
+    fused: Option[Boolean] = None,
     override val trainable: Boolean = true)
     extends Layer {
 
@@ -74,7 +82,7 @@ case class BatchNorm(
     // so result shape = (1, 4, 6)
     // note 1: in case of reduction operation, such as mean - it works vice-versa, specified dimension will become 1
     // note 2: we keep all 1 dimensions without squeezing to perform proper broadcast with complex deep shapes
-    val reduceAxis = input.axisExcept(axis: _*)
+    val reduceAxis = input.axesExcept(axes: _*)
     input.updateAll(1)(reduceAxis: _*)
   }
 
@@ -87,33 +95,64 @@ case class BatchNorm(
       MovingVariance -> ParamDef(shape, movingVarianceInitializer, Some(Avg)))
   }
 
+  private def fusedDataFormat(input: Shape): Option[ConvFormat] = {
+    val indexAxes = input.indexAxes(axes)
+    (indexAxes, input.rank) match {
+      case (Seq(1), 4) => Some(ConvFormat.NCHW)
+      case (Seq(3), 4) => Some(ConvFormat.NHWC)
+      case _           => None
+    }
+  }
+
   override def build[E: Floating](
       input: Expr[E],
       params: Params[Expr[E]]): (Expr[E], Params[Expr[E]]) = {
-    val prevMovingMean = params(MovingMean)
-    val prevMovingVariance = params(MovingVariance)
-    val (movingMean, movingVariance) =
+
+    val mean = params(MovingMean)
+    val variance = params(MovingVariance)
+    val gamma = params(Gamma)
+    val beta = params(Beta)
+
+    val result = (fused, fusedDataFormat(input.shape)) match {
+      case (Some(true) | None, Some(format)) =>
+        // fused optimized kernel version, works only for input of shape NCHW, NHWC
+        fusedBatchNorm(
+          input = input,
+          scale = gamma.squeeze,
+          offset = beta.squeeze,
+          mean = mean.squeeze,
+          variance = variance.squeeze,
+          format = format,
+          training = trainable,
+          epsilon = Some(epsilon))
+          .mapMean(_.reshape(mean.shape))
+          .mapVariance(_.reshape(variance.shape))
+      case (Some(true), None) =>
+        fail(s"Cannot use fused implementation with input shape ${input.shape} " +
+        s"and axes: ${axes.mkString("[", ",", "]")}")
+      case (_, _) =>
+        // generic batch norm, works for any input
+        batchNorm(
+          input = input,
+          scale = gamma,
+          offset = beta,
+          mean = mean,
+          variance = variance,
+          training = trainable,
+          axes = axes,
+          epsilon = epsilon)
+    }
+
+    val nextParams: Params[Expr[E]] =
       if (trainable) {
         val momentumE = momentum.const.cast[E]
-        val reduceAxis = input.shape.axisExcept(axis: _*)
-        val batchMean = input.mean(reduceAxis, keepDims = true)
-        val batchVariance = (input - batchMean).sqr.mean(reduceAxis, keepDims = true)
-        val movingMean = prevMovingMean.decayingAvg(batchMean, momentumE)
-        val movingVariance = prevMovingVariance.decayingAvg(batchVariance, momentumE)
-        (movingMean, movingVariance)
+        val movingMean = mean.decayingAvg(result.batchMean, momentumE)
+        val movingVariance = variance.decayingAvg(result.batchVariance, momentumE)
+        Params(MovingMean -> movingMean, MovingVariance -> movingVariance)
       } else {
-        (prevMovingMean, prevMovingVariance)
+        Params.empty
       }
-    val epsilonE = epsilon.const.cast[E]
-    val output =
-      (input - movingMean) * params(Gamma) /
-      (movingVariance.sqrt + epsilonE) - params(Beta)
-    val nextState: Params[Expr[E]] =
-      if (trainable) Params(
-        MovingMean -> movingMean,
-        MovingVariance -> movingVariance)
-      else Params.empty
-    (output, nextState)
+    (result.output, nextParams)
   }
 
   override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
@@ -124,7 +163,7 @@ case class BatchNorm(
 
   override def makeTrainable(trainable: Boolean): BatchNorm = copy(trainable = trainable)
 
-  override def toString: String = s"BatchNorm($axis)"
+  override def toString: String = s"BatchNorm($axes)"
 }
 
 object BatchNorm {

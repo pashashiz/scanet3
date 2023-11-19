@@ -377,8 +377,23 @@ class KernelsSpec extends AnyWordSpec with Matchers {
     }
 
     "calculate a gradient" in {
+      //  grad = dy * 0.5 / y, where y = sqrt
       val x = Tensor.vector(1.0f, 4.0f, 16.0f).const
       x.sqrt.sum.grad(x).returns[Float].eval should be(Tensor.vector(0.5f, 0.25, 0.125f))
+    }
+  }
+
+  "rsqrt" should {
+
+    "compute reciprocal root of tensor" in {
+      Tensor.vector(1.0f, 4.0f, 9.0f).const.rsqrt.roundAt(3).eval should be(
+        Tensor.vector(1.0f, 0.5f, 0.333f))
+    }
+
+    "calculate a gradient" in {
+      val x = Tensor.vector(1.0f, 4.0f, 16.0f).const
+      x.rsqrt.sum.grad(x).returns[Float].roundAt(3).eval should be(
+        Tensor.vector(-0.5f, -0.062f, -0.008f))
     }
   }
 

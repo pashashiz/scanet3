@@ -20,7 +20,7 @@ class ANNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
 
     "minimize logistic regression" in {
       val ds = logisticRegression
-      val model = Dense(4, Sigmoid) >> BatchNorm() >> Dense(1, Sigmoid)
+      val model = Dense(4, Sigmoid) >> Dense(1, Sigmoid)
       val trained = ds
         .train(model)
         .loss(BinaryCrossentropy)

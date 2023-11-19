@@ -175,28 +175,28 @@ class ViewSpec extends AnyWordSpec with Matchers {
     "have broadcastable axis operation" which {
 
       "should leave higher dimensions from first shape if it is bigger" in {
-        Shape(2, 3, 4) broadcastableAxis Shape(3, 4) should be(Seq(0))
+        Shape(2, 3, 4) broadcastableAxes Shape(3, 4) should be(Seq(0))
       }
 
       "should return dimension index with size one" in {
-        Shape(2, 3, 4) broadcastableAxis Shape(2, 3, 1) should be(Seq(2))
+        Shape(2, 3, 4) broadcastableAxes Shape(2, 3, 1) should be(Seq(2))
       }
 
       "should return empty shape if both are equal" in {
-        Shape(2, 3, 4) broadcastableAxis Shape(2, 3, 4) should be(Seq())
+        Shape(2, 3, 4) broadcastableAxes Shape(2, 3, 4) should be(Seq())
       }
 
       "should return empty shape if other dimension is bigger" in {
-        Shape(2, 3, 4) broadcastableAxis Shape(1, 2, 3, 4) should be(Seq())
+        Shape(2, 3, 4) broadcastableAxes Shape(1, 2, 3, 4) should be(Seq())
       }
 
       "should same shape if other dimension is empty" in {
-        Shape(2, 3, 4) broadcastableAxis Shape() should be(Seq(0, 1, 2))
+        Shape(2, 3, 4) broadcastableAxes Shape() should be(Seq(0, 1, 2))
       }
 
       "should fail if shapes are incompatible" in {
         the[IllegalArgumentException] thrownBy {
-          Shape(2, 3, 4) broadcastableAxis Shape(2, 5, 4)
+          Shape(2, 3, 4) broadcastableAxes Shape(2, 5, 4)
         } should have message "requirement failed: cannot find broadcastable axis for (2, 3, 4) and (2, 5, 4)"
       }
     }
