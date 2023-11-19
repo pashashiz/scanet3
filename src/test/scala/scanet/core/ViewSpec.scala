@@ -197,7 +197,7 @@ class ViewSpec extends AnyWordSpec with Matchers {
       "should fail if shapes are incompatible" in {
         the[IllegalArgumentException] thrownBy {
           Shape(2, 3, 4) broadcastableAxes Shape(2, 5, 4)
-        } should have message "requirement failed: cannot find broadcastable axis for (2, 3, 4) and (2, 5, 4)"
+        } should have message "requirement failed: cannot find broadcastable axes for (2, 3, 4) and (2, 5, 4)"
       }
     }
 
