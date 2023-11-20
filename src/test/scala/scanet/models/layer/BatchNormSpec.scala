@@ -38,10 +38,10 @@ class BatchNormSpec extends AnyWordSpec with CustomMatchers {
       val out = outExpr.const.roundAt(3).eval
       val state = stateExpr.mapValues(_.const.roundAt(3)).eval
       out shouldBe Tensor.matrix(
-        Array(0.374f, -0.81f, -0.564f, 0.0f),
-        Array(-0.45f, 1.396f, 0.573f, 3.327f),
-        Array(1.642f, -0.121f, 0.372f, 0.751f),
-        Array(3.274f, 2.774f, 3.214f, 2.361f))
+        Array(-0.595f, -1.168f, -1.042f, -1.231f),
+        Array(-1.181f, 0.422f, -0.232f, 1.313f),
+        Array(0.307f, -0.671f, -0.375f, -0.656f),
+        Array(1.469f, 1.417f, 1.649f, 0.574f))
       state("2" / MovingMean) shouldBe Tensor.matrix(
         Array(7.638f, 2.938f, 5.375f, 3.0f))
       state("2" / MovingVariance) shouldBe Tensor.matrix(
@@ -60,8 +60,8 @@ class BatchNormSpec extends AnyWordSpec with CustomMatchers {
       out shouldBe Tensor.matrix(
         Array(1.118f, -1.118f, -0.671f, -0.447f),
         Array(-0.045f, 0.671f, 0.85f, 0.939f),
-        Array(2.906f, -0.559f, 0.581f, -0.134f),
-        Array(5.209f, 1.788f, 4.382f, 0.537f))
+        Array(2.907f, -0.559f, 0.581f, -0.134f),
+        Array(5.21f, 1.789f, 4.383f, 0.537f))
     }
   }
 }

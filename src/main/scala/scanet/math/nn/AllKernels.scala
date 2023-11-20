@@ -2,10 +2,10 @@ package scanet.math.nn
 
 import scanet.core
 import scanet.core.Require.fail
-import scanet.core.syntax._
 import scanet.core._
 import scanet.math.nn.ConvFormat._
 import scanet.math.nn.Padding._
+import scanet.math.syntax._
 
 import scala.collection.immutable.Seq
 
@@ -155,7 +155,11 @@ case class Conv2D[A: Floating] private (
     // input   = (batch_shape, in_height, in_width, in_channels)
     // filters = (filter_height, filter_width, in_channels, out_channels)
     // output  = (batch_shape, out_height, out_width, out_channels)
-    val convolved = padding.shape(format, input.shape, format.shapeOf(filters.shape(0), filters.shape(1)), strides)
+    val convolved = padding.shape(
+      format,
+      input.shape,
+      format.shapeOf(filters.shape(0), filters.shape(1)),
+      strides)
     convolved.updated(format.cAxis, filters.shape(3))
   }
 
@@ -392,6 +396,161 @@ object Pool2D {
   }
 }
 
+case class FusedBatchNorm[A: Floating](
+    input: Expr[A],
+    scale: Expr[A],
+    offset: Expr[A],
+    mean: Expr[A],
+    variance: Expr[A],
+    format: ConvFormat,
+    training: Boolean,
+    epsilon: Option[Float] = None,
+    exponentialAvgFactor: Option[Float] = None)
+    extends Expr[A] {
+  override def name: String = "FusedBatchNormV3"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def shape: Shape = input.shape
+  override val inputs: Seq[Expr[_]] = Seq(input, scale, offset, mean, variance)
+  override def compiler: core.Compiler[A] = {
+    // find out good wat to update state with seq of optional values
+    val comp1 = DefaultCompiler[A]()
+      .withAttr("data_format", format.name)
+      .withAttr("is_training", training)
+    val comp2 = epsilon.fold(comp1)(e => comp1.withAttr("epsilon", e))
+    val comp3 = exponentialAvgFactor.fold(comp2)(e => comp1.withAttr("exponential_avg_factor", e))
+    comp3
+  }
+  override def localGrad: Grad[A] = new Grad[A] {
+    override def calc[R: Floating](
+        current: Expr[A],
+        parentGrad: Expr[R]): Seq[Expr[R]] = {
+      val outs = outputs
+      val grads = FusedBatchNormGrad[R](
+        input.cast[R],
+        parentGrad,
+        scale.cast[R],
+        outs.reserveSpace1.cast[R],
+        outs.reserveSpace2.cast[R],
+        outs.reserveSpace3.cast[R],
+        format,
+        training,
+        epsilon).outputs
+      Seq(grads.inputGrad, grads.scaleGrad, grads.offsetGrad)
+    }
+  }
+  def outputs: FusedBatchNormOutputs[A] = {
+    // reserveSpace1 + reserveSpace2 + reserveSpace3 shape?
+    val channelShape = mean.shape
+    FusedBatchNormOutputs(
+      output = this,
+      batchMean = TakeOut[A](this, 1, channelShape),
+      batchVariance = TakeOut[A](this, 1, channelShape),
+      reserveSpace1 = TakeOut[A](this, 2, channelShape),
+      reserveSpace2 = TakeOut[A](this, 3, channelShape),
+      reserveSpace3 = TakeOut[A](this, 4, channelShape))
+  }
+}
+
+trait BatchNormOutputs[A] {
+  def output: Expr[A]
+  def batchMean: Expr[A]
+  def batchVariance: Expr[A]
+  def mapMean(f: Expr[A] => Expr[A]): BatchNormOutputs[A]
+  def mapVariance(f: Expr[A] => Expr[A]): BatchNormOutputs[A]
+}
+
+/** Outputs of [[FusedBatchNorm]] operator
+  * @param output A 4D Output Tensor
+  * @param batchMean A 1D Tensor for the computed batch mean, to be used by TensorFlow to compute the running mean.
+  * @param batchVariance A 1D Tensor for the computed batch variance, to be used by TensorFlow to compute the running variance.
+  * @param reserveSpace1 A 1D Tensor for the computed batch mean, to be reused in the gradient computation.
+  * @param reserveSpace2 A 1D Tensor for the computed batch variance (inverted variance in the cuDNN case), to be reused in the gradient computation.
+  * @param reserveSpace3 A 1D Tensor for some intermediate results, to be reused in the gradient computation for better efficiency.
+  */
+case class FusedBatchNormOutputs[A](
+    output: Expr[A],
+    batchMean: Expr[A],
+    batchVariance: Expr[A],
+    reserveSpace1: Expr[A],
+    reserveSpace2: Expr[A],
+    reserveSpace3: Expr[A])
+    extends BatchNormOutputs[A] {
+  override def mapMean(f: Expr[A] => Expr[A]): BatchNormOutputs[A] =
+    copy(batchMean = f(batchMean))
+  override def mapVariance(f: Expr[A] => Expr[A]): BatchNormOutputs[A] =
+    copy(batchVariance = f(batchVariance))
+}
+
+/** Outputs of batch norm
+  * @param output An Output Tensor
+  * @param batchMean A Tensor for the computed batch mean, to be used by TensorFlow to compute the running mean.
+  * @param batchVariance A Tensor for the computed batch variance, to be used by TensorFlow to compute the running variance.
+  */
+case class StdBatchNormOutputs[A](
+    output: Expr[A],
+    batchMean: Expr[A],
+    batchVariance: Expr[A])
+    extends BatchNormOutputs[A] {
+  override def mapMean(f: Expr[A] => Expr[A]): BatchNormOutputs[A] =
+    copy(batchMean = f(batchMean))
+  override def mapVariance(f: Expr[A] => Expr[A]): BatchNormOutputs[A] =
+    copy(batchVariance = f(batchVariance))
+}
+
+/** @param input A 4D Tensor for input data
+  * @param parentGrad A 4D Tensor for the gradient with respect to output
+  * @param scale A 1D Tensor for scaling factor, to scale the normalized input.
+  * @param reserveSpace1 When `training` is `true`, a 1D Tensor for the computed batch mean to be reused in gradient computation.
+  *                      When `training` is `false`, a 1D Tensor for the population mean to be reused
+  *                      in both 1st and 2nd order gradient computation.
+  * @param reserveSpace2 When `training` is `true`, a 1D Tensor for the computed batch variance
+  *                      (inverted variance in the cuDNN case) to be reused in gradient computation.
+  *                      When `training` is `false`, a 1D Tensor for the population variance to be reused
+  *                      in both 1st and 2nd order gradient computation.
+  * @param reserveSpace3 When `training` is `true`, a 1D Tensor for some intermediate results to be reused in gradient computation.
+  *                      When `training` is `false`, a dummy empty Tensor will be created.
+  * @param format  One of [[NCHW]] or [[NHWC]]
+  * @param training A bool value to indicate the operation is for training (default) or inference.
+  * @param epsilon A small float number added to the variance of input
+  */
+case class FusedBatchNormGrad[A: Floating](
+    input: Expr[A],
+    parentGrad: Expr[A],
+    scale: Expr[A],
+    reserveSpace1: Expr[A],
+    reserveSpace2: Expr[A],
+    reserveSpace3: Expr[A],
+    format: ConvFormat,
+    training: Boolean,
+    epsilon: Option[Float] = None)
+    extends Expr[A] {
+  override def name: String = "FusedBatchNormGradV3"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def shape: Shape = input.shape
+  override val inputs: Seq[Expr[_]] =
+    Seq(parentGrad, input, scale, reserveSpace1, reserveSpace2, reserveSpace3)
+  override def compiler: core.Compiler[A] = {
+    val comp1 = DefaultCompiler[A]()
+      .withAttr("data_format", format.name)
+      .withAttr("is_training", training)
+    epsilon.fold(comp1)(e => comp1.withAttr("epsilon", e))
+  }
+  def outputs: FusedBatchNormGradOutputs[A] = {
+    val channelShape = scale.shape
+    FusedBatchNormGradOutputs(
+      inputGrad = this,
+      scaleGrad = TakeOut[A](this, 1, channelShape),
+      offsetGrad = TakeOut[A](this, 2, channelShape))
+  }
+}
+
+/** Outputs of [[FusedBatchNormGrad]] operator
+  * @param inputGrad A 4D Tensor for the gradient with respect to input
+  * @param scaleGrad  A 1D Tensor for the gradient with respect to scale
+  * @param offsetGrad A 1D Tensor for the gradient with respect to offset
+  */
+case class FusedBatchNormGradOutputs[A](inputGrad: Expr[A], scaleGrad: Expr[A], offsetGrad: Expr[A])
+
 trait AllKernels {
 
   /** Computes a 2-D convolution given input and 4-D filters tensors.
@@ -460,6 +619,69 @@ trait AllKernels {
       format: ConvFormat = NHWC,
       reduce: Reduce = Reduce.Max): Expr[A] =
     Pool2D(input, window, strides, padding, format, reduce)
+
+  /** Batch normalization. Note that the size of 4D Tensors are defined by either [[NCHW]] or [[NHWC]].
+    *
+    * @param input        A 4D Tensor for input data
+    * @param scale        A 1D Tensor for scaling factor to scale the normalized input
+    * @param offset       A 1D Tensor for offset, to shift to the normalized input
+    * @param mean         A 1D Tensor for population mean. Used for inference only; must be empty for training
+    * @param variance     A 1D Tensor for population variance. Used for inference only; must be empty for training
+    * @param format       One of [[NCHW]] or [[NHWC]]
+    * @param training     A bool value to indicate the operation is for training (default) or inference.
+    * @param epsilon      A small float number added to the variance of input
+    * @param expAvgFactor The exponential avg factor
+    * @return Outputs
+    */
+  def fusedBatchNorm[A: Floating](
+      input: Expr[A],
+      scale: Expr[A],
+      offset: Expr[A],
+      mean: Expr[A],
+      variance: Expr[A],
+      format: ConvFormat,
+      training: Boolean,
+      epsilon: Option[Float] = None,
+      expAvgFactor: Option[Float] = None): FusedBatchNormOutputs[A] = {
+    // format: off
+    FusedBatchNorm(input, scale, offset, mean, variance, format, training, epsilon, expAvgFactor).outputs
+    // format: on
+  }
+
+  /** Batch normalization. Supports input of any shape
+    *
+    * @param input Tensor for input data
+    * @param scale Tensor for scaling factor to scale the normalized input
+    * @param offset Tensor for offset, to shift to the normalized input
+    * @param mean A Tensor for population mean. Used for inference only; must be empty for training
+    * @param variance A Tensor for population variance. Used for inference only; must be empty for training
+    * @param training A bool value to indicate the operation is for training (default) or inference.
+    * @param axes Axes that should be normalized (typically the features axes).
+    * @param epsilon A small float number added to the variance of input
+    * @return output
+    */
+  def batchNorm[A: Floating](
+      input: Expr[A],
+      scale: Expr[A],
+      offset: Expr[A],
+      mean: Expr[A],
+      variance: Expr[A],
+      training: Boolean,
+      axes: Seq[Int] = Seq(-1),
+      epsilon: Float = 1e-3f): StdBatchNormOutputs[A] = {
+    val (batchMean, batchVariance) =
+      if (training) {
+        val reduceAxis = input.shape.axesExcept(axes: _*)
+        input.moments(reduceAxis, keepDims = true)
+      } else {
+        (mean, variance)
+      }
+    val epsilonE = epsilon.const.cast[A]
+    // use rsqrt instead of sqrt to increase performance ~20%
+    val inv = rsqrt(batchVariance + epsilonE) * scale
+    val output = ((input * inv) - (batchMean * inv)) + offset
+    StdBatchNormOutputs(output, batchMean, batchVariance)
+  }
 }
 
 object kernels {

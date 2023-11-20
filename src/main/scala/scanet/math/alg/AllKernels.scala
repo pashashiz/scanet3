@@ -23,8 +23,8 @@ case class Plus[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
-      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxes(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxes(left.shape).toList
       List(
         parentGrad.sum(shrinkLeftAxis).reshape(left.shape),
         parentGrad.sum(shrinkRightAxis).reshape(right.shape))
@@ -74,8 +74,8 @@ case class Minus[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
-      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxes(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxes(right.shape).toList
       List(
         parentGrad.sum(shrinkLeftAxis).reshape(left.shape),
         -parentGrad.sum(shrinkRightAxis).reshape(right.shape))
@@ -111,8 +111,8 @@ case class Multiply[A: Numeric] private (left: Expr[A], right: Expr[A]) extends 
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
-      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxes(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxes(left.shape).toList
       List(
         (right.cast[R] * parentGrad).sum(shrinkLeftAxis).reshape(left.shape),
         (left.cast[R] * parentGrad).sum(shrinkRightAxis).reshape(right.shape))
@@ -137,7 +137,7 @@ case class Pow[A: Numeric](expr: Expr[A], exponent: Expr[Float]) extends Expr[A]
   }
 }
 
-case class Sqrt[A: Numeric](expr: Expr[A]) extends Expr[A] {
+case class Sqrt[A: Numeric](expr: Expr[A]) extends Expr[A] { self =>
   override def name: String = "Sqrt"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
   override def shape: Shape = expr.shape
@@ -147,10 +147,44 @@ case class Sqrt[A: Numeric](expr: Expr[A]) extends Expr[A] {
     override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      val local = (expr.cast[R] ^ -0.5f) * 0.5f.const.cast[R]
-      List(local * parentGrad)
+      // val local = (expr.cast[R] ^ -0.5f) * 0.5f.const.cast[R]
+      // List(local * parentGrad)
+      List(SqrtGrad(self.cast[R], parentGrad))
     }
   }
+}
+
+case class SqrtGrad[A: Numeric](sqrt: Expr[A], parentGrad: Expr[A]) extends Expr[A] {
+  override def name: String = "SqrtGrad"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def shape: Shape = sqrt.shape
+  override def inputs: Seq[Expr[_]] = Seq(sqrt, parentGrad)
+  override def compiler: Compiler[A] = DefaultCompiler[A]()
+}
+
+case class Rsqrt[A: Numeric](expr: Expr[A]) extends Expr[A] { self =>
+  override def name: String = "Rsqrt"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def shape: Shape = expr.shape
+  override def inputs: Seq[Expr[_]] = Seq(expr)
+  override def compiler: Compiler[A] = DefaultCompiler[A]()
+  override def localGrad: Grad[A] = new Grad[A] {
+    override def calc[R: Floating](
+        current: Expr[A],
+        parentGrad: Expr[R]): Seq[Expr[R]] = {
+      // val local = (expr.cast[R] ^ -1.5f) * -0.5f.const.cast[R]
+      // List(local * parentGrad)
+      List(RsqrtGrad(self.cast[R], parentGrad))
+    }
+  }
+}
+
+case class RsqrtGrad[A: Numeric](rsqrt: Expr[A], parentGrad: Expr[A]) extends Expr[A] {
+  override def name: String = "RsqrtGrad"
+  override def tpe: Option[TensorType[A]] = Some(TensorType[A])
+  override def shape: Shape = rsqrt.shape
+  override def inputs: Seq[Expr[_]] = Seq(rsqrt, parentGrad)
+  override def compiler: Compiler[A] = DefaultCompiler[A]()
 }
 
 case class Exp[A: Numeric](expr: Expr[A]) extends Expr[A] {
@@ -182,8 +216,8 @@ case class Div[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
       val parentShape = parentGrad.shape
-      val shrinkRightAxis = parentShape.broadcastableAxis(right.shape).toList
-      val shrinkLeftAxis = parentShape.broadcastableAxis(left.shape).toList
+      val shrinkRightAxis = parentShape.broadcastableAxes(right.shape).toList
+      val shrinkLeftAxis = parentShape.broadcastableAxes(left.shape).toList
       List(
         (parentGrad / right.cast[R]).sum(shrinkLeftAxis).reshape(left.shape),
         (-left.cast[R] * parentGrad / right.sqr.cast[R])
@@ -452,6 +486,8 @@ trait AllKernels {
 
   def sqrt[A: Numeric](expr: Expr[A]): Expr[A] = Sqrt(expr)
 
+  def rsqrt[A: Numeric](expr: Expr[A]): Expr[A] = Rsqrt(expr)
+
   def sqrtZeroSafe[A: Numeric](out: Expr[A], epsilon: Expr[A]): Expr[A] =
     sqrt(plus(out, epsilon))
 
@@ -465,6 +501,20 @@ trait AllKernels {
       axis: Seq[Int],
       keepDims: Boolean = false): Expr[A] = Mean(expr, axis, keepDims)
   def mean[A: Numeric](expr: Expr[A]): Expr[A] = mean(expr, 0 until expr.rank)
+
+  def moments[A: Numeric](
+      expr: Expr[A],
+      axis: Seq[Int],
+      keepDims: Boolean = false): (Expr[A], Expr[A]) = {
+    val m = mean(expr, axis, keepDims)
+    // try squared_difference, it has optimized kernel op
+    val v = mean((expr - m).sqr, axis, keepDims)
+    (m, v)
+  }
+
+  def moments[A: Numeric](
+      expr: Expr[A]): (Expr[A], Expr[A]) =
+    moments(expr, 0 until expr.rank)
 
   def max[A: TensorType, C](left: Expr[A], right: C)(implicit c: Convertible[C, Expr[A]]): Expr[A] =
     Max(left, c.convert(right))
@@ -597,6 +647,12 @@ object kernels extends AllKernels {
       */
     def sqr: Expr[A] = pow(2.0f)
 
+    /** Computes reciprocal (inversed) of square root of x element-wise: `1 / sqrt(x))`
+      *
+      * @return tensor `^` -0.5
+      */
+    def rsqrt: Expr[A] = f.rsqrt(expr)
+
     /** Returns square root of the given tensor
       *
       * {{{Tensor.vector(1.0f, 4.0f, 9.0f).const.sqrt.eval should be(Tensor.vector(1.0f, 2.0f, 3.0f))}}}
@@ -675,6 +731,23 @@ object kernels extends AllKernels {
       * @return tensor with mean values
       */
     def mean: Expr[A] = f.mean(expr)
+
+    /** Computes the frequency-weighted mean and variance across dimensions of a tensor.
+      *
+      * Reduces `(mean, variance)` along the dimensions given in `axis`.
+      * The rank of the tensor is reduced by 1 for each entry in `axis`.
+      *
+      * @param axis to sum
+      * @return tensors `(mean, variance)`
+      */
+    def moments(axis: Seq[Int], keepDims: Boolean = false): (Expr[A], Expr[A]) =
+      f.moments(expr, axis, keepDims)
+
+    /** Computes the frequency-weighted mean and variance across all dimensions of a tensor.
+      * *
+      * @return tensors `(mean, variance)`
+      */
+    def moments: (Expr[A], Expr[A]) = f.moments(expr)
 
     /** Shuffle dimensions of `out` according to a permutation.
       *

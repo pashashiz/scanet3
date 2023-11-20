@@ -6,7 +6,7 @@ import scanet.core.Shape
 import scanet.estimators.accuracy
 import scanet.models.Activation._
 import scanet.models.Loss._
-import scanet.models.layer.{Activate, Conv2D, Dense, Flatten, Pool2D}
+import scanet.models.layer.{Activate, BatchNorm, Conv2D, Dense, Flatten, Pool2D}
 import scanet.optimizers.Adam
 import scanet.optimizers.Effect.{RecordAccuracy, RecordLoss}
 import scanet.optimizers.syntax._
@@ -21,7 +21,7 @@ class CNNSpec extends AnyWordSpec with CustomMatchers with SharedSpark with Data
     "train on MNIST dataset" in {
       val (trainingDs, testDs) = MNIST()
       val model =
-        Conv2D(32, activation = ReLU()) >> Pool2D(strides = (2, 2)) >>
+        Conv2D(32, activation = ReLU()) >> BatchNorm(fused = Some(true)) >> Pool2D(strides = (2, 2)) >>
         Conv2D(64, activation = ReLU()) >> Pool2D(strides = (2, 2)) >>
         Activate(ReLU()) >> Flatten >> Dense(64, ReLU()) >> Dense(10, Softmax)
       val trained = trainingDs
