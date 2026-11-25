@@ -355,7 +355,9 @@ case class Transpose[A: Numeric] private (expr: Expr[A], perm: Seq[Int]) extends
     override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(parentGrad.transpose)
+      // the gradient has to be transposed back with the inverse permutation
+      val inverse = expr.shape.indexAxes(perm).zipWithIndex.sortBy(_._1).map(_._2).toList
+      List(parentGrad.transpose(inverse))
     }
   }
 }
@@ -367,23 +369,45 @@ object Transpose {
     apply(expr, (0 until expr.rank).reverse)
 }
 
+/** Matrix multiplication, supports batches.
+  *
+  * Both tensors should have rank >= 2, the last 2 dimensions are multiplied as matrices
+  * `(m, k) * (k, n) -> (m, n)`, while the leading (batch) dimensions are broadcast, so
+  * `(b, h, m, k) * (b, h, k, n) -> (b, h, m, n)` and `(b, m, k) * (k, n) -> (b, m, n)` are valid.
+  */
 case class MatMul[A: Numeric](left: Expr[A], right: Expr[A]) extends Expr[A] {
   require(
-    left.rank == 2 && right.rank == 2,
-    s"rank cannot be > 2 but got tensors with shapes ${left.shape} * ${right.shape}")
+    left.rank >= 2 && right.rank >= 2,
+    s"rank cannot be < 2 but got tensors with shapes ${left.shape} * ${right.shape}")
+  private val leftBatch = left.shape.dropRight(2)
+  private val rightBatch = right.shape.dropRight(2)
+  private val rightRows = right.shape.dims(right.rank - 2)
   require(
-    left.shape.last == right.shape.head,
+    left.shape.last == rightRows && leftBatch.broadcastableAny(rightBatch),
     s"cannot matmul tensors with shapes ${left.shape} * ${right.shape}")
-  override def name: String = "MatMul"
+  private val batched = left.rank > 2 || right.rank > 2
+  override def name: String = if (batched) "BatchMatMulV2" else "MatMul"
   override def tpe: Option[TensorType[A]] = Some(TensorType[A])
-  override val shape: Shape = Shape(left.shape.head, right.shape.last)
+  override val shape: Shape =
+    Shape(leftBatch.maxDims(rightBatch).dims :+ left.shape.dims(left.rank - 2) :+ right.shape.last)
   override def inputs: Seq[Expr[_]] = Seq(left, right)
   override def compiler: Compiler[A] = DefaultCompiler[A]()
   override def localGrad: Grad[A] = new Grad[A] {
     override def calc[R: Floating](
         current: Expr[A],
         parentGrad: Expr[R]): Seq[Expr[R]] = {
-      List(parentGrad matmul right.transpose.cast[R], left.transpose.cast[R] matmul parentGrad)
+      def swapLast(expr: Expr[R]): Expr[R] =
+        expr.transpose((0 until expr.rank - 2) ++ Seq(expr.rank - 1, expr.rank - 2))
+      // when batch dimensions were broadcast the grad has to be summed back
+      def unbroadcast(grad: Expr[R], target: Shape): Expr[R] = {
+        val batchAxes = grad.shape.dropRight(2)
+          .broadcastableAxes(target.dropRight(2)).toList
+        if (batchAxes.isEmpty && grad.rank == target.rank) grad
+        else grad.sum(batchAxes).reshape(target)
+      }
+      List(
+        unbroadcast(parentGrad matmul swapLast(right.cast[R]), left.shape),
+        unbroadcast(swapLast(left.cast[R]) matmul parentGrad, right.shape))
     }
   }
 }

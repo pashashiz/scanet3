@@ -6,7 +6,7 @@ import scanet.math.Generator.uniform
 import scanet.math.{Dist, Generator, Random}
 import scanet.native.{Disposable, RawTensors}
 import org.tensorflow.RawTensor
-import org.tensorflow.proto.framework.DataType
+import org.tensorflow.proto.DataType
 
 import scala.collection.mutable.ArrayBuffer
 

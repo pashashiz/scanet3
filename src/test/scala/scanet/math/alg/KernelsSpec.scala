@@ -1,13 +1,13 @@
 package scanet.math.alg
 
-import org.scalatest.matchers.should.Matchers
+import scanet.test.CustomMatchers
 import org.scalatest.wordspec.AnyWordSpec
 import scanet.core.{Expr, Shape, Tensor}
 import scanet.math.syntax._
 
 import scala.collection.immutable.Seq
 
-class KernelsSpec extends AnyWordSpec with Matchers {
+class KernelsSpec extends AnyWordSpec with CustomMatchers {
 
   "zeros" should {
     "fill a tensor with zeros" in {
@@ -435,11 +435,102 @@ class KernelsSpec extends AnyWordSpec with Matchers {
       (a.const matmul b.const).eval should be(c)
     }
 
-    "fail to multiply 3D tensors" in {
+    "fail to multiply tensors with rank < 2" in {
       the[IllegalArgumentException] thrownBy {
-        val tensor = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
-        (tensor.const matmul tensor.const).eval
-      } should have message "requirement failed: rank cannot be > 2 but got tensors with shapes (2, 2, 2) * (2, 2, 2)"
+        (Tensor.vector(1, 2).const matmul Tensor.matrix(Array(1, 2), Array(3, 4)).const).eval
+      } should have message "requirement failed: rank cannot be < 2 " +
+      "but got tensors with shapes (2) * (2, 2)"
+    }
+
+    "fail to multiply tensors with incompatible shapes" in {
+      the[IllegalArgumentException] thrownBy {
+        val a = Tensor(Array.range(0, 12), Shape(2, 2, 3))
+        val b = Tensor(Array.range(0, 8), Shape(2, 2, 2))
+        (a.const matmul b.const).eval
+      } should have message "requirement failed: cannot matmul tensors with shapes (2, 2, 3) * (2, 2, 2)"
+    }
+
+    "fail to multiply tensors with not broadcastable batch dimensions" in {
+      the[IllegalArgumentException] thrownBy {
+        val a = Tensor(Array.range(0, 8), Shape(2, 2, 2))
+        val b = Tensor(Array.range(0, 12), Shape(3, 2, 2))
+        (a.const matmul b.const).eval
+      } should have message "requirement failed: cannot matmul tensors with shapes (2, 2, 2) * (3, 2, 2)"
+    }
+
+    "multiply 2 batches of matrices" in {
+      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
+      val c = Tensor(Array(7, 10, 15, 22, 67, 78, 91, 106), Shape(2, 2, 2))
+      (a.const matmul a.const).eval should be(c)
+    }
+
+    "multiply a batch of matrices by a matrix" in {
+      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
+      val w = Tensor.matrix(Array(1, 2), Array(3, 4))
+      val c = Tensor(Array(7, 10, 15, 22, 23, 34, 31, 46), Shape(2, 2, 2))
+      (a.const matmul w.const).eval should be(c)
+    }
+
+    "multiply a matrix by a batch of matrices" in {
+      val w = Tensor.matrix(Array(1, 2), Array(3, 4))
+      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
+      val c = Tensor(Array(7, 10, 15, 22, 19, 22, 43, 50), Shape(2, 2, 2))
+      (w.const matmul a.const).eval should be(c)
+    }
+
+    "multiply batches with broadcast of a dimension of size 1" in {
+      val a = Tensor(Array(1, 2, 3, 4), Shape(1, 2, 2))
+      val b = Tensor(Array(1, 0, 0, 1, 2, 0, 0, 2), Shape(2, 2, 2))
+      val c = Tensor(Array(1, 2, 3, 4, 2, 4, 6, 8), Shape(2, 2, 2))
+      (a.const matmul b.const).eval should be(c)
+    }
+
+    "multiply 4D tensors with non square matrices" in {
+      val a = Tensor(Array.fill(2 * 3 * 4 * 5)(1), Shape(2, 3, 4, 5))
+      val b = Tensor(Array.fill(2 * 3 * 5 * 6)(1), Shape(2, 3, 5, 6))
+      val c = (a.const matmul b.const).eval
+      c.shape should be(Shape(2, 3, 4, 6))
+      c.toArray.forall(_ == 5) shouldBe true
+    }
+
+    "have correct gradient when 2 batches of matrices are given" in {
+      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2)).const
+      val x = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2)).const
+      // parent grad (ones) matmul x.transpose: rows are summed up
+      val gradLeft = Tensor(Array(3, 7, 3, 7, 11, 15, 11, 15), Shape(2, 2, 2))
+      // a.transpose matmul parent grad (ones): columns are summed up
+      val gradRight = Tensor(Array(4, 4, 6, 6, 12, 12, 14, 14), Shape(2, 2, 2))
+      ((a matmul x).sum grad x).returns[Float].eval should be(gradRight)
+      ((x matmul a).sum grad x).returns[Float].eval should be(gradLeft)
+    }
+
+    "have correct gradient when a batch of matrices is multiplied by a matrix" in {
+      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2)).const
+      val w = Tensor.matrix(Array(1, 2), Array(3, 4)).const
+      // batch dimension is broadcast for the matrix so grads are summed up over batches
+      val gradW = Tensor.matrix(Array(16, 16), Array(20, 20))
+      val gradA = Tensor(Array(3, 7, 3, 7, 3, 7, 3, 7), Shape(2, 2, 2))
+      ((a matmul w).sum grad w).returns[Float].eval should be(gradW)
+      ((a matmul w).sum grad a).returns[Float].eval should be(gradA)
+    }
+
+    "have correct gradient when a matrix is multiplied by a batch of matrices" in {
+      val w = Tensor.matrix(Array(1, 2), Array(3, 4)).const
+      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2)).const
+      // sum over batches of ones matmul a.transpose: batch 0 -> (3, 7), batch 1 -> (11, 15)
+      val gradW = Tensor.matrix(Array(14, 22), Array(14, 22))
+      // w.transpose matmul ones: columns of w are summed up for each batch
+      val gradA = Tensor(Array(4, 4, 6, 6, 4, 4, 6, 6), Shape(2, 2, 2))
+      ((w matmul a).sum grad w).returns[Float].eval should be(gradW)
+      ((w matmul a).sum grad a).returns[Float].eval should be(gradA)
+    }
+
+    "have correct gradient when a batch dimension of size 1 is broadcast" in {
+      val a = Tensor(Array(1, 2, 3, 4), Shape(1, 2, 2)).const
+      val b = Tensor(Array(1, 0, 0, 1, 2, 0, 0, 2), Shape(2, 2, 2)).const
+      // ones matmul b.transpose for each batch is summed up: (1, 1) + (2, 2) per row
+      ((a matmul b).sum grad a).returns[Float].eval should be(
+        Tensor(Array(3, 3, 3, 3), Shape(1, 2, 2)))
     }
 
     "have correct gradient when 2 matrices are given and right side is a differentiable variable" in {
@@ -539,6 +630,14 @@ class KernelsSpec extends AnyWordSpec with Matchers {
       val before = Tensor(Array.range(1, 13), Shape(2, 2, 3))
       val after = Tensor(Array(1, 4, 2, 5, 3, 6, 7, 10, 8, 11, 9, 12), Shape(2, 3, 2))
       before.const.transpose(Seq(0, 2, 1)).eval should be(after)
+    }
+
+    "support grad on 3D tensor with custom permutations" in {
+      val x = Tensor(Array.range(0, 24).map(_.toFloat), Shape(2, 3, 4)).const
+      val w = Tensor(Array.range(0, 24).map(i => (i * i % 7).toFloat), Shape(3, 4, 2)).const
+      // grad of a weighted sum is the weights permuted back
+      (x.transpose(Seq(1, 2, 0)) * w).sum.grad(x).returns[Float].eval should be(
+        w.transpose(Seq(2, 0, 1)).eval)
     }
 
     "support grad on a vector" in {
@@ -649,13 +748,13 @@ class KernelsSpec extends AnyWordSpec with Matchers {
 
     "return a result of tanh function" in {
       Tensor.vector(-0.5f, 0f, 0.5f).const.tanh.eval should
-      be(Tensor.vector(-0.46211717f, 0.0f, 0.46211717f))
+      beCloseTo(Tensor.vector(-0.46211717f, 0.0f, 0.46211717f))
     }
 
     "have correct gradient" in {
       val x = Tensor.vector(-0.5f, 0f, 0.5f).const
       x.tanh.sum.grad(x).returns[Float].eval should
-      be(Tensor.vector(0.7864477f, 1.0f, 0.7864477f))
+      beCloseTo(Tensor.vector(0.7864477f, 1.0f, 0.7864477f))
     }
   }
 

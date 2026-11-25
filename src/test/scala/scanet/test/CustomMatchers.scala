@@ -26,6 +26,18 @@ trait CustomMatchers extends Matchers {
         Vector(existing, data))
     }
 
+  def beCloseTo(expected: Tensor[Float], tolerance: Float = 1e-6f): Matcher[Tensor[Float]] =
+    tensor => {
+      val actual = tensor.toArray
+      val sameShape = tensor.view.shape == expected.view.shape
+      MatchResult(
+        sameShape && actual.zip(expected.toArray).forall { case (a, e) =>
+          math.abs(a - e) <= tolerance
+        },
+        s"$tensor was not close to $expected with tolerance $tolerance",
+        s"$tensor was close to $expected with tolerance $tolerance")
+    }
+
   def beWithinTolerance(mean: Float, tolerance: Float): Matcher[Float] =
     be >= (mean - tolerance) and be <= (mean + tolerance)
 

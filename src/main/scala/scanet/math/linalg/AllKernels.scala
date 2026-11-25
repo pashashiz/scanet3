@@ -1,6 +1,6 @@
 package scanet.math.linalg
 
-import org.tensorflow.proto.framework.DataType
+import org.tensorflow.proto.DataType
 import scanet.core
 import scanet.core.syntax._
 import scanet.core.{DefaultCompiler, Expr, Floating, Shape, TakeOut, TakeOutUntyped, TensorType}
