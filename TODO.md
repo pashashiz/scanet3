@@ -28,14 +28,16 @@ one optimizer step (or the init statistics) with the reference formula.
 - [x] `Initializer.fans` assumes the PyTorch kernel layout `(out, in, h, w)`, but `Conv2D` uses
       `(h, w, in, out)`, so Glorot / He / Lecun scales are wrong for conv kernels
       (He for a 3x3x1x32 kernel is ~3x too small)
-- [ ] `Adam` puts epsilon inside the square root (`sqrt(v + eps)`), the reference is `sqrt(v) + eps`.
-      With `eps = 1e-7` this caps the step for small gradients. Decide, then align `AdamW` with it
+- [x] `Adam` puts epsilon inside the square root (`sqrt(v + eps)`), the reference is `sqrt(v) + eps`.
+      With `eps = 1e-7` this caps the step for small gradients. Now follows the paper (`eps = 1e-8`)
 - [x] `Nadam` and `Adamax` start moments at `initAcc = 0.001` instead of 0, which biases the first steps
 - [ ] `ReLU(threshold)` returns `threshold` below the threshold, the usual definition returns 0
       (needs `where`, comparison ops have no gradient, so fix it together with `where` in step 5)
 - [x] `RNN.outputShape` applies `cell.outputShape` twice when `returnSequence = false` (harmless today)
 - [x] `LSTMCell` relies on a 4 element `Map` keeping insertion order to unpack gates (fragile)
 - [ ] `Softmax` is not numerically stable and works on axis 1 only (covered again in step 5)
+- [x] `strings.KernelsSpec` assert tests matched the TF node name `Assert_0`, the index depends on
+      the test order, so they failed randomly. They now match any index
 - [ ] `BatchNorm` uses `trainable` as the training mode flag, so "frozen" and "inference" mean the same.
       Dropout needs a separate training / inference mode
 
@@ -108,7 +110,5 @@ Layers:
 - Exact float comparisons in tests are brittle across TF versions (use `beCloseTo`)
 - Initializers are not seeded in tests, so convergence tests can be flaky
   (`ANNSpec` "minimize logistic regression" failed once with loss 0.64 > 0.5, then passed 3 of 3)
-- `strings.KernelsSpec` "assert that" matches the TF message with the node name `Assert_0`,
-  the index depends on the test order (failed once on 2.12, passed when re-run)
 - No model export / import, no dropout, only the MNIST dataset
 - `Optimizer` averages weights once per epoch, this hurts convergence for deep models

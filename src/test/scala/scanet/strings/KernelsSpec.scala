@@ -114,13 +114,16 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
   }
 
   "assert" should "throw when current condition is false" in {
-    the[IllegalArgumentException] thrownBy {
+    val error = the[IllegalArgumentException] thrownBy {
       val a = Tensor.vector(1, 2).const
       val b = Tensor.vector(3, 4).const
       val c = Tensor.vector(5, 6).const
 
       (a plus b).assert(_ === c).eval
-    } should have message "assertion failed: [value: [4 6]]\n\t [[{{node Assert_0}}]]"
+    }
+    // the node index depends on how many asserts the shared session has compiled already
+    error.getMessage should fullyMatch regex
+    """assertion failed: \[value: \[4 6\]\]\n\t \[\[\{\{node Assert_\d+\}\}\]\]"""
   }
 
   "assert that" should "verify dependent condition" in {
@@ -132,12 +135,15 @@ class KernelsSpec extends AnyFlatSpec with Matchers {
   }
 
   "assert that" should "should fail when dependent condition is false" in {
-    the[IllegalArgumentException] thrownBy {
+    val error = the[IllegalArgumentException] thrownBy {
       val a = Tensor.vector(1, 2).const
       val b = 0.const
       val c = (a div b) << assertThat(b gt 0.const, "b was {}, should be > 0", b)
 
       c.eval should be(Tensor.scalar(3))
-    } should have message "assertion failed: [b was 0, should be > 0]\n\t [[{{node Assert_0}}]]"
+    }
+    // the node index depends on how many asserts the shared session has compiled already
+    error.getMessage should fullyMatch regex
+    """assertion failed: \[b was 0, should be > 0\]\n\t \[\[\{\{node Assert_\d+\}\}\]\]"""
   }
 }

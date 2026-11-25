@@ -9,6 +9,14 @@ import scanet.syntax._
 /** Adam optimization is a stochastic gradient descent method that
   * is based on adaptive estimation of first-order and second-order moments.
   *
+  * The update follows [Kingma and Ba, 2014](https://arxiv.org/abs/1412.6980):
+  * {{{
+  *   m = beta1 * m + (1 - beta1) * g
+  *   v = beta2 * v + (1 - beta2) * g^2
+  *   delta = rate * m^ / (sqrt(v^) + epsilon)
+  * }}}
+  * where `m^ = m / (1 - beta1^t)` and `v^ = v / (1 - beta2^t)` are bias corrected moments.
+  *
   * @param rate learning rate, usually should not be tuned
   * @param beta1 The exponential decay rate for the 1st moment estimates.
   * @param beta2 The exponential decay rate for the 2nd moment estimates.
@@ -18,7 +26,7 @@ case class Adam(
     rate: Float = 0.001f,
     beta1: Float = 0.9f,
     beta2: Float = 0.999f,
-    epsilon: Float = 1e-7f)
+    epsilon: Float = 1e-8f)
     extends Algorithm {
 
   override def params(input: Shape): Params[ParamDef] =
@@ -34,9 +42,9 @@ case class Adam(
     val prevV = params(Velocity)
     val m = prevM.decayingAvg(grad, beta1.const.cast[T])
     val v = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
-    val delta =
-      (rate.const.cast[T] / (v.boost(beta2.const.cast[T], iter) + epsilon.const.cast[T]).sqrt) * m
-        .boost(beta1.const.cast[T], iter)
+    val mHat = m.boost(beta1.const.cast[T], iter)
+    val vHat = v.boost(beta2.const.cast[T], iter)
+    val delta = rate.const.cast[T] * mHat / (vHat.sqrt + epsilon.const.cast[T])
     Delta(delta, Params(Momentum -> m, Velocity -> v))
   }
 }
