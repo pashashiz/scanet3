@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import scanet.core.Params.Weights
 import scanet.core.{Params, Tensor}
 import scanet.math.syntax._
+import scanet.optimizers.SGD.Velocity
 import scanet.models.LinearRegression
 import scanet.models.Loss._
 import scanet.models.Math.`x^2`
@@ -75,5 +76,21 @@ class SGDSpec extends AnyFlatSpec with CustomMatchers with SharedSpark with Data
     val TRecord(x, y) = ds.firstTensor(97)
     // note: that reaches 4.5 in 1500 epochs
     loss(x, y).toScalar should be <= 11f
+  }
+
+  "SGD with momentum" should "add the previous velocity to the step" in {
+    // delta is subtracted from weights: delta = rate * g + momentum * vPrev
+    val Delta(delta, next) = SGD(rate = 0.1f, momentum = 0.9f)
+      .build[Float](1f.const, Params(Velocity -> 0.5f.const), 1.const)
+    delta.eval should beCloseTo(Tensor.scalar(0.55f))
+    next(Velocity).eval should beCloseTo(Tensor.scalar(0.55f))
+  }
+
+  "SGD with Nesterov acceleration" should "look ahead with the new velocity" in {
+    // v = rate * g + momentum * vPrev = 0.55, delta = rate * g + momentum * v
+    val Delta(delta, next) = SGD(rate = 0.1f, momentum = 0.9f, nesterov = true)
+      .build[Float](1f.const, Params(Velocity -> 0.5f.const), 1.const)
+    delta.eval should beCloseTo(Tensor.scalar(0.595f))
+    next(Velocity).eval should beCloseTo(Tensor.scalar(0.55f))
   }
 }

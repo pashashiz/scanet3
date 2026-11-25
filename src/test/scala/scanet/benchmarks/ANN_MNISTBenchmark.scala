@@ -70,7 +70,7 @@ class ANN_MNISTBenchmark
     }
 
     "used Adamax algorithm" should {
-      behave like successfullyTrainedWith(Adamax(rate = 0.003f, initAcc = 0.01f))
+      behave like successfullyTrainedWith(Adamax(rate = 0.003f))
     }
 
     "used Nadam algorithm" should {

@@ -11,3 +11,4 @@ project/plugins/project/
 .DS_Store
 .idea/
 benchmark/keras/env/
+venv

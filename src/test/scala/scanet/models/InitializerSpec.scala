@@ -64,4 +64,16 @@ class InitializerSpec extends AnyWordSpec with CustomMatchers {
         Array(-0.189386f, -0.787368f, -0.586672f))
     }
   }
+
+  "fans" should {
+
+    "use rows as fan in and columns as fan out for a matrix" in {
+      Zeros.fans(Shape(4, 5)) shouldBe (4, 5)
+    }
+
+    "multiply in and out by the receptive field for a conv kernel (height, width, in, out)" in {
+      Zeros.fans(Shape(3, 3, 1, 32)) shouldBe (9, 288)
+      Zeros.fans(Shape(5, 5, 16, 8)) shouldBe (400, 200)
+    }
+  }
 }

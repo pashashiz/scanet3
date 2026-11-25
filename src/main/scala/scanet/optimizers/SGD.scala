@@ -19,8 +19,10 @@ case class SGD(rate: Float = 0.01f, momentum: Float = 0.0f, nesterov: Boolean = 
     val vPrev = params(Velocity)
     val m = momentum.const.cast[T]
     val r = rate.const.cast[T]
-    val v = (r * grad) - (m * vPrev)
-    val delta = if (nesterov) (r * grad) - (m * v) else v
+    // delta is subtracted from weights, so the previous delta (velocity) is added
+    // to keep moving in the same direction
+    val v = (r * grad) + (m * vPrev)
+    val delta = if (nesterov) (r * grad) + (m * v) else v
     Delta(delta, Params(Velocity -> v))
   }
 }
