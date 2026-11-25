@@ -17,27 +17,12 @@ FSDP) will not map to TF Java + Spark, so for those the goal is the concept, not
 
 ## 1. Fix known bugs (before new work)
 
-The tests only check that the loss goes down, so these passed. Fix each one with a test that compares
-one optimizer step (or the init statistics) with the reference formula.
+Fix each one with a test that compares the result with the reference formula,
+not only that the loss goes down.
 
-- [x] `SGD` momentum has the wrong sign: `v = rate * g - momentum * vPrev` damps instead of accelerating,
-      should be `rate * g + momentum * vPrev` (same for the Nesterov branch)
-- [x] `Nadam` has no learning rate at all (the step is effectively `rate = 1`), add `rate = 0.001f`
-- [x] `Adamax` uses `max(beta2 * u, (1 - beta2) * |g|)`, the paper uses `max(beta2 * u, |g|)`,
-      so the effective step is about 1000x too large
-- [x] `Initializer.fans` assumes the PyTorch kernel layout `(out, in, h, w)`, but `Conv2D` uses
-      `(h, w, in, out)`, so Glorot / He / Lecun scales are wrong for conv kernels
-      (He for a 3x3x1x32 kernel is ~3x too small)
-- [x] `Adam` puts epsilon inside the square root (`sqrt(v + eps)`), the reference is `sqrt(v) + eps`.
-      With `eps = 1e-7` this caps the step for small gradients. Now follows the paper (`eps = 1e-8`)
-- [x] `Nadam` and `Adamax` start moments at `initAcc = 0.001` instead of 0, which biases the first steps
 - [ ] `ReLU(threshold)` returns `threshold` below the threshold, the usual definition returns 0
       (needs `where`, comparison ops have no gradient, so fix it together with `where` in step 5)
-- [x] `RNN.outputShape` applies `cell.outputShape` twice when `returnSequence = false` (harmless today)
-- [x] `LSTMCell` relies on a 4 element `Map` keeping insertion order to unpack gates (fragile)
 - [ ] `Softmax` is not numerically stable and works on axis 1 only (covered again in step 5)
-- [x] `strings.KernelsSpec` assert tests matched the TF node name `Assert_0`, the index depends on
-      the test order, so they failed randomly. They now match any index
 - [ ] `BatchNorm` uses `trainable` as the training mode flag, so "frozen" and "inference" mean the same.
       Dropout needs a separate training / inference mode
 
