@@ -15,6 +15,113 @@ class TensorSpec extends AnyFlatSpec with CustomMatchers {
     (haveShape(Shape()) and containData(Array(5)))
   }
 
+  "tensor literal" should "be allocated as a vector from an array" in {
+    Tensor(Array(1, 2, 3)) should
+    (haveShape(Shape(3)) and containData(Array(1, 2, 3)))
+  }
+
+  "tensor literal" should "be allocated as a matrix from nested arrays" in {
+    val tensor = Tensor(Array(
+      Array(1f, 2f, 3f),
+      Array(4f, 5f, 6f)))
+    tensor should (haveShape(Shape(2, 3)) and containData(Array(1f, 2f, 3f, 4f, 5f, 6f)))
+    tensor shouldBe Tensor.matrix(Array(1f, 2f, 3f), Array(4f, 5f, 6f))
+  }
+
+  "tensor literal" should "be allocated as a 3D tensor from nested arrays" in {
+    val tensor = Tensor(Array(
+      Array(Array(1, 2, 3), Array(4, 5, 6)),
+      Array(Array(7, 8, 9), Array(10, 11, 12))))
+    tensor should (haveShape(Shape(2, 2, 3)) and containData(Array.range(1, 13)))
+  }
+
+  "tensor literal" should "be allocated as a 4D tensor from nested arrays" in {
+    val tensor = Tensor(Array(Array(
+      Array(Array(1, 2), Array(3, 4)),
+      Array(Array(5, 6), Array(7, 8)))))
+    tensor should (haveShape(Shape(1, 2, 2, 2)) and containData(Array.range(1, 9)))
+  }
+
+  "tensor literal" should "be allocated with Boolean and String" in {
+    Tensor(Array(Array(true, false), Array(false, true))) should
+    (haveShape(Shape(2, 2)) and containData(Array(true, false, false, true)))
+    Tensor(Array(Array("a", "b"), Array("c", "d"))) should
+    (haveShape(Shape(2, 2)) and containData(Array("a", "b", "c", "d")))
+  }
+
+  "tensor literal" should "fail when arrays on the same level have different length" in {
+    the[IllegalArgumentException] thrownBy {
+      Tensor(Array(Array(1, 2, 3), Array(4, 5)))
+    } should have message "requirement failed: all arrays on the same level " +
+    "of tensor literal must have the same shape, but got (3), (2)"
+  }
+
+  "tensor literal" should "fail when nested arrays have different shapes" in {
+    the[IllegalArgumentException] thrownBy {
+      Tensor(Array(Array(Array(1, 2), Array(3, 4)), Array(Array(5, 6))))
+    } should have message "requirement failed: all arrays on the same level " +
+    "of tensor literal must have the same shape, but got (2, 2), (1, 2)"
+  }
+
+  "tensor literal" should "fail when an array is empty" in {
+    the[IllegalArgumentException] thrownBy {
+      Tensor(Array.empty[Int])
+    } should have message "requirement failed: tensor literal cannot contain empty arrays"
+  }
+
+  "matrix" should "be allocated from rows" in {
+    Tensor.matrix(Array(1, 2, 3), Array(4, 5, 6)) should
+    (haveShape(Shape(2, 3)) and containData(Array(1, 2, 3, 4, 5, 6)))
+  }
+
+  "matrix" should "fail when rows have different length" in {
+    the[IllegalArgumentException] thrownBy {
+      Tensor.matrix(Array(1, 2, 3), Array(4, 5))
+    } should have message "requirement failed: all arrays on the same level " +
+    "of tensor literal must have the same shape, but got (3), (2)"
+  }
+
+  "matrix" should "fail when there are no rows" in {
+    the[IllegalArgumentException] thrownBy {
+      Tensor.matrix[Int]()
+    } should have message "requirement failed: tensor literal cannot contain empty arrays"
+  }
+
+  "tensor literal" should "be allocated from nested sequences" in {
+    Tensor(List(1, 2, 3)) should
+    (haveShape(Shape(3)) and containData(Array(1, 2, 3)))
+    Tensor(Seq(Seq(1, 2, 3), Seq(4, 5, 6))) should
+    (haveShape(Shape(2, 3)) and containData(Array(1, 2, 3, 4, 5, 6)))
+    Tensor(Vector(Vector(List(1, 2), List(3, 4)), Vector(List(5, 6), List(7, 8)))) should
+    (haveShape(Shape(2, 2, 2)) and containData(Array.range(1, 9)))
+  }
+
+  "tensor literal" should "be allocated from mixed arrays and sequences" in {
+    Tensor(Array(List(1, 2), List(3, 4))) should
+    (haveShape(Shape(2, 2)) and containData(Array(1, 2, 3, 4)))
+    Tensor(List(Array(1, 2), Array(3, 4))) should
+    (haveShape(Shape(2, 2)) and containData(Array(1, 2, 3, 4)))
+    Tensor(Seq(Array(Seq(1f, 2f)), Array(Seq(3f, 4f)))) should
+    (haveShape(Shape(2, 1, 2)) and containData(Array(1f, 2f, 3f, 4f)))
+  }
+
+  "tensor literal" should "be allocated from sequences of Boolean and String" in {
+    Tensor(Seq(Seq(true, false), Seq(false, true))) should
+    (haveShape(Shape(2, 2)) and containData(Array(true, false, false, true)))
+    Tensor(List("a", "b", "c")) should
+    (haveShape(Shape(3)) and containData(Array("a", "b", "c")))
+  }
+
+  "tensor literal" should "fail when sequences have different length or are empty" in {
+    the[IllegalArgumentException] thrownBy {
+      Tensor(Seq(Seq(1, 2, 3), Seq(4, 5)))
+    } should have message "requirement failed: all arrays on the same level " +
+    "of tensor literal must have the same shape, but got (3), (2)"
+    the[IllegalArgumentException] thrownBy {
+      Tensor(Seq.empty[Int])
+    } should have message "requirement failed: tensor literal cannot contain empty arrays"
+  }
+
   "vector" should "be allocated with Int" in {
     Tensor.vector(1, 2, 3) should
     (haveShape(Shape(3)) and containData(Array(1, 2, 3)))

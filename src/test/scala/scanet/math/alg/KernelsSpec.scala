@@ -459,29 +459,45 @@ class KernelsSpec extends AnyWordSpec with CustomMatchers {
     }
 
     "multiply 2 batches of matrices" in {
-      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
-      val c = Tensor(Array(7, 10, 15, 22, 67, 78, 91, 106), Shape(2, 2, 2))
+      val a = Tensor(Array(
+        Array(Array(1, 2), Array(3, 4)),
+        Array(Array(5, 6), Array(7, 8))))
+      val c = Tensor(Array(
+        Array(Array(7, 10), Array(15, 22)),
+        Array(Array(67, 78), Array(91, 106))))
       (a.const matmul a.const).eval should be(c)
     }
 
     "multiply a batch of matrices by a matrix" in {
-      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
-      val w = Tensor.matrix(Array(1, 2), Array(3, 4))
-      val c = Tensor(Array(7, 10, 15, 22, 23, 34, 31, 46), Shape(2, 2, 2))
+      val a = Tensor(Array(
+        Array(Array(1, 2), Array(3, 4)),
+        Array(Array(5, 6), Array(7, 8))))
+      val w = Tensor(Array(Array(1, 2), Array(3, 4)))
+      val c = Tensor(Array(
+        Array(Array(7, 10), Array(15, 22)),
+        Array(Array(23, 34), Array(31, 46))))
       (a.const matmul w.const).eval should be(c)
     }
 
     "multiply a matrix by a batch of matrices" in {
-      val w = Tensor.matrix(Array(1, 2), Array(3, 4))
-      val a = Tensor(Array(1, 2, 3, 4, 5, 6, 7, 8), Shape(2, 2, 2))
-      val c = Tensor(Array(7, 10, 15, 22, 19, 22, 43, 50), Shape(2, 2, 2))
+      val w = Tensor(Array(Array(1, 2), Array(3, 4)))
+      val a = Tensor(Array(
+        Array(Array(1, 2), Array(3, 4)),
+        Array(Array(5, 6), Array(7, 8))))
+      val c = Tensor(Array(
+        Array(Array(7, 10), Array(15, 22)),
+        Array(Array(19, 22), Array(43, 50))))
       (w.const matmul a.const).eval should be(c)
     }
 
     "multiply batches with broadcast of a dimension of size 1" in {
-      val a = Tensor(Array(1, 2, 3, 4), Shape(1, 2, 2))
-      val b = Tensor(Array(1, 0, 0, 1, 2, 0, 0, 2), Shape(2, 2, 2))
-      val c = Tensor(Array(1, 2, 3, 4, 2, 4, 6, 8), Shape(2, 2, 2))
+      val a = Tensor(Array(Array(Array(1, 2), Array(3, 4))))
+      val b = Tensor(Array(
+        Array(Array(1, 0), Array(0, 1)),
+        Array(Array(2, 0), Array(0, 2))))
+      val c = Tensor(Array(
+        Array(Array(1, 2), Array(3, 4)),
+        Array(Array(2, 4), Array(6, 8))))
       (a.const matmul b.const).eval should be(c)
     }
 

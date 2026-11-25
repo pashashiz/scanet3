@@ -9,6 +9,7 @@ import org.tensorflow.RawTensor
 import org.tensorflow.proto.DataType
 
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
 
 class Tensor[A: TensorType](private val ref: TensorRef[A], val view: View) {
 
@@ -173,6 +174,16 @@ object Tensor {
     tensor
   }
 
+  /** Builds a tensor of any rank from nested arrays, see [[TensorLiteral]] */
+  def apply[T, A](literal: T)(
+      implicit lit: TensorLiteral[T, A],
+      tpe: TensorType[A]): Tensor[A] = {
+    val shape = lit.shape(literal)
+    val elements = new ArrayBuffer[A](shape.power)
+    lit.flatten(literal, elements)
+    apply(elements.toArray(tpe.classTag), shape)
+  }
+
   def fromBytes[A: TensorType](bytes: Array[Byte], shape: Shape): Tensor[A] = {
     val tensor = Tensor.wrap[A](RawTensors.allocate[A](shape))
     tensor.buffer.writeBytes(bytes)
@@ -193,13 +204,8 @@ object Tensor {
     elements.toArray(TensorType[A].classTag))
 
   def matrix[A: TensorType](rows: Array[A]*): Tensor[A] = {
-    require(rows.nonEmpty, "at least one row is required")
-    val rowSizes = rows.toList.map(_.length)
-    require(rowSizes.distinct.size == 1, "all rows should have the same length")
-    val data = rows
-      .foldLeft(new ArrayBuffer[A](rowSizes.sum))((buffer, row) => buffer ++= row)
-      .toArray(TensorType[A].classTag)
-    apply(data, Shape(rowSizes.length, rowSizes.head))
+    implicit val classTag: ClassTag[A] = TensorType[A].classTag
+    apply(rows.toArray[Array[A]])
   }
 
   def zeros[A: Monoid](shape: Int*): Tensor[A] =
