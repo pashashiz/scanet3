@@ -5,7 +5,7 @@ import org.tensorflow.internal.c_api.{AbstractTF_Status, TF_Session}
 import org.tensorflow.ndarray.Shape
 import org.tensorflow.ndarray.impl.buffer.nio.NioDataBufferFactory
 import org.tensorflow.op.OpScope
-import org.tensorflow.proto.framework.DataType
+import org.tensorflow.proto.DataType
 import org.tensorflow.types._
 import org.tensorflow.{Graph, Session}
 

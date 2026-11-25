@@ -5,7 +5,7 @@ import com.twitter.chill._
 import org.apache.spark.serializer.KryoRegistrator
 import scanet.core.{Shape, Tensor, TensorType}
 import scanet.models.TrainedModel
-import org.tensorflow.proto.framework.DataType.DT_STRING
+import org.tensorflow.proto.DataType.DT_STRING
 import scanet.core.syntax._
 
 class KryoSerializers extends KryoRegistrator {

@@ -3,7 +3,7 @@ package scanet.core
 import scanet.core.DefaultCompiler.{Ctx, Stage}
 import scanet.native.RawTensors
 import org.tensorflow
-import org.tensorflow.proto.framework.DataType
+import org.tensorflow.proto.DataType
 import org.tensorflow.types.family.TType
 
 import scala.collection.immutable.Seq

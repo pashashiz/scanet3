@@ -4,6 +4,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import scanet.core.Params.Weights
 import scanet.core.{Params, Tensor}
 import scanet.core.Path._
+import scanet.models.Regularization
 import scanet.models.layer.BatchNorm._
 import scanet.syntax._
 import scanet.test.CustomMatchers
@@ -62,6 +63,17 @@ class BatchNormSpec extends AnyWordSpec with CustomMatchers {
         Array(-0.045f, 0.671f, 0.85f, 0.939f),
         Array(2.907f, -0.559f, 0.581f, -0.134f),
         Array(5.21f, 1.789f, 4.383f, 0.537f))
+    }
+
+    "penalize beta and gamma with own regularizers" in {
+      val layer = BatchNorm(
+        betaRegularizer = Regularization.L1(1f),
+        gammaRegularizer = Regularization.L2(1f))
+      val params = Params(
+        Beta -> Tensor.vector(1f, -2f).const,
+        Gamma -> Tensor.vector(3f, 4f).const)
+      // L1: (1 + 2) / 2 = 1.5, L2: (9 + 16) / 2 = 12.5
+      layer.penalty[Float](params).eval shouldBe Tensor.scalar(14f)
     }
   }
 }

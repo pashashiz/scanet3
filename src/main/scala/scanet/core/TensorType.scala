@@ -1,6 +1,6 @@
 package scanet.core
 
-import org.tensorflow.proto.framework.DataType
+import org.tensorflow.proto.DataType
 import org.tensorflow.types._
 import org.tensorflow.types.family.TType
 import simulacrum.{op, typeclass}

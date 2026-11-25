@@ -11,7 +11,7 @@ class ActivationSpec extends AnyWordSpec with CustomMatchers {
   "tanh activation function" should {
 
     "be like regular tanh function" in {
-      Tanh.build(0.5f.const).eval should be(Tensor.scalar(0.46211717f))
+      Tanh.build(0.5f.const).eval should beCloseTo(Tensor.scalar(0.46211717f))
     }
   }
 

@@ -5,7 +5,7 @@ import org.tensorflow.internal.c_api.TF_Session
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{BlockingDeque, LinkedBlockingDeque}
 import org.tensorflow.op.{OpScope, Scope => NativeScope}
-import org.tensorflow.proto.framework.ConfigProto
+import org.tensorflow.proto.ConfigProto
 import org.tensorflow.{Graph, RawTensor, Output => NativeOutput, Session => NativeSession}
 
 import scala.util.Try

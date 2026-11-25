@@ -23,7 +23,7 @@ class ActivateLayerSpec extends AnyWordSpec with CustomMatchers {
         Array(0.5f, 0.7310586f, 0.7310586f),
         Array(0.7310586f, 0.5f, 0.7310586f),
         Array(0.7310586f, 0.7310586f, 0.7310586f))
-      result(x, Params.empty) should be(y)
+      result(x, Params.empty) should beCloseTo(y)
     }
 
     "have string repr" in {

@@ -156,7 +156,7 @@ case class BatchNorm(
   }
 
   override def penalty[E: Floating](params: Params[Expr[E]]): Expr[E] =
-    if (trainable) betaRegularizer.build(params(Gamma)) + betaRegularizer.build(params(Gamma))
+    if (trainable) betaRegularizer.build(params(Beta)) + gammaRegularizer.build(params(Gamma))
     else zeros[E](Shape())
 
   override def outputShape(input: Shape): Shape = input

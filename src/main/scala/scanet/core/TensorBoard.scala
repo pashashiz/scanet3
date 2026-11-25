@@ -7,8 +7,8 @@ import java.time.Instant
 import com.google.protobuf.ByteString
 import scanet.images.{Channel, Image}
 import scanet.native.TfRecords
-import org.tensorflow.proto.framework.Summary
-import org.tensorflow.proto.util.Event
+import org.tensorflow.proto.Summary
+import org.tensorflow.proto.Event
 
 import scala.reflect.io.Path._
 
