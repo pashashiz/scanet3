@@ -82,7 +82,7 @@ case class RNN(cell: Layer, returnSequence: Boolean = false, stateful: Boolean =
     if (returnSequence)
       cellOutput.insert(1, input(1))
     else
-      cell.outputShape(cellOutput)
+      cellOutput
   }
 
   override def trainable: Boolean = cell.trainable
@@ -286,7 +286,8 @@ case class LSTMCell(
   private val iCell = cell("input", recurrentActivation, useBias = biasInitializer)
   private val gCell = cell("gate", activation, useBias = biasInitializer)
   private val oCell = cell("output", recurrentActivation, useBias = biasInitializer)
-  private val cells = Map(fCell, iCell, gCell, oCell)
+  // the order matters, gates are unpacked in the same order in build
+  private val cells = List(fCell, iCell, gCell, oCell)
 
   override def stateful: Boolean = true
 
@@ -322,7 +323,7 @@ case class LSTMCell(
     require(input.rank >= 2, "LSTMCell requires input Seq(batch, features)")
     val cPrev = params(CellState)
     val hPrev = params(HiddenState)
-    val List(f, i, g, o) = cells.toList.map {
+    val List(f, i, g, o) = cells.map {
       case (name, cell) =>
         val cellState = cell.params(input.shape)
           .filter {

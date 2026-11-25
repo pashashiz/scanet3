@@ -2,7 +2,7 @@ package scanet.optimizers
 
 import scanet.core._
 import scanet.models.Aggregation.Avg
-import scanet.models.{Initializer, ParamDef}
+import scanet.models.ParamDef
 import scanet.optimizers.Nadam.{Momentum, Velocity}
 import scanet.syntax._
 
@@ -12,27 +12,22 @@ import scanet.syntax._
   *  - https://pywick.readthedocs.io/en/stable/_modules/pywick/optimizers/nadam.html
   *  - https://github.com/uralik/keras/blob/c89b7f632a2883d0742d9d89ab959e54f7ce0dd0/keras/optimizers.py
   *
+  * @param rate learning rate
   * @param beta1 The exponential decay rate for the 1st moment estimates.
   * @param beta2 The exponential decay rate for the 2nd moment estimates.
   * @param epsilon a constant epsilon used to better conditioning the grad update
   */
 case class Nadam(
+    rate: Float = 0.001f,
     beta1: Float = 0.9f,
     beta2: Float = 0.999f,
-    epsilon: Float = 1e-7f,
-    initAcc: Float = 0.001f)
+    epsilon: Float = 1e-7f)
     extends Algorithm {
 
   override def params(input: Shape): Params[ParamDef] =
     Params(
-      Momentum -> ParamDef(
-        shape = input,
-        initializer = Initializer.Const(initAcc),
-        aggregation = Some(Avg)),
-      Velocity -> ParamDef(
-        shape = input,
-        initializer = Initializer.Const(initAcc),
-        aggregation = Some(Avg)))
+      Momentum -> ParamDef(shape = input, aggregation = Some(Avg)),
+      Velocity -> ParamDef(shape = input, aggregation = Some(Avg)))
 
   override def build[T: Floating](
       grad: Expr[T],
@@ -44,7 +39,8 @@ case class Nadam(
     val v = prevV.decayingAvg(grad.sqr, beta2.const.cast[T])
     val mNesterov = (beta1.const.cast[T] * m.boost(beta1.const.cast[T], iter)) +
       ((1f.const.cast[T] - beta1.const.cast[T]) * grad.boost(beta1.const.cast[T], iter))
-    val delta = mNesterov / (v.boost(beta2.const.cast[T], iter).sqrt + epsilon.const.cast[T])
+    val delta = rate.const.cast[T] * mNesterov /
+      (v.boost(beta2.const.cast[T], iter).sqrt + epsilon.const.cast[T])
     Delta(delta, Params(Momentum -> m, Velocity -> v))
   }
 }

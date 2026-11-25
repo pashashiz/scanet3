@@ -9,18 +9,21 @@ trait Initializer {
   def build[E: Floating](shape: Shape): Expr[E]
 
   /** Transforms a shape into fan-in (features in) and fan-out (features out),
-    * where first dimension becomes in and last out
+    * where the dimension before last becomes in and the last one out.
     *
-    * If shape has rank > 2 we take a power of first dimensions and use it as multiplier for in and out
+    * If shape has rank > 2 (convolution kernel `(height, width, in, out)`)
+    * we take a power of the leading (receptive field) dimensions
+    * and use it as multiplier for in and out
     */
   def fans(shape: Shape): (Int, Int) = {
     shape.dims match {
       case Nil              => (1, 1)
       case out :: Nil       => (out, out)
       case in :: out :: Nil => (in, out)
-      case out :: in :: receptive =>
-        val size = receptive.product
-        (size * in, size * out)
+      case dims =>
+        val receptive = dims.dropRight(2).product
+        val (in, out) = (dims(dims.size - 2), dims.last)
+        (receptive * in, receptive * out)
     }
   }
 }
