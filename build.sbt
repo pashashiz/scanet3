@@ -12,10 +12,7 @@ libraryDependencies ++= Seq(
   "org.tensorflow" % "tensorflow-core-platform" % "1.2.0",
   // NOTE: needed for crc32c only, need to reimplement and remove the dependency
   "com.google.guava" % "guava" % "33.4.8-jre",
-  // logback is the logging backend, so Spark log4j to SLF4J bridge is excluded
-  ("org.apache.spark" %% "spark-sql" % V.spark).exclude("org.apache.logging.log4j", "log4j-slf4j2-impl"),
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-  "ch.qos.logback" % "logback-classic" % "1.5.18",
+  "org.apache.spark" %% "spark-sql" % V.spark,
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5",
   "org.scalacheck" %% "scalacheck" % "1.17.0" % Test,
   "org.scalatest" %% "scalatest" % "3.2.19" % Test)
