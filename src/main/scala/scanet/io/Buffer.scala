@@ -5,7 +5,6 @@ import scanet.core.TensorType._
 import scanet.core.TensorType.syntax._
 import scanet.core.{TensorType, error}
 
-import scala.collection.compat.immutable.LazyList
 import scala.{specialized => sp}
 
 class Buffer[@sp A: TensorType](val original: JavaBuffer) extends Comparable[Buffer[A]] {

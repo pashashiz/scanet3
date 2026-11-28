@@ -1,8 +1,7 @@
 name := "scanet3"
 version := "0.1.0-SNAPSHOT"
 
-scalaVersion := "2.13.16"
-crossScalaVersions := Seq("2.12.17", "2.13.16")
+scalaVersion := V.scala
 
 resolvers ++= Seq("sonatype-snapshots" at "https://oss.sonatype.org/content/repositories/snapshots")
 
@@ -13,24 +12,10 @@ libraryDependencies ++= Seq(
   "org.tensorflow" % "tensorflow-core-platform" % "1.2.0",
   // NOTE: needed for crc32c only, need to reimplement and remove the dependency
   "com.google.guava" % "guava" % "33.4.8-jre",
-  "org.apache.spark" %% "spark-sql" % "3.5.10",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-  "ch.qos.logback" % "logback-classic" % "1.5.18",
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.13.0",
+  "org.apache.spark" %% "spark-sql" % V.spark,
   "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5",
   "org.scalacheck" %% "scalacheck" % "1.17.0" % Test,
   "org.scalatest" %% "scalatest" % "3.2.19" % Test)
-
-libraryDependencies ++= {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, n)) if n >= 13 =>
-      Nil
-    case _ =>
-      Seq(
-        "org.scala-lang" % "scala-reflect" % scalaVersion.value % Provided,
-        compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
-  }
-}
 
 updateOptions := updateOptions.value.withLatestSnapshots(false)
 
@@ -42,14 +27,11 @@ Compile / scalacOptions ++= Seq(
   "-feature",
   "-language:implicitConversions",
   "-language:higherKinds",
-  "-language:existentials")
+  "-language:existentials",
+  "-Ymacro-annotations")
 
-Compile / scalacOptions ++= {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, n)) if n >= 13 => Seq("-Ymacro-annotations")
-    case _                       => Seq("-Ypartial-unification")
-  }
-}
+// code which differs between Spark versions, if any
+Compile / unmanagedSourceDirectories += baseDirectory.value / "src/main" / s"scala-spark${V.sparkMajor}"
 
 Test / parallelExecution := false
 Test / testOptions ++= Seq(
@@ -67,3 +49,24 @@ Test / javaOptions ++= Seq(
   "-Dcom.sun.management.jmxremote.rmi.port=9010",
   "-Dcom.sun.management.jmxremote.authenticate=false",
   "-Dcom.sun.management.jmxremote.ssl=false")
+
+// Spark on JDK 17+ needs access to JDK internals,
+// borrowed from https://github.com/apache/spark/blob/master/project/SparkBuild.scala
+Test / javaOptions ++= {
+  if (V.java >= 17)
+    Seq(
+      "--add-opens=java.base/java.lang=ALL-UNNAMED",
+      "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+      "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+      "--add-opens=java.base/java.io=ALL-UNNAMED",
+      "--add-opens=java.base/java.net=ALL-UNNAMED",
+      "--add-opens=java.base/java.nio=ALL-UNNAMED",
+      "--add-opens=java.base/java.util=ALL-UNNAMED",
+      "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+      "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+      "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+      "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
+      "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
+      "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED")
+  else Seq.empty
+}

@@ -1,11 +1,27 @@
-# MacOS ARM64 (M1)
+# Build
 
-At the moment Tensorflow Java do not publish the M1 compatible binary (see [this](https://github.com/tensorflow/java/blob/master/CONTRIBUTING.md#apple-silicon))
-cause GitHub Actions still has no such build workers. For now, we have to build it locally from source:
- - Checkout [Tensorflow Java](https://github.com/tensorflow/java)
- - Install env for Tensorflow, see [Build from source](https://www.tensorflow.org/install/source#macos). 
-   **IMPORTANT**t As of `01-01-2023`, TensorFlow fails to build on XCode command line tools version `14+`. If you have such version installed, it might be necessary to downgrade it to a [previous](https://developer.apple.com/download/all/?q=xcode) version, like `13.4.1`.
- - Run `mvn install` (requires JDK 11)
+The project uses Scala 2.13 and supports 2 Spark versions, selected with the `SPARK_VERSION` env variable
+(see `project/Versions.scala`):
 
-We will be tracking [Strategies for getting Tensorflow-Java on Apple Silicon?
-#394](https://github.com/tensorflow/java/issues/394) to remove that chore.
+| Spark            | JDK  |
+|------------------|------|
+| 3.5.10 (default) | 11+  |
+| 4.3.0            | 17+  |
+
+```sh
+# Spark 3.5
+sbt test
+# Spark 4
+SPARK_VERSION=4.3.0 sbt test
+```
+
+Run tests without the slow ones (model training):
+
+```sh
+sbt testFast
+```
+
+If some code has to differ between Spark versions, put it into `src/main/scala-spark3`
+and `src/main/scala-spark4`, only the folder of the selected Spark version is compiled.
+
+TensorFlow Java ships native binaries for Linux (x86_64, arm64), macOS (arm64) and Windows (x86_64).
